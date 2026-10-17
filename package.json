@@ -10,13 +10,15 @@
     "test:physics": "node tools/test_physics.mjs",
     "model:build": "blender -b --python tools/build_full_stadium.py && npm run model:optimize",
     "model:optimize": "gltf-transform optimize build/estadio_da_gruz.raw.glb public/assets/estadio_da_gruz.glb --compress meshopt --texture-compress webp --texture-size 2048 --simplify false --join false --palette false --instance false",
-    "perf": "node tools/perf.mjs"
+    "perf": "node tools/perf.mjs",
+    "trees:build": "node tools/generate_trees.mjs && gltf-transform optimize build/drzewa.raw.glb public/assets/drzewa.glb --compress meshopt --texture-compress webp --texture-size 1024 --simplify false --join false --palette false --instance false"
   },
   "dependencies": {
     "three": "^0.180.0",
     "three-mesh-bvh": "0.9.15"
   },
   "devDependencies": {
+    "@dgreenheck/ez-tree": "1.1.0",
     "@gltf-transform/cli": "^4.5.1",
     "@types/three": "^0.180.0",
     "puppeteer-core": "^24.43.1",

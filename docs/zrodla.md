@@ -49,7 +49,7 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Atlas Arena | ortofotomapa | środek (−174, +10), promień ok. 68 m | uproszczona bryła | średnia |
 | Al. Unii Lubelskiej | ortofotomapa | pas X ≈ 78–94 m | pas asfaltu | wysoka |
 | Tory (Łódź Kaliska) | ortofotomapa | pas X ≈ 115–200 m | pas tłucznia | średnia |
-| Drzewa | ortofotomapa | 96 pozycji (`tools/extract_trees_from_ortho.py`) | instancje low-poly | średnia |
+| Drzewa | ortofotomapa | 96 pozycji (`tools/extract_trees_from_ortho.py`) | EZ-Tree: brzoza, topola, jesion, dąb (gatunki i wysokości 14–21 m przyjęte, nie zmierzone) | średnia (pozycje), **założenie** (gatunki) |
 
 ### Przekrój trybuny głównej (do etapu tuneli)
 
@@ -95,6 +95,16 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `tunel_galera.png` | kadr z transmisji, Galera przy łuku północnym | duży tunel wejściowy z podestem i żółtymi poręczami |
 | `pod_zegarem.png` | kadr z transmisji, łuk południowy | sektory krzesełek i ławek łuku, bandy na koronie, tablica wyników |
 | `grafy_na_trybunie.png`, `screenshot-…19-36-47.png` | graffiti na murkach | tekstury murków |
+
+## Zasoby zewnętrzne w modelu
+
+| Zasób | Autor / źródło | Licencja | Gdzie |
+|---|---|---|---|
+| EZ-Tree (generator drzew, tekstury liści) | Daniel Greenheck, [github.com/dgreenheck/ez-tree](https://github.com/dgreenheck/ez-tree) | MIT (zachować notkę o prawach autorskich: `node_modules/@dgreenheck/ez-tree/LICENSE`) | `public/assets/drzewa.glb` (`npm run trees:build`) |
+| Kora dębu i wierzby | [Poly Haven](https://polyhaven.com/a/bark_brown_02) (bark_brown_02, bark_willow_02) | CC0 | j.w., przez EZ-Tree |
+| Kora brzozy i sosny | [TextureCan](https://www.texturecan.com/terms/) | CC0 | j.w., przez EZ-Tree |
+| HDRI Overcast Soil (Pure Sky) | [Poly Haven](https://polyhaven.com/a/overcast_soil_puresky) | CC0 | `public/assets/env/` |
+| Trawa (murawa, teren) | ambientCG | CC0 | `assets/textures/grass/` |
 
 Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba ustalić licencje albo usunąć zdjęcia z repozytorium.
 

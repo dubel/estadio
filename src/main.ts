@@ -501,9 +501,12 @@ loader.load(
       if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && !mesh.name.startsWith('Panorama')) {
         mesh.layers.enable(COLLIDER_LAYER);
       }
+      if (mesh.name.startsWith('Drzewa_Pnie_Kolizje')) mesh.visible = false;
     });
     world.build(model, COLLIDER_LAYER);
     octreeReady = true;
+
+    loadTrees();
 
     // Gotowe
     if (fillBar) fillBar.style.width = '100%';
@@ -527,6 +530,29 @@ loader.load(
     if (statusText) statusText.textContent = 'Błąd wczytywania modelu stadionu!';
   }
 );
+
+// Drzewa EZ-Tree (tools/generate_trees.mjs) w osobnym pliku, doczytywane po stadionie: spacer startuje
+// bez czekania na nie. Kolizje z pniami daje niewidoczna siatka Drzewa_Pnie_Kolizje w modelu stadionu.
+function loadTrees() {
+  loader.load('/assets/drzewa.glb', (gltf) => {
+    gltf.scene.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        // Liście z progiem alfy 0.5 znikały z odległości (mipmapy uśredniają alfę poniżej progu):
+        // niższy próg i alpha-to-coverage na MSAA render targetu (src/postfx.ts)
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (mat.alphaTest > 0) {
+          mat.alphaTest = 0.15;
+          mat.alphaToCoverage = true;
+        }
+      }
+    });
+    scene.add(gltf.scene);
+    lighting.refreshShadows();
+  });
+}
 
 // --- PĘTLA RENDEROWANIA ---
 function animate() {

@@ -39,7 +39,7 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
    - Bramki z siatkami.
    - Pas dawnej bieżni (8 m) porośnięty trawą aż do ogrodzenia: model pokazuje stan z lat 2010–2012.
 
-6. **Otoczenie (stan z ortofotomapy 2013)**: teren i plac wokół stadionu, al. Unii Lubelskiej, tory przy Łodzi Kaliskiej, Atlas Arena, drzewa oraz panorama bloków za torami, widoczna z trybuny głównej nad Galerą.
+6. **Otoczenie (stan z ortofotomapy 2013)**: teren i plac wokół stadionu, al. Unii Lubelskiej, tory przy Łodzi Kaliskiej, Atlas Arena, 96 drzew (EZ-Tree) oraz panorama bloków za torami, widoczna z trybuny głównej nad Galerą.
 
 Wymiary, kalibracja ortofotomapy, mapa zdjęć archiwalnych i otwarte pytania: [`docs/zrodla.md`](docs/zrodla.md).
 
@@ -86,7 +86,7 @@ Uruchamia Vite i headless Chrome, sprawdza grawitację, wysokość skoku, schodz
 
 Pochmurne popołudnie (17.09.2011, 16:00): słońce liczone z położenia Łodzi i obrotu osi stadionu (`src/lighting.ts`),
 światło otoczenia z HDRI [Overcast Soil (Pure Sky)](https://polyhaven.com/a/overcast_soil_puresky), Poly Haven, CC0
-(`public/assets/env/`), AO wypalone w Blenderze dla betonu i placu, GTAO, ziarno i mapowanie tonów (`src/postfx.ts`).
+(`public/assets/env/`), AO wypalone w Blenderze dla betonu i placu, ziarno i mapowanie tonów (`src/postfx.ts`).
 Noc: jupitery, smugi światła, bloom.
 
 ## 🛠️ Rekonstrukcja w Blenderze (CLI)
@@ -111,6 +111,7 @@ Tekstury źródłowe (wejście Blendera i `tools/generate_stadium_textures.py`) 
 
 Pomocnicze:
 - `python3 tools/extract_trees_from_ortho.py`: pozycje drzew z ortofotomapy (`tools/data/drzewa_ortofoto.json`).
+- `npm run trees:build`: drzewa generowane przez [EZ-Tree](https://github.com/dgreenheck/ez-tree) (MIT; kora z Poly Haven i TextureCan, CC0) w headless Chrome (`tools/generate_trees.mjs`, odmiany w `tools/trees/generate.js`): brzoza, topola, jesion, dąb na pozycjach z ortofotomapy, instancje w `public/assets/drzewa.glb`. Pnie do kolizji są w modelu stadionu (`Drzewa_Pnie_Kolizje`, niewidoczne).
 - `blender stadion_lks_pelny.blend --python tools/add_ortho_reference.py`: ortofotomapa jako podkład 1:1 do modelowania „po śladzie”.
 
 Do aplikacji trafiają wyłącznie spakowane w GLB — w `public/assets/textures/` potrzebny jest tylko `floodlight_glow.png` (sprite ładowany przez `src/main.ts`).
