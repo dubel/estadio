@@ -39,14 +39,19 @@ def seat_material(name, color):
 
 
 def place_seats(col, name, mat, positions, parent=None):
-    """positions: (x, y, z) podstaw krzesełek w układzie rodzica. Zwraca Empty grupy."""
+    """
+    positions: (x, y, z) albo (x, y, z, obrót wokół Z) podstaw krzesełek w układzie rodzica.
+    Bez obrotu krzesełko patrzy w -X. Zwraca Empty grupy.
+    """
     root = bpy.data.objects.new(name, None)
     root.parent = parent
     col.objects.link(root)
     mesh = _seat_mesh(name + "_Mesh", mat)
-    for i, (x, y, z) in enumerate(positions):
+    for i, pos in enumerate(positions):
         obj = bpy.data.objects.new(f"{name}_{i:05d}", mesh)
-        obj.location = (x, y, z)
+        obj.location = pos[:3]
+        if len(pos) > 3:
+            obj.rotation_euler = (0.0, 0.0, pos[3])
         obj.parent = root
         col.objects.link(obj)
     return root

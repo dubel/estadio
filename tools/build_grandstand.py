@@ -210,6 +210,9 @@ def create_materials():
         bsdf.inputs['Roughness'].default_value = 0.70
     przp_col = os.path.join(TEXTURES_DIR, "przeplatanka_wall.png")
     setup_pbr_nodes(mat_przp, przp_col, scale=(1.0, 1.0))
+    for node in mat_przp.node_tree.nodes:
+        if node.type == 'TEX_IMAGE':
+            node.extension = 'EXTEND'      # glTF: CLAMP_TO_EDGE — białe tło poza herbem
     mats['przeplatanka'] = mat_przp
 
     # 14. Świecące reflektory jupiterów (oślepiający biały blask w nocy)
@@ -299,6 +302,15 @@ def create_materials():
     setup_pbr_nodes(mat_ground, os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_Color.jpg"), scale=(2.0, 2.0))
     mats['ground_grass'] = mat_ground
 
+    # 23. Bandy reklamowe na koronie łuku południowego (atlas 4 reklam, widok_na_zegar_u2.png)
+    mat_ads = bpy.data.materials.new("Mat_Bandy_Reklamowe")
+    mat_ads.use_nodes = True
+    bsdf = mat_ads.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Roughness'].default_value = 0.6
+    setup_pbr_nodes(mat_ads, os.path.join(TEXTURES_DIR, "ads_crown.png"), scale=(1.0, 1.0))
+    mats['ads_crown'] = mat_ads
+
     mats['fence'] = make_alpha_material("Mat_Fence_Red", os.path.join(TEXTURES_DIR, "fence_steel_red.png"), 0.55)
 
     return mats
@@ -323,6 +335,8 @@ UPPER_DZ = (UPPER_Z1 - UPPER_Z0) / (UPPER_ROWS - 1)
 LIP_X = 11.4                            # balustrada czołowa sektora górnego (biały murek z Przeplatanką)
 LIP_TOP = UPPER_Z0 + 1.0
 REAR_X = 37.6
+CANOPY_BACK_Z = 5.4                     # tylna krawędź daszku sektora dolnego (przy balustradzie sektora górnego)
+PRZEPLATANKA_ASPECT = 4.0               # przeplatanka_wall.png: 2048 x 512
 SLAB = 0.9                              # grubość płyty widowni pod nosami stopni
 
 
@@ -501,7 +515,7 @@ def build_grandstand(col, mats):
     # Podział kolorów jak na zdjęciach (widok_z_galery.jpg): od południowego krańca biały, czerwony, biały.
     def make_canopy_section(name, ya, yb, mat):
         bm = bmesh.new()
-        prof = [(0.6, 4.6), (LIP_X - 0.1, 5.4), (LIP_X - 0.1, 5.28), (0.6, 4.48)]
+        prof = [(0.6, 4.6), (LIP_X - 0.1, CANOPY_BACK_Z), (LIP_X - 0.1, CANOPY_BACK_Z - 0.12), (0.6, 4.48)]
         _extrude_profile(bm, prof, ya, yb)
         uv_l = bm.loops.layers.uv.verify()
         for face in bm.faces:
@@ -516,16 +530,20 @@ def build_grandstand(col, mats):
     _box(bm_f, 0.5, 0.6, 4.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, 4.3, 4.65)
     _finish(col, bm_f, "Blenda_Fasada_Biala", mats['roof_white'])
 
-    # Biały murek z Przeplatanką ŁKS: lico balustrady czołowej sektora górnego (widok_z_galery.jpg)
+    # Biały murek z Przeplatanką ŁKS: lico balustrady czołowej sektora górnego, NAD daszkiem sektora dolnego
+    # (tylna krawędź daszku na Z 5.4; widok_z_galery.jpg). Tekstura 4:1 z trybem EXTEND: u poza [0, 1]
+    # przedłuża białe tło, więc herb zachowuje proporcje na szerokim, niskim panelu.
     bm_przp = bmesh.new()
     uv_przp = bm_przp.loops.layers.uv.verify()
-    z_bot, z_top = underside(LIP_X), LIP_TOP
+    z_bot, z_top = CANOPY_BACK_Z + 0.06, LIP_TOP
     for k in range(NUM_BAYS):
         ya, yb = k * BAY_WIDTH_Y + 0.4, (k + 1) * BAY_WIDTH_Y - 0.4
+        half_u = (yb - ya) / (z_top - z_bot) / PRZEPLATANKA_ASPECT / 2
         face = bm_przp.faces.new([bm_przp.verts.new(p) for p in [(LIP_X - 0.02, ya, z_bot), (LIP_X - 0.02, ya, z_top),
                                                                (LIP_X - 0.02, yb, z_top), (LIP_X - 0.02, yb, z_bot)]])
         for loop in face.loops:
-            loop[uv_przp].uv = ((yb - loop.vert.co.y) / (yb - ya), (loop.vert.co.z - z_bot) / (z_top - z_bot))
+            t = (yb - loop.vert.co.y) / (yb - ya)
+            loop[uv_przp].uv = (0.5 + (t - 0.5) * 2 * half_u, (loop.vert.co.z - z_bot) / (z_top - z_bot))
     mesh_przp = bpy.data.meshes.new("Murki_Przeplatanka_Mesh")
     bm_przp.normal_update()
     bm_przp.to_mesh(mesh_przp)

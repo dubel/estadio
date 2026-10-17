@@ -481,6 +481,35 @@ def generate_facade_texture():
     print(f"Zapisano teksturę elewacji bloku: {save_path}")
 
 
+def generate_crown_ads_texture():
+    """
+    Atlas band reklamowych z korony łuku południowego (widok_na_zegar_u2.png, ok. 2010–2012):
+    4 wiersze 1024 x 256 (proporcje 4:1 jak tablica 3.6 x 0.9 m), biały margines 8 px — tył i boki
+    tablic próbkują lewy dolny róg wiersza.
+    """
+    W, H = 1024, 1024
+    img = Image.new("RGB", (W, H), (255, 255, 255))
+    d = ImageDraw.Draw(img)
+    M = 8
+    rows = [
+        ((250, 250, 250), [((60, 55), "KORPORACJA UBEZPIECZENIOWA", 50, (20, 30, 90)), ((300, 140), "FILAR SA", 72, (15, 15, 15))]),
+        ((246, 246, 242), [((150, 60), "Nasze okna", 64, (200, 25, 30)), ((300, 140), "na Twój świat", 64, (40, 40, 40))]),
+        ((22, 32, 70), [((40, 40), "RADIO TAXI", 70, (255, 255, 255)), ((520, 30), "MER-C", 96, (240, 140, 20)),
+                        ((40, 150), "TEL. 650 50 50", 56, (255, 255, 255))]),
+        ((250, 250, 250), [((260, 30), "OPOCZNO", 110, (200, 20, 30)), ((230, 160), "naturalna woda mineralna", 44, (60, 60, 60))]),
+    ]
+    for r, (bg, texts) in enumerate(rows):
+        y0 = r * 256
+        d.rectangle([M, y0 + M, W - M - 1, y0 + 256 - M - 1], fill=bg)
+        if r == 1:
+            d.ellipse([40, y0 + 70, 130, y0 + 160], fill=(30, 140, 60))
+        for (x, y), text, size, color in texts:
+            d.text((x, y0 + y), text, font=get_font(size), fill=color)
+    save_path = os.path.join(TEXTURES_DIR, "ads_crown.png")
+    img.save(save_path)
+    print(f"Zapisano atlas band reklamowych: {save_path}")
+
+
 # Tekstury ładowane bezpośrednio przez Three.js; reszta trafia do aplikacji wyłącznie w GLB
 RUNTIME_TEXTURES = ["floodlight_glow.png"]
 
@@ -507,5 +536,6 @@ if __name__ == "__main__":
     generate_goal_net_texture()
     generate_fence_texture()
     generate_facade_texture()
+    generate_crown_ads_texture()
     sync_to_public()
     print("Wszystkie tekstury wygenerowane i zsynchronizowane pomyślnie!")

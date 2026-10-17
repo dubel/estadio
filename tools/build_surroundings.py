@@ -13,6 +13,7 @@ import os
 
 import bmesh
 import bpy
+import mathutils
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TREES_JSON = os.path.join(ROOT, "tools", "data", "drzewa_ortofoto.json")
@@ -109,34 +110,36 @@ def build_atlas_arena(col, mats):
 
 
 def build_trees(col, mats):
-    """Drzewa: jedna współdzielona siatka (pień + korona), instancje w pozycjach z ortofotomapy."""
+    """
+    Drzewa w pozycjach z ortofotomapy, scalone w jedną siatkę (pień + korona, 2 materiały):
+    2 draw calle zamiast 2 na każde drzewo, a kolizje z pniami zostają (zwykła siatka, nie instancje).
+    """
     with open(TREES_JSON) as f:
         trees = json.load(f)["trees"]
 
     bark = _flat_material("Mat_Kora", (0.20, 0.15, 0.11), 0.9)
     leaves = _flat_material("Mat_Liscie", (0.13, 0.22, 0.08), 0.85)
     bm = bmesh.new()
-    trunk = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.35, radius2=0.25, depth=5.0)
-    bmesh.ops.translate(bm, vec=(0, 0, 2.5), verts=trunk['verts'])
-    crown = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=4.0)
-    bmesh.ops.scale(bm, vec=(1.0, 1.0, 1.25), verts=crown['verts'])
-    bmesh.ops.translate(bm, vec=(0, 0, 8.5), verts=crown['verts'])
-    crown_faces = {f for v in crown['verts'] for f in v.link_faces}
-    for f in bm.faces:
-        f.material_index = 1 if f in crown_faces else 0
-    mesh = bpy.data.meshes.new("Drzewo_Mesh")
+    for i, t in enumerate(trees):
+        m = (mathutils.Matrix.Translation((t["x"], t["y"], 0.0))
+             @ mathutils.Matrix.Rotation((i * 2.399) % (2 * math.pi), 4, 'Z')
+             @ mathutils.Matrix.Scale(t["scale"], 4))
+        trunk = bmesh.ops.create_cone(bm, cap_ends=True, segments=6, radius1=0.35, radius2=0.25, depth=5.0,
+                                      matrix=m @ mathutils.Matrix.Translation((0, 0, 2.5)))
+        crown = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=4.0,
+                                           matrix=m @ mathutils.Matrix.Translation((0, 0, 8.5))
+                                           @ mathutils.Matrix.Diagonal((1.0, 1.0, 1.25, 1.0)))
+        for f in {f for v in crown['verts'] for f in v.link_faces}:
+            f.material_index = 1
+        for f in {f for v in trunk['verts'] for f in v.link_faces}:
+            f.material_index = 0
+    mesh = bpy.data.meshes.new("Drzewa_Mesh")
     bm.normal_update()
     bm.to_mesh(mesh)
     bm.free()
     mesh.materials.append(bark)
     mesh.materials.append(leaves)
-
-    for i, t in enumerate(trees):
-        obj = bpy.data.objects.new(f"Drzewo_{i:03d}", mesh)
-        obj.location = (t["x"], t["y"], 0.0)
-        obj.scale = (t["scale"],) * 3
-        obj.rotation_euler = (0.0, 0.0, (i * 2.399) % (2 * math.pi))
-        col.objects.link(obj)
+    col.objects.link(bpy.data.objects.new("Drzewa", mesh))
 
 
 def build_skyline(col, mats):

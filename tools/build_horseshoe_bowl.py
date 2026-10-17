@@ -12,7 +12,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_seats import place_seats, seat_material, seats_in_row  # noqa: E402
+from build_seats import place_seats, seat_material, seats_in_row, SEAT_PITCH  # noqa: E402
+import mathutils  # noqa: E402
 
 STRAIGHT_L = 84.0  # długość prostych bieżni 400 m (środki łuków w Y = ±42 m)
 
@@ -235,6 +236,47 @@ R_TRACK_OUT = 45.0     # zewnętrzna krawędź bieżni = czoło trybun
 FRONT_WALL_H = 1.5     # mur oporowy przed pierwszym rzędem (zdjęcia lks02, 516e09e41f411, przekrój Wyżnikiewicza — bez fosy)
 FENCE_H = 2.5          # stalowe ogrodzenie na koronie muru: pełne panele u dołu, siatka wyżej (widok_z_galery.jpg)
 BOWL_ANGLE = 149.0     # podkowa kończy się tam, gdzie zaczyna się trybuna główna (Y = ±65 m)
+STAND_DEPTH = 22.0     # głębokość wału ziemnego
+STAND_H = 6.8          # wysokość korony wału (na niej stoi tablica wyników, build_scoreboard)
+NUM_STEPS = 20         # 20 betonowych stopni
+STEP_D = STAND_DEPTH / NUM_STEPS
+STEP_H = (STAND_H - FRONT_WALL_H) / (NUM_STEPS - 1)  # ~0.28 m
+LOW_FENCE_H = 1.2      # niskie ogrodzenie łuków z biało-czerwonymi słupkami (widok_na_zegar_u2.png)
+
+# Łuk południowy (kąty jak w stadium_path, środek łuku w Y = -42 m), widok_na_zegar_u2.png:
+# od zachodniego krańca do osi stadionu czerwone krzesełka w sektorach, dalej ku Galerze ławki z żółtymi barierkami
+SOUTH_SEAT_SECTORS = [(-149.0, -135.0), (-135.0, -121.0), (-121.0, -107.0), (-107.0, -93.0)]
+SOUTH_BENCH_ARC = (-88.0, -3.0)
+SOUTH_ADS = [(-142.0, 0), (-129.0, 1), (-116.0, 2), (-103.0, 3)]   # bandy na koronie: (kąt, wiersz atlasu)
+
+
+def _obox(bm, center, size, yaw=0.0, pitch=0.0):
+    """Prostopadłościan o wymiarach size=(dx, dy, dz), obrócony o yaw (wokół Z) i pitch (wokół lokalnego Y)."""
+    m = (mathutils.Matrix.Translation(center) @ mathutils.Matrix.Rotation(yaw, 4, 'Z')
+         @ mathutils.Matrix.Rotation(pitch, 4, 'Y') @ mathutils.Matrix.Diagonal((*size, 1.0)))
+    return bmesh.ops.create_cube(bm, size=1.0, matrix=m)
+
+
+def _row(i):
+    """(odległość przodu stopnia od czoła, wysokość stopnia) rzędu i podkowy."""
+    return i * STEP_D, FRONT_WALL_H + i * STEP_H
+
+
+def _arc_point(r, ang_deg, cy=-42.0):
+    a = math.radians(ang_deg)
+    return (r * math.cos(a), cy + r * math.sin(a)), a
+
+
+def _finish_mesh(col, bm, name, mats_list):
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    bm.normal_update()
+    bm.to_mesh(mesh)
+    bm.free()
+    for m in mats_list:
+        mesh.materials.append(m)
+    obj = bpy.data.objects.new(name, mesh)
+    col.objects.link(obj)
+    return obj
 
 
 def build_bowl(col, mats):
@@ -244,11 +286,6 @@ def build_bowl(col, mats):
     20 betonowych stopni i tylna skarpa. Strona zachodnia pozostaje wolna na Trybunę Główną.
     Fosy nie było — wcześniejsza wersja modelu ją zakładała, źródła (docs/zrodla.md) tego nie potwierdzają.
     """
-    STAND_DEPTH = 22.0 # głębokość wału ziemnego
-    STAND_H = 6.8      # wysokość korony wału (na niej stoi tablica wyników, build_scoreboard)
-    NUM_STEPS = 20     # 20 betonowych stopni
-    STEP_H = (STAND_H - FRONT_WALL_H) / (NUM_STEPS - 1)  # ~0.28 m
-
     bm_bowl = bmesh.new()
     bowl_rings = []
     for px, py, nx, ny in stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE):
@@ -256,11 +293,10 @@ def build_bowl(col, mats):
         b_pts = [(px, py, 0.0)]
         cur_d = 0.0
         cur_z = FRONT_WALL_H - STEP_H
-        step_d = STAND_DEPTH / NUM_STEPS
         for s in range(NUM_STEPS):
             cur_z += STEP_H
             b_pts.append((px + nx * cur_d, py + ny * cur_d, cur_z))
-            cur_d += step_d
+            cur_d += STEP_D
             b_pts.append((px + nx * cur_d, py + ny * cur_d, cur_z))
 
         # Tylna skarpa wału
@@ -283,9 +319,9 @@ def build_bowl(col, mats):
     obj_bowl.data.materials.append(mats['concrete'])
     col.objects.link(obj_bowl)
 
-    # Ogrodzenie: panele z teksturą alfa wzdłuż korony muru (u w metrach / 2.5 m przęsła).
+    # Wysokie ogrodzenie tylko przed Galerą (prosta): panele z teksturą alfa (u w metrach / 2.5 m przęsła).
     # Dwie ściany 4 cm od siebie: kolizje Octree w Three.js są jednostronne, pojedyncza płaszczyzna
-    # przepuszczała gracza schodzącego z trybuny.
+    # przepuszczała gracza schodzącego z trybuny. Na łukach niskie ogrodzenie (build_bowl_details).
     bm_f = bmesh.new()
     uv = bm_f.loops.layers.uv.verify()
     path = stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE, straight_step=2.5)
@@ -293,6 +329,8 @@ def build_bowl(col, mats):
         dist = 0.0
         for (x0, y0, nx0, ny0), (x1, y1, nx1, ny1) in zip(path, path[1:]):
             seg = math.hypot(x1 - x0, y1 - y0)
+            if abs(ny0) > 1e-6 or abs(ny1) > 1e-6:   # odcinek łuku
+                continue
             a0 = (x0 + nx0 * off, y0 + ny0 * off)
             a1 = (x1 + nx1 * off, y1 + ny1 * off)
             corners = [(a0, FRONT_WALL_H, dist, 0.0), (a1, FRONT_WALL_H, dist + seg, 0.0),
@@ -316,13 +354,141 @@ def build_bowl(col, mats):
     cy = STRAIGHT_L / 2.0
     aisles = [-cy + 2.0 + k * 10.0 for k in range(9)]
     for i in range(NUM_STEPS):
-        x = R_TRACK_OUT + i * (STAND_DEPTH / NUM_STEPS) + 0.7
-        z = FRONT_WALL_H + i * STEP_H
+        d, z = _row(i)
         for a, b in zip(aisles, aisles[1:]):
-            seats += seats_in_row(x, z, a + 0.6, b - 0.6)
-    place_seats(col, "Krzeselka_Galera", seat_material("Mat_Krzeselka_Czerwone_Galera", (0.62, 0.07, 0.09)), seats)
+            seats += seats_in_row(R_TRACK_OUT + d + 0.7, z, a + 0.6, b - 0.6)
+    red_seat = seat_material("Mat_Krzeselka_Czerwone_Galera", (0.62, 0.07, 0.09))
+    place_seats(col, "Krzeselka_Galera", red_seat, seats)
 
+    build_bowl_details(col, mats, red_seat, aisles)
     return obj_bowl, obj_f
+
+
+def build_bowl_details(col, mats, red_seat, galera_aisles):
+    """
+    Wyposażenie podkowy ze zdjęć 2010–2012 (widok_z_galery.jpg, widok_na_zegar_u2.png): krzesełka i ławki
+    łuku południowego, żółte barierki, niskie ogrodzenie łuków, ślad dawnej bieżni, bandy na koronie.
+    Barierki i ogrodzenie to bryły (kolizje Octree są jednostronne).
+    """
+    yellow = seat_material("Mat_Barierki_Zolte", (0.85, 0.66, 0.08))
+    bench_grey = seat_material("Mat_Lawki_Luk", (0.62, 0.62, 0.60))
+
+    # Krzesełka łuku południowego: sektory rozdzielone przejściami 1.2 m, skierowane do środka łuku
+    seats = []
+    for i in range(NUM_STEPS):
+        d, z = _row(i)
+        r = R_TRACK_OUT + d + 0.7
+        for a0, a1 in SOUTH_SEAT_SECTORS:
+            gap = math.degrees(0.6 / r)
+            n = int(math.radians(a1 - a0 - 2 * gap) * r / SEAT_PITCH)
+            for k in range(n):
+                (x, y), a = _arc_point(r, a0 + gap + (k + 0.5) * (a1 - a0 - 2 * gap) / n)
+                seats.append((x, y, z, a))
+    place_seats(col, "Krzeselka_Luk_Poludniowy", red_seat, seats)
+
+    # Ławki we wschodniej części łuku (deska 0.32 m na wsporniku, 0.40 m nad stopniem), przejścia co 15°
+    bm_b = bmesh.new()
+    seg_deg = 3.0
+    for i in range(NUM_STEPS):
+        d, z = _row(i)
+        r = R_TRACK_OUT + d + 0.6
+        ang = SOUTH_BENCH_ARC[0]
+        while ang + seg_deg <= SOUTH_BENCH_ARC[1]:
+            if int((ang - SOUTH_BENCH_ARC[0]) / seg_deg) % 5 != 4:          # co piąty odcinek to przejście
+                (x, y), a = _arc_point(r, ang + seg_deg / 2)
+                chord = 2 * r * math.sin(math.radians(seg_deg / 2))
+                _obox(bm_b, (x, y, z + 0.395), (0.32, chord, 0.05), yaw=a)
+                _obox(bm_b, (x, y, z + 0.185), (0.22, 0.08, 0.37), yaw=a)
+            ang += seg_deg
+    _finish_mesh(col, bm_b, "Lawki_Luk_Poludniowy", [bench_grey])
+
+    # Żółte barierki: poręcze przy przejściach Galery (wzdłuż spadku, przy krawędzi sektora)
+    # i poprzeczna barierka w połowie wysokości sekcji ławek łuku
+    bm_y = bmesh.new()
+    run = math.hypot(STEP_D, STEP_H)
+    pitch = -math.atan2(STEP_H, STEP_D)
+    for a in galera_aisles[1:-1]:
+        y = a + 0.52
+        for i in range(NUM_STEPS - 1):
+            d, z = _row(i)
+            _obox(bm_y, (R_TRACK_OUT + d + STEP_D, y, z + STEP_H / 2 + 1.0), (run, 0.05, 0.05), pitch=pitch)
+            if i % 2 == 0:
+                _obox(bm_y, (R_TRACK_OUT + d + 0.55, y, z + 0.5), (0.05, 0.05, 1.0))
+    i_rail = 10
+    d, z = _row(i_rail)
+    r = R_TRACK_OUT + d + 0.15
+    ang = SOUTH_BENCH_ARC[0]
+    while ang + seg_deg <= SOUTH_BENCH_ARC[1]:
+        if int((ang - SOUTH_BENCH_ARC[0]) / seg_deg) % 5 != 4:
+            (x, y), a = _arc_point(r, ang + seg_deg / 2)
+            _obox(bm_y, (x, y, z + 1.0), (0.05, 2 * r * math.sin(math.radians(seg_deg / 2)), 0.05), yaw=a)
+            (px, py), _ = _arc_point(r, ang + 0.2)
+            _obox(bm_y, (px, py, z + 0.5), (0.05, 0.05, 1.0))
+        ang += seg_deg
+    _finish_mesh(col, bm_y, "Barierki_Zolte", [yellow])
+
+    # Niskie ogrodzenie łuków: słupki co ~2.5 m na przemian czerwone i białe, dwie poręcze
+    bm_lf = bmesh.new()
+    path = stadium_path(R_TRACK_OUT + 0.15, BOWL_ANGLE, -BOWL_ANGLE, arc_step_deg=3.0)
+    k = 0
+    for (x0, y0, nx0, ny0), (x1, y1, nx1, ny1) in zip(path, path[1:]):
+        if abs(ny0) < 1e-6 and abs(ny1) < 1e-6:     # prosta Galery ma wysokie ogrodzenie
+            continue
+        yaw = math.atan2(y1 - y0, x1 - x0) - math.pi / 2
+        seg = math.hypot(x1 - x0, y1 - y0)
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        for h in (0.6, LOW_FENCE_H - 0.03):
+            _obox(bm_lf, (mx, my, FRONT_WALL_H + h), (0.05, seg, 0.05), yaw=yaw)
+        post = _obox(bm_lf, (x0, y0, FRONT_WALL_H + LOW_FENCE_H / 2), (0.09, 0.09, LOW_FENCE_H), yaw=yaw)
+        for f in {f for v in post['verts'] for f in v.link_faces}:
+            f.material_index = k % 2
+        k += 1
+    _finish_mesh(col, bm_lf, "Ogrodzenie_Niskie_Luki", [mats['lks_red'], mats['goal_white']])
+
+    # Ślad dawnej bieżni: wydeptany, ciemny pas żużlu w trawie (pełna pętla)
+    trace = _flat("Mat_Slad_Biezni", (0.075, 0.065, 0.055), 0.95)
+    bm_t = bmesh.new()
+    inner = stadium_path(42.7, 180.0, -180.0, close_west=True)
+    outer = stadium_path(43.8, 180.0, -180.0, close_west=True)
+    vi = [bm_t.verts.new((x, y, 0.035)) for x, y, _, _ in inner]
+    vo = [bm_t.verts.new((x, y, 0.035)) for x, y, _, _ in outer]
+    for j in range(len(vi)):
+        bm_t.faces.new([vi[j], vo[j], vo[(j + 1) % len(vo)], vi[(j + 1) % len(vi)]])
+    _finish_mesh(col, bm_t, "Slad_Biezni", [trace])
+
+    # Bandy reklamowe na słupach na koronie łuku południowego (atlas ads_crown.png: 4 wiersze 4:1)
+    bm_ad = bmesh.new()
+    uv = bm_ad.loops.layers.uv.verify()
+    r = R_TRACK_OUT + STAND_DEPTH - 0.4
+    for ang, row in SOUTH_ADS:
+        (x, y), a = _arc_point(r, ang)
+        board = _obox(bm_ad, (x, y, STAND_H + 3.05), (0.08, 3.6, 0.9), yaw=a)
+        v0, v1 = 1.0 - (row + 1) / 4.0, 1.0 - row / 4.0
+        tangent = mathutils.Vector((-math.sin(a), math.cos(a), 0.0))
+        radial = mathutils.Vector((math.cos(a), math.sin(a), 0.0))
+        for f in {f for v in board['verts'] for f in v.link_faces}:
+            front = f.normal.dot(radial) < -0.9                     # lico skierowane do boiska
+            for loop in f.loops:
+                p = loop.vert.co - mathutils.Vector((x, y, STAND_H + 3.05))
+                if front:
+                    u = 0.5 - p.dot(tangent) / 3.6                  # od lewej patrząc z boiska
+                    v = v0 + (p.z / 0.9 + 0.5) * (v1 - v0)
+                    loop[uv].uv = (u, v)
+                else:
+                    loop[uv].uv = (0.004, v0 + 0.004)               # biały margines atlasu
+        for side in (-1.3, 1.3):
+            sx, sy = x + side * tangent.x, y + side * tangent.y
+            _obox(bm_ad, (sx, sy, STAND_H + 1.3), (0.1, 0.1, 2.6), yaw=a)
+    _finish_mesh(col, bm_ad, "Bandy_Korona_Luk", [mats['ads_crown']])
+
+
+def _flat(name, color, roughness):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+    bsdf.inputs['Roughness'].default_value = roughness
+    return mat
 
 
 def build_fan_banners(col, mats):

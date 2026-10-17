@@ -90,8 +90,8 @@ Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba 
 3. **Łuk północny**: na ortofotomapie zewnętrzną część zasłaniają drzewa; model zakłada tę samą głębokość co Galera.
 4. **Okres**: model pokazuje stan z lat 2010–2012 (decyzja z 17.10.2026), stąd trawa zamiast bieżni i plastikowe krzesełka.
 6. **Panorama bloków**: pozycje i wysokości to kompozycja ze zdjęć lks07/lks08, bez pomiaru. Do zweryfikowania na mapie (rejon Karolewa / za stacją Łódź Kaliska).
-7. **Krzesełka na łukach**: `widok_na_zegar_u2.png` pokazuje czerwone krzesełka w sektorach łuku południowego (szare przejścia), a bliżej Galery ławki. Model ma krzesełka tylko na prostej Galery.
-9. **Ogrodzenie zależne od miejsca**: przed Galerą wysokie (panele + siatka), na łuku południowym niskie z biało-czerwonymi słupkami. Model ma wszędzie wysokie.
-10. **Ślad bieżni i bandy na koronie**: ciemny pas dawnej bieżni w trawie, bandy reklamowe na słupach na koronie łuku (`widok_na_zegar_u2.png`).
-8. **Barierki w przejściach Galery**: żółte barierki wzdłuż przejść i rygle (`widok_z_galery.jpg`) — jeszcze nie ma ich w modelu.
+7. **Łuk północny**: model ma tam gołe stopnie (krzesełek, ławek i band brak). Nie ma zdjęcia, które by to pokazywało.
+9. **Granica ogrodzeń**: wysokie ogrodzenie stoi tylko na prostej Galery, niskie na obu łukach. Dokładnego miejsca przejścia nie ma na zdjęciach.
+10. **Bandy na koronie**: 4 tablice z napisami odczytanymi z `widok_na_zegar_u2.png`; pozycje orientacyjne, łuk północny bez band.
+8. **Barierki**: żółte poręcze przy przejściach Galery i barierka poprzeczna w sekcji ławek łuku są w modelu; ich dokładny przebieg to przybliżenie ze zdjęć.
 5. **Wysokość muru czołowego**: 1,5 m oszacowane z lks02. Brak wymiaru.

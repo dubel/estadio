@@ -19,7 +19,7 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: 'high-performance'
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // MSAA 4x przy DPR 2 to 16 próbek/piksel CSS
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 2000);
@@ -420,6 +420,22 @@ if (import.meta.env.DEV) {
       vel: [playerVelocity.x, playerVelocity.y, playerVelocity.z]
     };
   };
+  // Pomiar wydajności: średni czas klatki i liczba draw calli / trójkątów na klatkę (wszystkie przebiegi:
+  // cienie, postprocessing), zliczane przy wyłączonym automatycznym zerowaniu renderer.info
+  (window as any).__perf = (frames = 60) => new Promise((resolve) => {
+    renderer.info.autoReset = false;
+    renderer.info.reset();
+    const t0 = performance.now();
+    let n = 0;
+    const tick = () => {
+      if (++n < frames) { requestAnimationFrame(tick); return; }
+      const r = renderer.info.render;
+      const ms = (performance.now() - t0) / frames;
+      resolve({ msPerFrame: ms, calls: Math.round(r.calls / frames), triangles: Math.round(r.triangles / frames) });
+      renderer.info.autoReset = true;
+    };
+    requestAnimationFrame(tick);
+  });
   (window as any).__getPlayerState = () => ({
     pos: [camera.position.x, camera.position.y, camera.position.z],
     onFloor: playerOnFloor,
@@ -440,6 +456,7 @@ document.querySelectorAll('.vp-btn').forEach(btn => {
 });
 
 // --- WCZYTYWANIE MODELU GLTF ---
+const NO_SHADOW_CASTERS = /^(Teren|Plac|Murawa|Bieznia|Slad_Biezni|Al_Unii|Tory|Panorama)/;
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const fillBar = document.getElementById('progress-fill');
 const statusText = document.getElementById('loading-status');
@@ -453,7 +470,8 @@ loader.load(
     model.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;
-        mesh.castShadow = true;
+        // Płaskie i dalekie powierzchnie nie rzucają cieni (teren, plac, murawa, bloki na horyzoncie)
+        mesh.castShadow = !NO_SHADOW_CASTERS.test(mesh.name);
         mesh.receiveShadow = true;
 
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -474,6 +492,7 @@ loader.load(
     });
     lighting.trackModel(model);
     scene.add(model);
+    lighting.refreshShadows();
     model.updateMatrixWorld(true);
     // Kolizje tylko z warstwy COLLIDER_LAYER: bez instancji (krzesełka — Octree widziałby jedną kopię
     // w początku układu) i bez dalekiej panoramy bloków (rozdęłaby drzewo do kilometra).

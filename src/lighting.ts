@@ -95,6 +95,8 @@ export class Lighting {
     renderer.toneMappingExposure = DAY.exposure;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Scena i światła są statyczne: mapy cieni liczone raz (refreshShadows), nie w każdej klatce
+    renderer.shadowMap.autoUpdate = false;
 
     this.setupSun();
     this.setupJupiters();
@@ -136,14 +138,13 @@ export class Lighting {
     const alphaMap = coneAlphaMap();
     const aim = new THREE.Vector3(0, 0, 0);
 
-    JUPITER_POSITIONS.forEach((pos, idx) => {
+    JUPITER_POSITIONS.forEach((pos) => {
       const spot = new THREE.SpotLight(0xfffae8, 0.0);
       spot.position.copy(pos);
       spot.target.position.copy(aim);
       spot.angle = Math.PI / 3.8;
       spot.penumbra = 0.55;
       spot.distance = 260;
-      spot.castShadow = idx === 0;          // cień z jednego masztu — koszt cieni punktowych
       this.scene.add(spot, spot.target);
       this.spots.push(spot);
 
@@ -200,6 +201,11 @@ export class Lighting {
     if (night) this.applyNight(); else this.applyDay();
   }
 
+  /** Przelicza mapy cieni w najbliższej klatce — po wczytaniu modelu i przy zmianie dnia/nocy. */
+  refreshShadows() {
+    this.renderer.shadowMap.needsUpdate = true;
+  }
+
   update(time: number) {
     if (!this.isNight) return;
     const pulse = 0.75 + 0.25 * Math.sin(time * 4.0);
@@ -214,11 +220,12 @@ export class Lighting {
     sc.fog = new THREE.FogExp2(DAY.fog, DAY.fogDensity);
     this.renderer.toneMappingExposure = DAY.exposure;
     this.sun.intensity = DAY.sunIntensity;
-    this.spots.forEach((l) => (l.intensity = 0));
+    this.spots.forEach((l) => { l.intensity = 0; l.castShadow = false; });
     // Ukryte, nie tylko przezroczyste: GTAO rysuje normalne wszystkich widocznych obiektów
     this.glows.forEach((g) => { g.material.opacity = 0; g.visible = false; });
     this.cones.forEach((c) => (c.visible = false));
     this.applyEmissives();
+    this.refreshShadows();
   }
 
   private applyNight() {
@@ -228,13 +235,15 @@ export class Lighting {
     sc.fog = new THREE.FogExp2(NIGHT.fog, NIGHT.fogDensity);
     this.renderer.toneMappingExposure = NIGHT.exposure;
     this.sun.intensity = NIGHT.sunIntensity;
-    this.spots.forEach((l) => (l.intensity = NIGHT.jupiterIntensity));
+    // cień tylko z jednego masztu — każdy reflektor z cieniem to osobny render sceny
+    this.spots.forEach((l, idx) => { l.intensity = NIGHT.jupiterIntensity; l.castShadow = idx === 0; });
     this.glows.forEach((g) => { g.material.opacity = 0.95; g.visible = true; });
     this.cones.forEach((c) => {
       c.visible = true;
       (c.material as THREE.MeshBasicMaterial).opacity = 0.045;
     });
     this.applyEmissives();
+    this.refreshShadows();
   }
 
   private applyEmissives() {

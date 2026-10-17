@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:physics": "node tools/test_physics.mjs",
     "model:build": "blender -b --python tools/build_full_stadium.py && npm run model:optimize",
-    "model:optimize": "gltf-transform optimize build/estadio_da_gruz.raw.glb public/assets/estadio_da_gruz.glb --compress meshopt --texture-compress webp --texture-size 2048 --simplify false --join false --palette false --instance false"
+    "model:optimize": "gltf-transform optimize build/estadio_da_gruz.raw.glb public/assets/estadio_da_gruz.glb --compress meshopt --texture-compress webp --texture-size 2048 --simplify false --join false --palette false --instance false",
+    "perf": "node tools/perf.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"
