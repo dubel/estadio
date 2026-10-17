@@ -39,6 +39,7 @@ from build_grandstand import (
 from build_seats import place_seats, seat_material, seats_in_row
 from build_floodlight_mast import build_floodlight_mast
 from build_surroundings import build_surroundings
+from bake_lighting import bake_ambient_occlusion
 from build_horseshoe_bowl import (
     build_pitch_and_track,
     build_pitch_lines,
@@ -367,15 +368,16 @@ def assemble_full_stadium():
 
     # Zapis pliku roboczego .blend
     prepare_meshes_for_export()
+    bake_ambient_occlusion()
 
     blend_path = os.path.join(ROOT, "stadion_lks_pelny.blend")
     bpy.ops.wm.save_as_mainfile(filepath=blend_path)
     print(f"Scena stadionu zapisana do: {blend_path}")
 
-    # Eksport do formatu GLB (zoptymalizowany pod Three.js) — public/ to jedyne miejsce, z którego czyta aplikacja
-    glb_dir = os.path.join(ROOT, "public", "assets")
+    # Surowy GLB do build/; `npm run model:optimize` kompresuje go (meshopt + WebP) do public/assets
+    glb_dir = os.path.join(ROOT, "build")
     os.makedirs(glb_dir, exist_ok=True)
-    glb_path = os.path.join(glb_dir, "estadio_da_gruz.glb")
+    glb_path = os.path.join(glb_dir, "estadio_da_gruz.raw.glb")
 
     print(f"Eksportowanie modelu GLB do: {glb_path} ...")
     bpy.ops.export_scene.gltf(

@@ -96,7 +96,7 @@ try {
   check('wejście po stopniach Galery', r.galeraClimb > r.galeraMid + 1.5, `y ${f(r.galeraMid)} → ${f(r.galeraClimb)}`);
   check('tunel: schody na sektor górny', r.tunnelStart < 2 && r.tunnelEnd > 8.5, `y ${f(r.tunnelStart)} → ${f(r.tunnelEnd)}`);
   check('mur z ogrodzeniem zatrzymuje na bieżni', r.fenceX < 45 && r.fenceY < 2, `x=${f(r.fenceX)} y=${f(r.fenceY)}`);
-  check('teren za Galerą (bez spadania)', r.outsideX > 75 && Math.abs(r.outsideY - 1.62) < 0.1, `x=${f(r.outsideX)} y=${f(r.outsideY)}`);
+  check('teren za Galerą (bez spadania)', r.outsideX > 75 && Math.abs(r.outsideY - 1.40) < 0.1, `x=${f(r.outsideX)} y=${f(r.outsideY)}`);
 } finally {
   await browser.close();
   await server.close();

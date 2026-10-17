@@ -7,12 +7,15 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test:physics": "node tools/test_physics.mjs"
+    "test:physics": "node tools/test_physics.mjs",
+    "model:build": "blender -b --python tools/build_full_stadium.py && npm run model:optimize",
+    "model:optimize": "gltf-transform optimize build/estadio_da_gruz.raw.glb public/assets/estadio_da_gruz.glb --compress meshopt --texture-compress webp --texture-size 2048 --simplify false --join false --palette false --instance false"
   },
   "dependencies": {
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
     "@types/three": "^0.180.0",
     "puppeteer-core": "^24.43.1",
     "typescript": "^5.5.0",

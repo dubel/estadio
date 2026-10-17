@@ -23,3 +23,6 @@ scratch/
 Thumbs.db
 .vscode/
 .idea/
+
+# Artefakty builda modelu (wypalone AO, surowy GLB)
+build/

@@ -3,9 +3,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { Octree } from 'three/examples/jsm/math/Octree.js';
 import { Capsule } from 'three/examples/jsm/math/Capsule.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { Lighting } from './lighting';
+import { PostFX } from './postfx';
 
 // --- STAN APLIKACJI ---
-let isNight = false;
 let isFlyMode = false;
 const clock = new THREE.Clock();
 
@@ -18,81 +20,14 @@ const renderer = new THREE.WebGLRenderer({
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x7da4c4); // Błękitne niebo dzienne
-// Gęstość dobrana tak, by bloki za torami (500–900 m) przebijały się przez lekką, niebieskawą mgiełkę
-const DAY_FOG_DENSITY = 0.0012;
-scene.fog = new THREE.FogExp2(0x7da4c4, DAY_FOG_DENSITY);
-
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 2000);
 
-// --- OŚWIETLENIE ---
-// Światło ambient
-const ambientLight = new THREE.HemisphereLight(0xddeeff, 0x334433, 0.6);
-scene.add(ambientLight);
-
-// Słońce dzienne
-const sunLight = new THREE.DirectionalLight(0xfffaed, 2.5);
-sunLight.position.set(70, 120, -50);
-sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.camera.near = 10;
-sunLight.shadow.camera.far = 300;
-sunLight.shadow.camera.left = -100;
-sunLight.shadow.camera.right = 100;
-sunLight.shadow.camera.top = 100;
-sunLight.shadow.camera.bottom = -100;
-scene.add(sunLight);
-
-// Jupitery (oświetlenie nocne - 4 potężne reflektory na szczycie masztów)
-// Jupitery (oświetlenie nocne - 4 potężne reflektory na szczycie masztów)
-const jupitersLights: THREE.SpotLight[] = [];
-const jupiterPositions = [
-  new THREE.Vector3(-68.0, 48.2,  82.0), // SW (południowo-zachodni)
-  new THREE.Vector3(-68.0, 48.2, -82.0), // NW (północno-zachodni)
-  new THREE.Vector3( 68.0, 48.2,  61.5), // SE (południowo-wschodni) — pozycja z ortofotomapy
-  new THREE.Vector3( 68.0, 48.2, -61.5)  // NE (północno-wschodni) — pozycja z ortofotomapy
-];
-
-jupiterPositions.forEach((pos, idx) => {
-  const spot = new THREE.SpotLight(0xfffae8, 0.0); // początkowo wyłączone w dzień
-  spot.position.copy(pos);
-  spot.target.position.set(0, 0, 0); // celują w środek murawy
-  spot.angle = Math.PI / 3.8;
-  spot.penumbra = 0.55;
-  spot.distance = 260;
-  spot.castShadow = (idx === 0); // cień z 1 masztu dla zachowania wysokiej płynności WebGL
-  scene.add(spot);
-  scene.add(spot.target);
-  jupitersLights.push(spot);
-});
-
-// Świecące kule blasku (flesze optyczne) na szczycie jupiterów w nocy
-const texLoader = new THREE.TextureLoader();
-const glowTexture = texLoader.load('/assets/textures/floodlight_glow.png');
-const glowSprites: THREE.Sprite[] = [];
-
-jupiterPositions.forEach((pos) => {
-  const spriteMat = new THREE.SpriteMaterial({
-    map: glowTexture,
-    color: 0xffffff,
-    transparent: true,
-    opacity: 0.0,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  });
-  const sprite = new THREE.Sprite(spriteMat);
-  sprite.position.copy(pos);
-  sprite.scale.set(34, 34, 1);
-  scene.add(sprite);
-  glowSprites.push(sprite);
-});
+// --- OŚWIETLENIE I POSTPROCESSING (src/lighting.ts, src/postfx.ts) ---
+const lighting = new Lighting(scene, renderer);
+lighting.loadSky('/assets/env/overcast_soil_puresky_2k.hdr');
+const postfx = new PostFX(renderer, scene, camera);
 
 // --- PUNKTY WIDOKOWE (TELEPORTACJA) ---
 interface Viewpoint {
@@ -431,51 +366,13 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
-interface TrackedEmissive {
-  mat: THREE.MeshStandardMaterial;
-  dayColor: THREE.Color;
-  nightColor: THREE.Color;
-  dayIntensity: number;
-  nightIntensity: number;
-}
-const trackedEmissives: TrackedEmissive[] = [];
-
 function toggleLighting() {
-  isNight = !isNight;
+  lighting.setNight(!lighting.isNight);
+  postfx.setNight(lighting.isNight);
   const icon = document.getElementById('light-icon');
   const label = document.getElementById('light-label');
-  
-  if (isNight) {
-    scene.background = new THREE.Color(0x070b12);
-    scene.fog = new THREE.FogExp2(0x070b12, 0.005);
-    ambientLight.color.setHex(0x182438);
-    ambientLight.groundColor.setHex(0x06090e);
-    ambientLight.intensity = 0.35;
-    sunLight.intensity = 0.02;
-    jupitersLights.forEach(l => l.intensity = 8000.0);
-    glowSprites.forEach(s => s.material.opacity = 0.95);
-    trackedEmissives.forEach(e => {
-      e.mat.emissive.copy(e.nightColor);
-      e.mat.emissiveIntensity = e.nightIntensity;
-    });
-    if (icon) icon.textContent = '🌙';
-    if (label) label.textContent = 'Noc (Jupitery)';
-  } else {
-    scene.background = new THREE.Color(0x7da4c4);
-    scene.fog = new THREE.FogExp2(0x7da4c4, DAY_FOG_DENSITY);
-    ambientLight.color.setHex(0xddeeff);
-    ambientLight.groundColor.setHex(0x334433);
-    ambientLight.intensity = 0.6;
-    sunLight.intensity = 2.5;
-    jupitersLights.forEach(l => l.intensity = 0.0);
-    glowSprites.forEach(s => s.material.opacity = 0.0);
-    trackedEmissives.forEach(e => {
-      e.mat.emissive.copy(e.dayColor);
-      e.mat.emissiveIntensity = e.dayIntensity;
-    });
-    if (icon) icon.textContent = '☀️';
-    if (label) label.textContent = 'Dzień';
-  }
+  if (icon) icon.textContent = lighting.isNight ? '🌙' : '☁️';
+  if (label) label.textContent = lighting.isNight ? 'Noc (Jupitery)' : 'Dzień';
 }
 
 function toggleMode() {
@@ -543,7 +440,7 @@ document.querySelectorAll('.vp-btn').forEach(btn => {
 });
 
 // --- WCZYTYWANIE MODELU GLTF ---
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const fillBar = document.getElementById('progress-fill');
 const statusText = document.getElementById('loading-status');
 const loadingOverlay = document.getElementById('loading');
@@ -563,37 +460,7 @@ loader.load(
         mats.forEach((m) => {
           if (m && (m as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
             const std = m as THREE.MeshStandardMaterial;
-            if (std.name.includes('Lamp_Glow')) {
-              trackedEmissives.push({
-                mat: std,
-                dayColor: new THREE.Color(0x222222),
-                nightColor: new THREE.Color(0xffffff),
-                dayIntensity: 0.0,
-                nightIntensity: 25.0
-              });
-              std.emissive = new THREE.Color(0x000000);
-              std.emissiveIntensity = 0.0;
-            } else if (std.name.includes('Beacon')) {
-              trackedEmissives.push({
-                mat: std,
-                dayColor: new THREE.Color(0x220000),
-                nightColor: new THREE.Color(0xff1111),
-                dayIntensity: 0.2,
-                nightIntensity: 8.0
-              });
-              std.emissive = new THREE.Color(0x220000);
-              std.emissiveIntensity = 0.2;
-            } else if (std.name.includes('Board_Historic')) {
-              trackedEmissives.push({
-                mat: std,
-                dayColor: new THREE.Color(0x000000),
-                nightColor: new THREE.Color(0xffffff),
-                dayIntensity: 0.0,
-                nightIntensity: 2.2
-              });
-              std.emissive = new THREE.Color(0x000000);
-              std.emissiveIntensity = 0.0;
-            } else if (std.name.includes('Goal_Net') || std.name.includes('Fence') || mesh.name.includes('Siatka')) {
+            if (std.name.includes('Goal_Net') || std.name.includes('Fence') || mesh.name.includes('Siatka')) {
               std.side = THREE.DoubleSide;
               std.transparent = true;
               std.alphaTest = 0.25;
@@ -605,6 +472,7 @@ loader.load(
         });
       }
     });
+    lighting.trackModel(model);
     scene.add(model);
     model.updateMatrixWorld(true);
     // Kolizje tylko z warstwy COLLIDER_LAYER: bez instancji (krzesełka — Octree widziałby jedną kopię
@@ -672,17 +540,8 @@ function animate() {
     }
   }
 
-  if (isNight && trackedEmissives.length > 0) {
-    const time = clock.getElapsedTime();
-    const pulse = 0.75 + 0.25 * Math.sin(time * 4.0);
-    trackedEmissives.forEach((e) => {
-      if (e.mat.name.includes('Beacon')) {
-        e.mat.emissiveIntensity = e.nightIntensity * pulse;
-      }
-    });
-  }
-
-  renderer.render(scene, camera);
+  lighting.update(clock.getElapsedTime());
+  postfx.render(delta);
 }
 
 // Obsługa zmiany rozmiaru okna
@@ -690,6 +549,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  postfx.setSize(window.innerWidth, window.innerHeight, renderer.getPixelRatio());
 });
 
 animate();

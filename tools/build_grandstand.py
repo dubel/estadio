@@ -116,8 +116,9 @@ def create_materials():
         bsdf.inputs['Roughness'].default_value = 0.90
     g_col = os.path.join(TEXTURES_DIR, "pitch_grass_mowed.jpg")
     g_norm = os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_NormalGL.jpg")
-    g_rough = os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_Roughness.jpg")
-    setup_pbr_nodes(mat_grass, g_col, g_norm, g_rough, scale=(1.0, 1.0))
+    # Bez mapy chropowatości Grass001: jej wartości (~0.5) dawały połysk mokrej murawy pod jasnym niebem
+    setup_pbr_nodes(mat_grass, g_col, g_norm, None, scale=(1.0, 1.0))
+    bsdf.inputs['Roughness'].default_value = 0.95
     mats['grass'] = mat_grass
 
     # 4. Kredowe linie piłkarskie
@@ -295,8 +296,7 @@ def create_materials():
     bsdf = mat_ground.node_tree.nodes.get("Principled BSDF")
     if bsdf:
         bsdf.inputs['Roughness'].default_value = 0.95
-    setup_pbr_nodes(mat_ground, os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_Color.jpg"),
-                    roughness_path=os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_Roughness.jpg"), scale=(2.0, 2.0))
+    setup_pbr_nodes(mat_ground, os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_Color.jpg"), scale=(2.0, 2.0))
     mats['ground_grass'] = mat_ground
 
     mats['fence'] = make_alpha_material("Mat_Fence_Red", os.path.join(TEXTURES_DIR, "fence_steel_red.png"), 0.55)

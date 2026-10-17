@@ -54,7 +54,9 @@ def build_pitch_and_track(col, mats):
     # 1. Płyta murawy z pasami bocznymi (112m x 74m)
     bm_pitch = bmesh.new()
     bmesh.ops.create_grid(bm_pitch, x_segments=1, y_segments=1, size=1.0)
-    bmesh.ops.scale(bm_pitch, vec=(74.0, 112.0, 1.0), verts=bm_pitch.verts)
+    # create_grid(size=1) daje wierzchołki ±1, więc skala to POŁOWA wymiaru (wcześniej płyta miała 148 x 224 m
+    # i przykrywała plac pod trybunami)
+    bmesh.ops.scale(bm_pitch, vec=(37.0, 56.0, 1.0), verts=bm_pitch.verts)
     
     # Warstwa współrzędnych UV dla murawy
     uv_layer = bm_pitch.loops.layers.uv.verify()
@@ -73,6 +75,17 @@ def build_pitch_and_track(col, mats):
     if mats and 'grass' in mats:
         obj_pitch.data.materials.append(mats['grass'])
     col.objects.link(obj_pitch)
+
+    # Trawiaste wnętrze bieżni (łuki za bramkami), 2 cm pod płytą boiska
+    bm_in = bmesh.new()
+    bm_in.faces.new([bm_in.verts.new((x, y, -0.02)) for x, y, _, _ in stadium_path(37.0, 180.0, -180.0, close_west=True)])
+    mesh_in = bpy.data.meshes.new("Murawa_Wnetrze_Biezni_Mesh")
+    bm_in.normal_update()
+    bm_in.to_mesh(mesh_in)
+    bm_in.free()
+    obj_in = bpy.data.objects.new("Murawa_Wnetrze_Biezni", mesh_in)
+    obj_in.data.materials.append(mats['ground_grass'])
+    col.objects.link(obj_in)
 
     # 2. Bieżnia lekkoatletyczna (czerwono-grafitowy żużel)
     # Mieści się POMIĘDZY boiskiem a trybunami (zarówno podkową, jak i Trybuną Główną)

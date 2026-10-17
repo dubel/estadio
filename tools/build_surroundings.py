@@ -68,15 +68,17 @@ def _quad(col, name, x0, x1, y0, y1, z, mat):
 
 def build_ground(col, mats):
     """Teren pod całym stadionem i utwardzony plac wokół niego (ortofotomapa: jasna kostka/beton)."""
-    _quad(col, "Teren_Trawa", -TERRAIN_HALF, TERRAIN_HALF, -TERRAIN_HALF, TERRAIN_HALF, -0.03, mats['ground_grass'])
-    _quad(col, "Plac_Wokol_Stadionu", -110.0, 76.0, -125.0, 125.0, -0.015, mats['concrete_dark'])
+    # Poziomy rozsunięte o centymetry migotały (z-fighting przy zasięgu kamery 2 km): plac 5 cm pod murawą,
+    # teren 25 cm pod placem — krawędź placu to niski, przechodni stopień.
+    _quad(col, "Teren_Trawa", -TERRAIN_HALF, TERRAIN_HALF, -TERRAIN_HALF, TERRAIN_HALF, -0.25, mats['ground_grass'])
+    _quad(col, "Plac_Wokol_Stadionu", -110.0, 76.0, -125.0, 125.0, -0.05, mats['concrete_dark'])
 
 
 def build_streets(col, mats):
     asphalt = _flat_material("Mat_Asfalt", (0.09, 0.09, 0.10), 0.92)
     ballast = _flat_material("Mat_Tluczen_Torowy", (0.24, 0.21, 0.18), 0.95)
-    _quad(col, "Al_Unii_Lubelskiej", 78.0, 94.0, -TERRAIN_HALF, TERRAIN_HALF, -0.01, asphalt)
-    _quad(col, "Tory_Lodz_Kaliska", 115.0, 200.0, -TERRAIN_HALF, TERRAIN_HALF, -0.01, ballast)
+    _quad(col, "Al_Unii_Lubelskiej", 78.0, 94.0, -TERRAIN_HALF, TERRAIN_HALF, -0.20, asphalt)
+    _quad(col, "Tory_Lodz_Kaliska", 115.0, 200.0, -TERRAIN_HALF, TERRAIN_HALF, -0.20, ballast)
 
 
 def build_atlas_arena(col, mats):

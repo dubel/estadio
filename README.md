@@ -79,25 +79,35 @@ Uruchamia Vite i headless Chrome, sprawdza grawitację, wysokość skoku, schodz
 
 ---
 
+## 🌥️ Oświetlenie
+
+Pochmurne popołudnie (17.09.2011, 16:00): słońce liczone z położenia Łodzi i obrotu osi stadionu (`src/lighting.ts`),
+światło otoczenia z HDRI [Overcast Soil (Pure Sky)](https://polyhaven.com/a/overcast_soil_puresky), Poly Haven, CC0
+(`public/assets/env/`), AO wypalone w Blenderze dla betonu i placu, GTAO, ziarno i mapowanie tonów (`src/postfx.ts`).
+Noc: jupitery, smugi światła, bloom.
+
 ## 🛠️ Rekonstrukcja w Blenderze (CLI)
 
 Wszystkie elementy stadionu generowane są w pełni parametrycznie przez skrypty w katalogu `tools/`:
 
 ```bash
-# 1. Złożenie pełnego modelu stadionu i eksport do GLB
-blender -b --python tools/build_full_stadium.py
+# 1. Złożenie modelu, wypalenie AO (Cycles, ~2 min) i kompresja (meshopt + WebP)
+npm run model:build
+#    BAKE_AO=0 npm run model:build   — szybki build bez wypalania AO
 
-# 2. Wyrenderowanie 4 ujęć kinematograficznych
+# 2. Wyrenderowanie ujęć kinematograficznych
 blender -b --python tools/render_stadium_cinematic.py
 ```
 
 Wygenerowany model:
 - `stadion_lks_pelny.blend` (scena źródłowa Blendera)
-- `public/assets/estadio_da_gruz.glb` (model GLTF ze spakowanymi teksturami PBR do Three.js)
+- `build/estadio_da_gruz.raw.glb` i `build/ao/` (surowy eksport i wypalone mapy AO, poza gitem)
+- `public/assets/estadio_da_gruz.glb` (model skompresowany do Three.js, ok. 5 MB)
 
 Tekstury źródłowe (wejście Blendera i `tools/generate_stadium_textures.py`) leżą w `assets/textures/`.
 
 Pomocnicze:
 - `python3 tools/extract_trees_from_ortho.py`: pozycje drzew z ortofotomapy (`tools/data/drzewa_ortofoto.json`).
 - `blender stadion_lks_pelny.blend --python tools/add_ortho_reference.py`: ortofotomapa jako podkład 1:1 do modelowania „po śladzie”.
+
 Do aplikacji trafiają wyłącznie spakowane w GLB — w `public/assets/textures/` potrzebny jest tylko `floodlight_glow.png` (sprite ładowany przez `src/main.ts`).
