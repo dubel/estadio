@@ -247,10 +247,16 @@ STEP_H = (STAND_H - ROW0_H) / (NUM_STEPS - 1)  # ~0.33 m
 STAND_BACK = R_TRACK_OUT + FRONT_WALK + STAND_DEPTH   # tylna krawędź korony
 LOW_FENCE_H = 1.2      # niskie ogrodzenie łuków z biało-czerwonymi słupkami (widok_na_zegar_u2.png)
 
-# Łuk południowy (kąty jak w stadium_path, środek łuku w Y = -42 m), widok_na_zegar_u2.png:
-# od zachodniego krańca do osi stadionu czerwone krzesełka w sektorach, dalej ku Galerze ławki z żółtymi barierkami
-SOUTH_SEAT_SECTORS = [(-149.0, -135.0), (-135.0, -121.0), (-121.0, -107.0), (-107.0, -93.0)]
-SOUTH_BENCH_ARC = (-88.0, -3.0)
+# Łuk południowy (kąty jak w stadium_path, środek łuku w Y = -42 m; -90° to oś pod zegarem), widok_na_zegar_u2.png:
+# wschodnia połowa (od Galery do osi) czerwone krzesełka w 4 blokach rozdzielonych betonowymi zejściami,
+# w blokach krótkie żółte barierki; zachodnia połowa (ku trybunie głównej) goły beton z żółtymi barierkami
+SOUTH_SEAT_ARC = (-88.0, -4.0)
+SOUTH_AISLES = (-67.0, -46.0, -25.0)       # osie zejść między blokami
+SOUTH_AISLE_W = 1.4
+SOUTH_BLOCK_RAIL_ROWS = (6, 13)
+SOUTH_BLOCK_RAIL_LEN = 3.0
+SOUTH_CONCRETE_ARC = (-149.0, -92.0)
+SOUTH_CONCRETE_RAIL_ROWS = (6, 12)
 
 # Galera od północy (kolorystyka_galery_oraz_budynki_tla.png): 6 sekcji rozdzielonych siatką od chodnika
 # po koronę. (y_od, y_do, kolorystyka, oś przejścia):
@@ -287,7 +293,7 @@ TUNNEL_ROWS = 10        # głębokość wcięcia w rzędach; wylot pod rzędem 1
 SHEET_FENCE_Y = 62.0
 SHEET_FENCE_H = 2.0
 SHEET_TILE_M = 1.4      # 8 przetłoczeń na kafel: rozstaw ok. 17 cm
-SOUTH_ADS = [(-142.0, 0), (-129.0, 1), (-116.0, 2), (-103.0, 3)]   # bandy na koronie: (kąt, wiersz atlasu)
+SOUTH_ADS = [(-38.0, 0), (-51.0, 1), (-64.0, 2), (-77.0, 3)]   # bandy na koronie nad krzesełkami: (kąt, wiersz atlasu), od wschodu
 
 
 def _obox(bm, center, size, yaw=0.0, pitch=0.0):
@@ -584,45 +590,57 @@ def build_north_sheet_fence(col, mats):
 
 def build_bowl_details(col, mats, red_seat, galera_aisles):
     """
-    Wyposażenie podkowy ze zdjęć 2010–2012 (widok_z_galery.jpg, widok_na_zegar_u2.png): krzesełka i ławki
-    łuku południowego, żółte barierki, niskie ogrodzenie łuków, ślad dawnej bieżni, bandy na koronie.
+    Wyposażenie podkowy ze zdjęć 2010–2012 (widok_z_galery.jpg, widok_na_zegar_u2.png): krzesełka
+    i goły beton łuku południowego, żółte barierki, niskie ogrodzenie łuków, ślad dawnej bieżni, bandy na koronie.
     Barierki i ogrodzenie to bryły (kolizje Octree są jednostronne).
     """
     yellow = mats['yellow']
-    bench_grey = seat_material("Mat_Lawki_Luk", (0.62, 0.62, 0.60))
 
-    # Krzesełka łuku południowego: sektory rozdzielone przejściami 1.2 m, skierowane do środka łuku
+    # Krzesełka łuku południowego (wschodnia połowa): 4 bloki rozdzielone betonowymi zejściami
+    # SOUTH_AISLE_W, w każdym bloku krótkie żółte barierki w rzędach SOUTH_BLOCK_RAIL_ROWS
+    # (w tych rzędach pod barierką bez krzesełek). Krzesełka skierowane do środka łuku.
+    bm_y = bmesh.new()
+    a0, a1 = SOUTH_SEAT_ARC
+    cuts = [a0] + list(SOUTH_AISLES) + [a1]
     seats = []
     for i in range(NUM_STEPS):
         d, z = _row(i)
         r = R_TRACK_OUT + d + STEP_D - SEAT_BACK_GAP
-        for a0, a1 in SOUTH_SEAT_SECTORS:
-            gap = math.degrees(0.6 / r)
-            n = int(math.radians(a1 - a0 - 2 * gap) * r / SEAT_PITCH)
+        half_gap = math.degrees(SOUTH_AISLE_W / 2 / r)
+        for b0, b1 in zip(cuts, cuts[1:]):
+            lo, hi = b0 + (half_gap if b0 != a0 else 0.0), b1 - (half_gap if b1 != a1 else 0.0)
+            mid, rail_half = (b0 + b1) / 2, math.degrees(SOUTH_BLOCK_RAIL_LEN / 2 / r)
+            n = int(math.radians(hi - lo) * r / SEAT_PITCH)
             for k in range(n):
-                (x, y), a = _arc_point(r, a0 + gap + (k + 0.5) * (a1 - a0 - 2 * gap) / n)
+                ang = lo + (k + 0.5) * (hi - lo) / n
+                if i in SOUTH_BLOCK_RAIL_ROWS and abs(ang - mid) < rail_half + 0.4:
+                    continue
+                (x, y), a = _arc_point(r, ang)
                 seats.append((x, y, z, a))
+            if i in SOUTH_BLOCK_RAIL_ROWS:
+                rr = R_TRACK_OUT + d + 0.35
+                arc = [_arc_point(rr, mid - rail_half + 2 * rail_half * t / 4)[0] for t in range(5)]
+                for (xa, ya), (xb, yb) in zip(arc, arc[1:]):
+                    _beam(bm_y, (xa, ya, z + 1.0), (xb, yb, z + 1.0))
+                for xa, ya in (arc[0], arc[-1]):
+                    _beam(bm_y, (xa, ya, z), (xa, ya, z + 1.0))
     place_seats(col, "Krzeselka_Luk_Poludniowy", red_seat, seats)
 
-    # Ławki we wschodniej części łuku (deska 0.32 m na wsporniku, 0.40 m nad stopniem), przejścia co 15°
-    bm_b = bmesh.new()
+    # Zachodnia połowa łuku: goły beton z poprzecznymi żółtymi barierkami (odcinki 3° z przerwą co piąty)
     seg_deg = 3.0
-    for i in range(NUM_STEPS):
-        d, z = _row(i)
-        r = R_TRACK_OUT + d + 0.6
-        ang = SOUTH_BENCH_ARC[0]
-        while ang + seg_deg <= SOUTH_BENCH_ARC[1]:
-            if int((ang - SOUTH_BENCH_ARC[0]) / seg_deg) % 5 != 4:          # co piąty odcinek to przejście
+    for i_rail in SOUTH_CONCRETE_RAIL_ROWS:
+        d, z = _row(i_rail)
+        r = R_TRACK_OUT + d + 0.15
+        ang = SOUTH_CONCRETE_ARC[0]
+        while ang + seg_deg <= SOUTH_CONCRETE_ARC[1]:
+            if int((ang - SOUTH_CONCRETE_ARC[0]) / seg_deg) % 5 != 4:
                 (x, y), a = _arc_point(r, ang + seg_deg / 2)
-                chord = 2 * r * math.sin(math.radians(seg_deg / 2))
-                _obox(bm_b, (x, y, z + 0.395), (0.32, chord, 0.05), yaw=a)
-                _obox(bm_b, (x, y, z + 0.185), (0.22, 0.08, 0.37), yaw=a)
+                _obox(bm_y, (x, y, z + 1.0), (0.05, 2 * r * math.sin(math.radians(seg_deg / 2)), 0.05), yaw=a)
+                (px, py), _ = _arc_point(r, ang + 0.2)
+                _obox(bm_y, (px, py, z + 0.5), (0.05, 0.05, 1.0))
             ang += seg_deg
-    _finish_mesh(col, bm_b, "Lawki_Luk_Poludniowy", [bench_grey])
 
-    # Żółte barierki: poręcze przy przejściach Galery (wzdłuż spadku, przy krawędzi sektora)
-    # i poprzeczna barierka w połowie wysokości sekcji ławek łuku
-    bm_y = bmesh.new()
+    # Żółte poręcze przy przejściach Galery (wzdłuż spadku, przy krawędzi sektora)
     run = math.hypot(STEP_D, STEP_H)
     pitch = -math.atan2(STEP_H, STEP_D)
     for a in galera_aisles:
@@ -632,17 +650,7 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
             _obox(bm_y, (R_TRACK_OUT + d + STEP_D, y, z + STEP_H / 2 + 1.0), (run, 0.05, 0.05), pitch=pitch)
             if i % 2 == 0:
                 _obox(bm_y, (R_TRACK_OUT + d + 0.55, y, z + 0.5), (0.05, 0.05, 1.0))
-    i_rail = 10
-    d, z = _row(i_rail)
-    r = R_TRACK_OUT + d + 0.15
-    ang = SOUTH_BENCH_ARC[0]
-    while ang + seg_deg <= SOUTH_BENCH_ARC[1]:
-        if int((ang - SOUTH_BENCH_ARC[0]) / seg_deg) % 5 != 4:
-            (x, y), a = _arc_point(r, ang + seg_deg / 2)
-            _obox(bm_y, (x, y, z + 1.0), (0.05, 2 * r * math.sin(math.radians(seg_deg / 2)), 0.05), yaw=a)
-            (px, py), _ = _arc_point(r, ang + 0.2)
-            _obox(bm_y, (px, py, z + 0.5), (0.05, 0.05, 1.0))
-        ang += seg_deg
+    bmesh.ops.recalc_face_normals(bm_y, faces=bm_y.faces)
     _finish_mesh(col, bm_y, "Barierki_Zolte", [yellow])
 
     # Niskie ogrodzenie łuków: słupki co ~2.5 m na przemian czerwone i białe, dwie poręcze.
