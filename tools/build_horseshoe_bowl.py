@@ -8,6 +8,12 @@ import bmesh
 import mathutils
 import math
 
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from build_seats import place_seats, seat_material, seats_in_row  # noqa: E402
+
 STRAIGHT_L = 84.0  # długość prostych bieżni 400 m (środki łuków w Y = ±42 m)
 
 
@@ -41,7 +47,7 @@ def stadium_path(r, ang_start, ang_end, arc_step_deg=4.0, straight_step=3.0, clo
     return pts
 
 def build_pitch_and_track(col, mats):
-    """Tworzy murawę oraz bieżnię lekkoatletyczną 400m."""
+    """Tworzy murawę oraz pas dawnej bieżni 400 m (w latach 2010–2012 porośnięty trawą)."""
     PITCH_L = 105.0
     PITCH_W = 68.0
     
@@ -103,19 +109,14 @@ def build_pitch_and_track(col, mats):
         next_i = (i + 1) % n_pts
         bm_track.faces.new([v_in[i], v_out[i], v_out[next_i], v_in[next_i]])
         
-    mesh_track = bpy.data.meshes.new("Bieznia_Zuzlowa_Mesh")
+    mesh_track = bpy.data.meshes.new("Bieznia_Zarosnieta_Mesh")
     bm_track.normal_update()
     bm_track.to_mesh(mesh_track)
     bm_track.free()
     
-    obj_track = bpy.data.objects.new("Bieznia_Zuzlowa", mesh_track)
-    mat_cinder = bpy.data.materials.new("Mat_Cinder_Track")
-    mat_cinder.use_nodes = True
-    bsdf = mat_cinder.node_tree.nodes.get("Principled BSDF")
-    if bsdf:
-        bsdf.inputs['Base Color'].default_value = (0.24, 0.18, 0.16, 1.0)
-        bsdf.inputs['Roughness'].default_value = 0.98
-    obj_track.data.materials.append(mat_cinder)
+    # Stan 2010–2012: bieżnia zarośnięta trawą aż do ogrodzenia (widok_z_galery.jpg, ortofotomapa 2013)
+    obj_track = bpy.data.objects.new("Bieznia_Zarosnieta", mesh_track)
+    obj_track.data.materials.append(mats['ground_grass'])
     col.objects.link(obj_track)
 
     return obj_pitch, obj_track
@@ -217,75 +218,42 @@ def build_pitch_lines(col, mats):
     return obj_lines
 
 
-def build_moat_and_bowl(col, mats):
+R_TRACK_OUT = 45.0     # zewnętrzna krawędź bieżni = czoło trybun
+FRONT_WALL_H = 1.5     # mur oporowy przed pierwszym rzędem (zdjęcia lks02, 516e09e41f411, przekrój Wyżnikiewicza — bez fosy)
+FENCE_H = 2.5          # stalowe ogrodzenie na koronie muru: pełne panele u dołu, siatka wyżej (widok_z_galery.jpg)
+BOWL_ANGLE = 149.0     # podkowa kończy się tam, gdzie zaczyna się trybuna główna (Y = ±65 m)
+
+
+def build_bowl(col, mats):
     """
-    Tworzy betonową fosę oraz podkowę trybun na wałach ziemnych.
-    Fosa okala całą bieżnię (szerokość 1.8m, głębokość 1.4m).
-    Podkowa wałów ziemnych biegnie od łuku południowego przez prostą wschodnią do łuku północnego.
-    Strona zachodnia pozostaje wolna na Trybunę Główną.
+    Podkowa trybun na wałach ziemnych: od łuku północnego przez prostą wschodnią (Galera) do łuku
+    południowego. Czoło to mur oporowy FRONT_WALL_H przy zewnętrznej krawędzi bieżni, dalej
+    20 betonowych stopni i tylna skarpa. Strona zachodnia pozostaje wolna na Trybunę Główną.
+    Fosy nie było — wcześniejsza wersja modelu ją zakładała, źródła (docs/zrodla.md) tego nie potwierdzają.
     """
-    R_TRACK_OUT = 45.0
-    MOAT_W = 1.8
-    MOAT_DEPTH = 1.4
-    
     STAND_DEPTH = 22.0 # głębokość wału ziemnego
-    STAND_H = 6.8      # realistyczna wysokość korony wału
+    STAND_H = 6.8      # wysokość korony wału (na niej stoi tablica wyników, build_scoreboard)
     NUM_STEPS = 20     # 20 betonowych stopni
-    
-    bm_moat = bmesh.new()
+    STEP_H = (STAND_H - FRONT_WALL_H) / (NUM_STEPS - 1)  # ~0.28 m
+
     bm_bowl = bmesh.new()
-    
-    # 1. PEŁNA PĘTLA FOSY WOKÓŁ BIEŻNI
-    # (Fosa biegnie również przed Trybuną Główną na zachodzie)
-    moat_rings = []
-    for px, py, nx, ny in stadium_path(R_TRACK_OUT, 180.0, -180.0, close_west=True):
-        p0 = (px, py, 0.0)
-        p1 = (px, py, -MOAT_DEPTH)
-        p2 = (px + nx * MOAT_W, py + ny * MOAT_W, -MOAT_DEPTH)
-        p3 = (px + nx * MOAT_W, py + ny * MOAT_W, 0.0)
-        moat_rings.append([bm_moat.verts.new(p) for p in [p0, p1, p2, p3]])
-        
-    n_m = len(moat_rings)
-    for i in range(n_m):
-        next_i = (i + 1) % n_m
-        rA = moat_rings[i]
-        rB = moat_rings[next_i]
-        for j in range(3):
-            bm_moat.faces.new([rA[j], rB[j], rB[j+1], rA[j+1]])
-
-    mesh_moat = bpy.data.meshes.new("Fosa_Betonowa_Mesh")
-    bm_moat.normal_update()
-    bm_moat.to_mesh(mesh_moat)
-    bm_moat.free()
-    obj_moat = bpy.data.objects.new("Fosa_Betonowa", mesh_moat)
-    obj_moat.data.materials.append(mats['concrete_dark'])
-    col.objects.link(obj_moat)
-
-    # 2. PODKOWA TRYBUN (Łuk Południowy -> Prosta Wschodnia -> Łuk Północny)
-    # Zostawia otwarty zachód (gdzie stoi Trybuna Główna o długości 108 m)
-    # Kąt podkowy: od kąta w osi północno-zachodniej (155°) przez wschód (0°) do południowo-zachodniej (-155°)
     bowl_rings = []
-
-    # Kąt podkowy: od +152° (północ-zachód) przez wschód do -152° (południe-zachód)
-    for px, py, nx, ny in stadium_path(R_TRACK_OUT + MOAT_W, 152.0, -152.0):
-        # Stopnie na wale ziemnym
-        b_pts = []
+    for px, py, nx, ny in stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE):
+        # Mur oporowy, potem stopnie na wale ziemnym
+        b_pts = [(px, py, 0.0)]
         cur_d = 0.0
-        cur_z = 0.0
+        cur_z = FRONT_WALL_H - STEP_H
         step_d = STAND_DEPTH / NUM_STEPS
-        step_h = STAND_H / NUM_STEPS
-        
-        b_pts.append((px, py, cur_z))
         for s in range(NUM_STEPS):
-            cur_z += step_h
+            cur_z += STEP_H
             b_pts.append((px + nx * cur_d, py + ny * cur_d, cur_z))
             cur_d += step_d
             b_pts.append((px + nx * cur_d, py + ny * cur_d, cur_z))
-            
+
         # Tylna skarpa wału
         cur_d += 5.0
         b_pts.append((px + nx * cur_d, py + ny * cur_d, 0.0))
-        
+
         bowl_rings.append([bm_bowl.verts.new(p) for p in b_pts])
 
     for i in range(len(bowl_rings) - 1):
@@ -302,7 +270,46 @@ def build_moat_and_bowl(col, mats):
     obj_bowl.data.materials.append(mats['concrete'])
     col.objects.link(obj_bowl)
 
-    return obj_moat, obj_bowl
+    # Ogrodzenie: panele z teksturą alfa wzdłuż korony muru (u w metrach / 2.5 m przęsła).
+    # Dwie ściany 4 cm od siebie: kolizje Octree w Three.js są jednostronne, pojedyncza płaszczyzna
+    # przepuszczała gracza schodzącego z trybuny.
+    bm_f = bmesh.new()
+    uv = bm_f.loops.layers.uv.verify()
+    path = stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE, straight_step=2.5)
+    for off, flip in [(0.02, False), (0.06, True)]:
+        dist = 0.0
+        for (x0, y0, nx0, ny0), (x1, y1, nx1, ny1) in zip(path, path[1:]):
+            seg = math.hypot(x1 - x0, y1 - y0)
+            a0 = (x0 + nx0 * off, y0 + ny0 * off)
+            a1 = (x1 + nx1 * off, y1 + ny1 * off)
+            corners = [(a0, FRONT_WALL_H, dist, 0.0), (a1, FRONT_WALL_H, dist + seg, 0.0),
+                       (a1, FRONT_WALL_H + FENCE_H, dist + seg, 1.0), (a0, FRONT_WALL_H + FENCE_H, dist, 1.0)]
+            if flip:
+                corners.reverse()
+            face = bm_f.faces.new([bm_f.verts.new((p[0], p[1], z)) for p, z, _, _ in corners])
+            for loop, (_, _, u, v) in zip(face.loops, corners):
+                loop[uv].uv = (u / 2.5, v)
+            dist += seg
+    mesh_f = bpy.data.meshes.new("Ogrodzenie_Trybun_Mesh")
+    bm_f.normal_update()
+    bm_f.to_mesh(mesh_f)
+    bm_f.free()
+    obj_f = bpy.data.objects.new("Ogrodzenie_Trybun", mesh_f)
+    obj_f.data.materials.append(mats['fence'])
+    col.objects.link(obj_f)
+
+    # Czerwone krzesełka na prostej Galery (widok_z_galery.jpg); przejścia co 10 m
+    seats = []
+    cy = STRAIGHT_L / 2.0
+    aisles = [-cy + 2.0 + k * 10.0 for k in range(9)]
+    for i in range(NUM_STEPS):
+        x = R_TRACK_OUT + i * (STAND_DEPTH / NUM_STEPS) + 0.7
+        z = FRONT_WALL_H + i * STEP_H
+        for a, b in zip(aisles, aisles[1:]):
+            seats += seats_in_row(x, z, a + 0.6, b - 0.6)
+    place_seats(col, "Krzeselka_Galera", seat_material("Mat_Krzeselka_Czerwone_Galera", (0.62, 0.07, 0.09)), seats)
+
+    return obj_bowl, obj_f
 
 
 def build_fan_banners(col, mats):
@@ -310,7 +317,7 @@ def build_fan_banners(col, mats):
     Tworzy kibicowskie banery i historyczne graffiti wzdłuż prostej wschodniej ("Galera").
     """
     bm = bmesh.new()
-    BX = 45.4
+    BX = R_TRACK_OUT - 0.03  # lico muru oporowego Galery
     BY_START = -36.0
     BY_END = 36.0
     BZ_BOT = 0.2
@@ -432,7 +439,7 @@ if __name__ == "__main__":
     bpy.context.scene.collection.children.link(col)
     
     build_pitch_and_track(col, mats)
-    build_moat_and_bowl(col, mats)
+    build_bowl(col, mats)
     build_scoreboard(col, mats)
     
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bowl_v2_test.blend"))

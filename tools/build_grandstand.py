@@ -1,12 +1,11 @@
 """
-Generowanie Trybuny Głównej (Zachodniej) Stadionu ŁKS Łódź (1969-2012).
-Wierne odwzorowanie proporcji z nagrań i zdjęć historycznych:
-- Otwarta ku górze korona trybuny (brak wielkiego dachu na szczycie)
-- 14 przęseł modułowych (108 m) z 15 prefabrykowanymi dźwigarami kablobetonowymi
-- Realistyczna wysokość korony: ok. 14.0 m nad murawą (nachylenie ok. 29°)
-- Sektor dolny z charakterystycznym, niskim daszkiem blaszanym (sektor VIP / trybuna kryta z białym pasem fasadowym)
-- Sektor górny: 26 rzędów stopni betonowych z drewnianymi ławkami
-- Brutalistyczne ukośne odciągi żelbetowe i wstęga okien hali od strony al. Unii
+Generowanie Trybuny Głównej (Zachodniej) Stadionu ŁKS Łódź, stan ok. 2010–2012.
+Przekrój wg rysunku J. Wyżnikiewicza (1969), długość i rozstaw przęseł wg ortofotomapy 2013 (docs/zrodla.md):
+- 14 przęseł × ~9.3 m (130 m), 15 dźwigarów z ukośnymi odciągami od strony zachodniej
+- Sektor dolny: 10 rzędów pod daszkiem (biały–czerwony–biały), promenada na 3.2 m
+- Sektor górny: 33 rzędy ławek, korona ok. 18.4 m nad terenem, bez dachu
+- 4 tunele ze schodami z hali pod trybuną do połowy sektora górnego
+- Podwieszony budynek z tyłu (wstęga okien od zachodu, strona Atlas Areny)
 """
 
 import bpy
@@ -58,6 +57,28 @@ def setup_pbr_nodes(mat, color_path=None, normal_path=None, roughness_path=None,
         links.new(mapping.outputs['Vector'], node_norm.inputs['Vector'])
         links.new(node_norm.outputs['Color'], node_norm_map.inputs['Color'])
         links.new(node_norm_map.outputs['Normal'], bsdf.inputs['Normal'])
+
+def make_alpha_material(name, tex_path, roughness):
+    """Materiał z teksturą RGBA (siatki, ogrodzenia): kolor i alfa z obrazu, alpha clip, dwustronny."""
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Roughness'].default_value = roughness
+        if os.path.exists(tex_path):
+            node_tex = mat.node_tree.nodes.new('ShaderNodeTexImage')
+            node_tex.image = bpy.data.images.load(tex_path)
+            tc = mat.node_tree.nodes.new('ShaderNodeTexCoord')
+            mat.node_tree.links.new(tc.outputs['UV'], node_tex.inputs['Vector'])
+            mat.node_tree.links.new(node_tex.outputs['Color'], bsdf.inputs['Base Color'])
+            mat.node_tree.links.new(node_tex.outputs['Alpha'], bsdf.inputs['Alpha'])
+    if hasattr(mat, 'blend_method'):
+        mat.blend_method = 'CLIP'
+        mat.alpha_threshold = 0.20
+    if hasattr(mat, 'use_backface_culling'):
+        mat.use_backface_culling = False
+    return mat
+
 
 def create_materials():
     """Tworzy zoptymalizowane materiały PBR dla stadionu z autentycznymi teksturami CC0 i grafikami ŁKS."""
@@ -122,8 +143,8 @@ def create_materials():
     mat_wood.use_nodes = True
     bsdf = mat_wood.node_tree.nodes.get("Principled BSDF")
     if bsdf:
-        bsdf.inputs['Base Color'].default_value = (0.44, 0.28, 0.16, 1.0)
-        bsdf.inputs['Roughness'].default_value = 0.75
+        bsdf.inputs['Base Color'].default_value = (0.80, 0.76, 0.64, 1.0)  # malowane drewno, kość słoniowa (zdjęcia 2010–2012)
+        bsdf.inputs['Roughness'].default_value = 0.70
     mats['wood'] = mat_wood
 
     # 7. Metal / stal ocynkowana (jupitery, barierki)
@@ -265,420 +286,262 @@ def create_materials():
     mats['goal_white'] = mat_gw
 
     # 20. Siatka bramki w biało-czerwono-białe pasy (Ajax / ŁKS) z przezroczystością
-    mat_net = bpy.data.materials.new("Mat_Goal_Net")
-    mat_net.use_nodes = True
-    bsdf = mat_net.node_tree.nodes.get("Principled BSDF")
+    mats['goal_net'] = make_alpha_material("Mat_Goal_Net", os.path.join(TEXTURES_DIR, "goal_net_striped.png"), 0.85)
+
+    # 21. Stalowe ogrodzenie trybun (czerwone przęsła z prętami, zdjęcia 516e09e41f411 / 516e09e800a6f)
+    # 22. Trawa terenu wokół stadionu (Grass001, kafel ~2 m przy UV = 4 m / jednostkę)
+    mat_ground = bpy.data.materials.new("Mat_Ground_Grass")
+    mat_ground.use_nodes = True
+    bsdf = mat_ground.node_tree.nodes.get("Principled BSDF")
     if bsdf:
-        bsdf.inputs['Roughness'].default_value = 0.85
-    net_col = os.path.join(TEXTURES_DIR, "goal_net_striped.png")
-    if os.path.exists(net_col):
-        img_net = bpy.data.images.load(net_col)
-        node_tex = mat_net.node_tree.nodes.new('ShaderNodeTexImage')
-        node_tex.image = img_net
-        tc = mat_net.node_tree.nodes.new('ShaderNodeTexCoord')
-        mat_net.node_tree.links.new(tc.outputs['UV'], node_tex.inputs['Vector'])
-        mat_net.node_tree.links.new(node_tex.outputs['Color'], bsdf.inputs['Base Color'])
-        mat_net.node_tree.links.new(node_tex.outputs['Alpha'], bsdf.inputs['Alpha'])
-    
-    if hasattr(mat_net, 'blend_method'):
-        mat_net.blend_method = 'CLIP'
-        mat_net.alpha_threshold = 0.20
-    if hasattr(mat_net, 'use_backface_culling'):
-        mat_net.use_backface_culling = False
-    mats['goal_net'] = mat_net
+        bsdf.inputs['Roughness'].default_value = 0.95
+    setup_pbr_nodes(mat_ground, os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_Color.jpg"),
+                    roughness_path=os.path.join(TEXTURES_DIR, "grass", "Grass001_1K-JPG_Roughness.jpg"), scale=(2.0, 2.0))
+    mats['ground_grass'] = mat_ground
+
+    mats['fence'] = make_alpha_material("Mat_Fence_Red", os.path.join(TEXTURES_DIR, "fence_steel_red.png"), 0.55)
 
     return mats
 
 
+# 14 przęseł × ~9.3 m: rozstaw dźwigarów i długość zmierzone na ortofotomapie 2013 (docs/zrodla.md)
+TOTAL_LENGTH_Y = 130.0
+NUM_BAYS = 14
+BAY_WIDTH_Y = TOTAL_LENGTH_Y / NUM_BAYS  # ~9.29 m
+
+# Przekrój wg rysunku J. Wyżnikiewicza (1969), docs/zrodla.md. Układ lokalny: X — od czoła (bieżni)
+# w głąb trybuny, Y — wzdłuż trybuny (0..TOTAL_LENGTH_Y), Z — w górę. Wartości lekko uproszczone,
+# żeby każdy stopień dał się przejść (podstopień < 0.48 m, prześwit > 2 m).
+LOWER_X0, LOWER_ROWS, LOWER_DX, LOWER_Z0, LOWER_DZ = 0.25, 10, 0.835, 0.5, 0.30   # sektor dolny: do X 8.6, Z 3.2
+FRONT_PARAPET_H = 1.1
+CONCOURSE_X1 = 11.2                     # promenada między sektorami na Z 3.2
+CONCOURSE_Z = LOWER_Z0 + (LOWER_ROWS - 1) * LOWER_DZ
+UPPER_X0, UPPER_ROWS, UPPER_Z0 = 11.5, 33, 5.5
+UPPER_X1, UPPER_Z1 = 37.2, 18.4         # korona: ~18.4 m nad terenem
+UPPER_DX = (UPPER_X1 - UPPER_X0) / UPPER_ROWS
+UPPER_DZ = (UPPER_Z1 - UPPER_Z0) / (UPPER_ROWS - 1)
+LIP_X = 11.4                            # balustrada czołowa sektora górnego (biały murek z Przeplatanką)
+LIP_TOP = UPPER_Z0 + 1.0
+REAR_X = 37.6
+SLAB = 0.9                              # grubość płyty widowni pod nosami stopni
+
+
+def underside(x):
+    """Spód płyty sektora górnego (rośnie równolegle do widowni)."""
+    return UPPER_Z0 - SLAB + (x - LIP_X) * (UPPER_Z1 - UPPER_Z0) / (UPPER_X1 - UPPER_X0)
+
+
+def upper_row(i):
+    """(x_początku, x_końca, z) stopnia i sektora górnego."""
+    x = UPPER_X0 + i * UPPER_DX
+    return x, x + UPPER_DX, UPPER_Z0 + i * UPPER_DZ
+
+
+# Tunele (vomitoria): schody z hali pod trybuną, wyjście na stopień VOM_EXIT_ROW w połowie przęsła
+VOM_BAYS = (2, 5, 8, 11)
+VOM_EXIT_ROW = 6
+VOM_SLOT_ROWS = 4                       # usunięte stopnie nad biegiem schodów (prześwit > 2.1 m)
+VOM_WIDTH = 2.4
+VOM_WALL = 0.25
+VOM_RISE, VOM_TREAD = 0.2933, 0.42
+
+
+def _extrude_profile(bm, pts_xz, y0, y1):
+    """Bryła z wielokąta w płaszczyźnie XZ wyciągniętego od y0 do y1 (zamknięta — kolizje z obu stron)."""
+    face = bm.faces.new([bm.verts.new((x, y0, z)) for x, z in pts_xz])
+    res = bmesh.ops.extrude_face_region(bm, geom=[face])
+    ev = [v for v in res['geom'] if isinstance(v, bmesh.types.BMVert)]
+    bmesh.ops.translate(bm, vec=(0.0, y1 - y0, 0.0), verts=ev)
+
+
+def _box(bm, x0, x1, y0, y1, z0, z1):
+    c = bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=(x1 - x0, y1 - y0, z1 - z0), verts=c['verts'])
+    bmesh.ops.translate(bm, vec=((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), verts=c['verts'])
+
+
+def _finish(col, bm, name, mat):
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.normal_update()
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
+    col.objects.link(obj)
+    return obj
+
+
+def _lower_profile():
+    pts = [(0.0, 0.0), (0.0, FRONT_PARAPET_H), (LOWER_X0, FRONT_PARAPET_H)]
+    for i in range(LOWER_ROWS):
+        z = LOWER_Z0 + i * LOWER_DZ
+        pts += [(LOWER_X0 + i * LOWER_DX, z), (LOWER_X0 + (i + 1) * LOWER_DX, z)]
+    pts += [(CONCOURSE_X1, CONCOURSE_Z), (CONCOURSE_X1, 0.0)]
+    return pts
+
+
+def _upper_profiles(slot=None):
+    """Wielokąty XZ sektora górnego; slot=(i0, i1) wycina stopnie i0..i1-1 nad biegiem schodów tunelu."""
+    def treads(i0, i1):
+        out = []
+        for i in range(i0, i1):
+            x0, x1, z = upper_row(i)
+            out += [(x0, z), (x1, z)]
+        return out
+
+    if slot is None:
+        front = [(LIP_X, underside(LIP_X)), (LIP_X, LIP_TOP), (UPPER_X0, LIP_TOP)] + treads(0, UPPER_ROWS)
+        return [front + [(UPPER_X1, UPPER_Z1 + 1.0), (REAR_X, UPPER_Z1 + 1.0), (REAR_X, underside(REAR_X))]]
+    i0, i1 = slot
+    xa, xb = upper_row(i0)[0], upper_row(i1)[0]
+    front = [(LIP_X, underside(LIP_X)), (LIP_X, LIP_TOP), (UPPER_X0, LIP_TOP)] + treads(0, i0) + [(xa, underside(xa))]
+    back = [(xb, underside(xb))] + treads(i1, UPPER_ROWS) + [(UPPER_X1, UPPER_Z1 + 1.0), (REAR_X, UPPER_Z1 + 1.0), (REAR_X, underside(REAR_X))]
+    return [front, back]
+
+
 def build_grandstand(col, mats):
-    TOTAL_LENGTH_Y = 108.0
-    NUM_BAYS = 14
-    BAY_WIDTH_Y = TOTAL_LENGTH_Y / NUM_BAYS # 7.7142857 m
-    
-    # -------------------------------------------------------------------------
-    # 1. PROFILE DŹWIGARÓW I ODCIĄGÓW (SKALA I PROPORCJE 1:1)
-    # -------------------------------------------------------------------------
-    # Rzut w osi X:
-    # X=0: krawędź dolnego sektora (przy fosie i bieżni)
-    # X=7.0: pionowa ściana pawilonu pod trybuną (wys. 3.2 m)
-    # X=7.0 do X=25.0: rzut górnej trybuny opartej na dźwigarze (szer. 18 m)
-    # X=25.0: korona górnej trybuny na wysokości Z = 14.0 m
-    # X=27.0: tylna ściana pawilonu hali od al. Unii
-    # Odciąg ukośny: od węzła korony (X=24.0, Z=13.0) do fundamentu (X=29.5, Z=0.0)
-    
-    GIRDER_THICK = 0.50
-    girder_mesh = bpy.data.meshes.new("Dzwigar_Nosny_Mesh")
-    bm_g = bmesh.new()
-    
-    # Punkty profilu 2D dźwigara (XZ):
-    pts_girder = [
-        (6.8,  0.0, 0.0),   # stopa przednia na gruncie
-        (6.8,  0.0, 3.2),   # wierzchołek ściany przedniej
-        (25.0, 0.0, 14.0),  # korona trybuny szczyt
-        (25.8, 0.0, 13.6),  # głowica tylna
-        (24.5, 0.0, 11.5),  # węzeł odciągu
-        (7.8,  0.0, 2.5),   # spód dźwigara nad halą
-        (7.8,  0.0, 0.0)    # stopa przednia tył
-    ]
-    bm_v = [bm_g.verts.new(p) for p in pts_girder]
-    bm_g.faces.new(bm_v)
-    
-    # Wytłoczenie profilu dźwigara w osi Y
-    res_g = bmesh.ops.extrude_face_region(bm_g, geom=bm_g.faces[:])
-    ev_g = [v for v in res_g['geom'] if isinstance(v, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm_g, vec=(0.0, GIRDER_THICK, 0.0), verts=ev_g)
-    bmesh.ops.translate(bm_g, vec=(0.0, -GIRDER_THICK / 2.0, 0.0), verts=bm_g.verts)
+    """
+    Trybuna główna w lokalnym układzie (patrz stałe przekroju). 14 przęseł budowanych jawnie,
+    bo przęsła z tunelami (VOM_BAYS) mają wycięcie w widowni. Każdy element to zamknięta bryła:
+    kolizje Octree w Three.js są jednostronne.
+    """
+    bm_lower, bm_upper, bm_girder, bm_vom, bm_stairs = (bmesh.new() for _ in range(5))
+    bm_benches, bm_lights = bmesh.new(), bmesh.new()
 
-    # Ukośny słup / odciąg żelbetowy od strony al. Unii:
-    STRUT_THICK = 0.45
-    pts_strut = [
-        (24.2, 0.0, 11.8),
-        (25.0, 0.0, 11.4),
-        (29.8, 0.0, 0.0),
-        (28.8, 0.0, 0.0)
-    ]
-    s_verts = [bm_g.verts.new(p) for p in pts_strut]
-    f_strut = bm_g.faces.new(s_verts)
-    res_s = bmesh.ops.extrude_face_region(bm_g, geom=[f_strut])
-    ev_s = [v for v in res_s['geom'] if isinstance(v, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm_g, vec=(0.0, STRUT_THICK, 0.0), verts=ev_s)
-    bmesh.ops.translate(bm_g, vec=(0.0, -STRUT_THICK / 2.0, 0.0), verts=[v for v in bm_g.verts if v in s_verts or v in ev_s])
+    # Sektor dolny + promenada (jedna bryła na całą długość)
+    _extrude_profile(bm_lower, _lower_profile(), 0.0, TOTAL_LENGTH_Y)
 
-    bm_g.normal_update()
-    bm_g.to_mesh(girder_mesh)
-    bm_g.free()
-    
-    obj_girder = bpy.data.objects.new("Dzwigar_i_Odciag_Modul", girder_mesh)
-    obj_girder.data.materials.append(mats['concrete'])
-    col.objects.link(obj_girder)
+    # Schody z terenu na promenadę na obu krańcach trybuny
+    n_end = math.ceil(CONCOURSE_Z / 0.3)
+    for sign, y_edge in ((-1, 0.0), (1, TOTAL_LENGTH_Y)):
+        for k in range(n_end):
+            ya = y_edge + sign * (n_end - k - 1) * 0.42
+            yb = ya + sign * 0.42
+            _box(bm_stairs, LOWER_X0 + (LOWER_ROWS - 1) * LOWER_DX, CONCOURSE_X1, min(ya, yb), max(ya, yb), 0.0, (k + 1) * CONCOURSE_Z / n_end)
 
-    # -------------------------------------------------------------------------
-    # 2. SEKTOR GÓRNY STOPNI (GÓRNA WIDOWNIA - BEZ DACHU)
-    # -------------------------------------------------------------------------
-    # 26 rzędów stopni: X od 7.0 do 25.0 m, Z od 3.2 do 14.0 m
-    NUM_UPPER = 26
-    dx_up = (25.0 - 7.0) / NUM_UPPER   # ~0.692 m
-    dz_up = (14.0 - 3.2) / NUM_UPPER   # ~0.415 m
-    
-    upper_mesh = bpy.data.meshes.new("Widownia_Gorna_Mesh")
-    bm_u = bmesh.new()
-    
-    cur_x = 7.0
-    cur_z = 3.2
-    pts_u = [(cur_x, 0.0, cur_z)]
-    for _ in range(NUM_UPPER):
-        cur_z += dz_up
-        pts_u.append((cur_x, 0.0, cur_z))
-        cur_x += dx_up
-        pts_u.append((cur_x, 0.0, cur_z))
-    pts_u.append((cur_x, 0.0, cur_z - 0.25))
-    pts_u.append((7.0, 0.0, 3.2 - 0.25))
-    
-    v_u = [bm_u.verts.new(p) for p in pts_u]
-    bm_u.faces.new(v_u)
-    res_u = bmesh.ops.extrude_face_region(bm_u, geom=bm_u.faces[:])
-    ev_u = [v for v in res_u['geom'] if isinstance(v, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm_u, vec=(0.0, BAY_WIDTH_Y, 0.0), verts=ev_u)
-    
-    bm_u.normal_update()
-    bm_u.to_mesh(upper_mesh)
-    bm_u.free()
-    
-    obj_upper = bpy.data.objects.new("Widownia_Gorna_Modul", upper_mesh)
-    obj_upper.data.materials.append(mats['concrete'])
-    col.objects.link(obj_upper)
+    exit_x0, _, exit_z = upper_row(VOM_EXIT_ROW)
+    n_steps = math.ceil(exit_z / VOM_RISE)
+    vom_x_start = exit_x0 + n_steps * VOM_TREAD
+    slot = (VOM_EXIT_ROW, VOM_EXIT_ROW + VOM_SLOT_ROWS)
 
-    # -------------------------------------------------------------------------
-    # 3. SEKTOR DOLNY STOPNI (WIDOWNIA DOLNA)
-    # -------------------------------------------------------------------------
-    # 10 rzędów stopni: X od 0.0 do 6.5 m, Z od 0.4 do 2.6 m
-    NUM_LOWER = 10
-    dx_low = 6.5 / NUM_LOWER # 0.65 m
-    dz_low = (2.6 - 0.4) / NUM_LOWER # 0.22 m
-    
-    lower_mesh = bpy.data.meshes.new("Widownia_Dolna_Mesh")
-    bm_l = bmesh.new()
-    
-    cur_x = 0.0
-    cur_z = 0.4
-    pts_l = [(cur_x, 0.0, cur_z)]
-    for _ in range(NUM_LOWER):
-        cur_z += dz_low
-        pts_l.append((cur_x, 0.0, cur_z))
-        cur_x += dx_low
-        pts_l.append((cur_x, 0.0, cur_z))
-    pts_l.append((6.5, 0.0, 0.0))
-    pts_l.append((0.0, 0.0, 0.0))
-    
-    v_l = [bm_l.verts.new(p) for p in pts_l]
-    bm_l.faces.new(v_l)
-    res_l = bmesh.ops.extrude_face_region(bm_l, geom=bm_l.faces[:])
-    ev_l = [v for v in res_l['geom'] if isinstance(v, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm_l, vec=(0.0, BAY_WIDTH_Y, 0.0), verts=ev_l)
-    
-    bm_l.normal_update()
-    bm_l.to_mesh(lower_mesh)
-    bm_l.free()
-    
-    obj_lower = bpy.data.objects.new("Widownia_Dolna_Modul", lower_mesh)
-    obj_lower.data.materials.append(mats['concrete'])
-    col.objects.link(obj_lower)
+    for b in range(NUM_BAYS):
+        y0, y1 = b * BAY_WIDTH_Y, (b + 1) * BAY_WIDTH_Y
+        yc = (y0 + y1) / 2
 
-    # -------------------------------------------------------------------------
-    # 4. NISKIE ZADASZENIE BLASZANE (BIAŁO-CZERWONO-BIAŁE) OD POŁUDNIOWEGO KRAŃCA
-    # -------------------------------------------------------------------------
-    # W rzucie stadionu Trybuna Główna biegnie od Y = -54.0m (Południe) do Y = +54.0m (Północ).
-    # Ze względu na obrót o 180° w build_full_stadium (Y_global = 54.0 - Y_local):
-    # - Krańcowe południe to Y_local = 14.0 * BAY_WIDTH_Y (108.0m)
-    # - Krańcowa północ to Y_local = 0.0m
-    # Zgodnie z archiwalnym zdjęciem (media_1792191531931.png):
-    # Daszek biało-czerwono-biały ZACZYNA SIĘ OD POŁUDNIOWEGO KRAŃCA (Y_local = 108.0m):
-    # 1. Biały daszek południowy: przęsła 11..13 (od 11*BAY_W do 14*BAY_W, ~23.1m)
-    # 2. Czerwony daszek środkowy: przęsła 6..10 (od 6*BAY_W do 11*BAY_W, ~38.6m)
-    # 3. Biały daszek północny zadaszonego sektora: przęsła 4..5 (od 4*BAY_W do 6*BAY_W, ~15.4m)
-    # Na północ od przęsła 4 (Y_local < 4*BAY_W, na północ od środka murawy):
-    # Daszek się urywa! Mamy otwarty sektor z betonowymi stopniami oraz niski pawilon.
-    # Wszelkie sztuczne tekstury graffiti pod trybuną zostały całkowicie usunięte.
-    
-    def make_canopy_section(name, y_start, y_end, mat):
+        # Widownia sektora górnego (z wycięciem nad tunelem)
+        if b in VOM_BAYS:
+            sa, sb = yc - VOM_WIDTH / 2, yc + VOM_WIDTH / 2
+            for prof in _upper_profiles():
+                _extrude_profile(bm_upper, prof, y0, sa)
+                _extrude_profile(bm_upper, prof, sb, y1)
+            for prof in _upper_profiles(slot):
+                _extrude_profile(bm_upper, prof, sa, sb)
+
+            # Schody tunelu (bryły od terenu) i ściany boczne: tunel pod płytą, balustrada w wycięciu
+            for k in range(n_steps):
+                xs1 = vom_x_start - k * VOM_TREAD
+                _box(bm_stairs, xs1 - VOM_TREAD, xs1, sa + VOM_WALL, sb - VOM_WALL, 0.0, (k + 1) * VOM_RISE)
+            xb = upper_row(slot[1])[0]
+            wall = [(exit_x0, 0.0), (exit_x0, exit_z + 1.0), (xb, upper_row(slot[1])[2] + 1.0),
+                    (xb, underside(xb)), (vom_x_start, underside(vom_x_start)), (vom_x_start, 0.0)]
+            _extrude_profile(bm_vom, wall, sa, sa + VOM_WALL)
+            _extrude_profile(bm_vom, wall, sb - VOM_WALL, sb)
+        else:
+            for prof in _upper_profiles():
+                _extrude_profile(bm_upper, prof, y0, y1)
+
+        # Ławki sektora górnego (malowane drewno, kość słoniowa): siedzisko 0.40 m nad stopniem, wsporniki co ~1.5 m
+        for i in range(UPPER_ROWS):
+            xa, xbb, z = upper_row(i)
+            spans = [(y0 + 0.9, y1 - 0.1)]
+            if b in VOM_BAYS and slot[0] <= i < slot[1]:
+                spans = [(y0 + 0.9, yc - VOM_WIDTH / 2 - 0.1), (yc + VOM_WIDTH / 2 + 0.1, y1 - 0.1)]
+            for ya, yb in spans:
+                bx = xa + UPPER_DX * 0.35
+                _box(bm_benches, bx - 0.16, bx + 0.16, ya, yb, z + 0.37, z + 0.42)
+                n_leg = max(2, int((yb - ya) / 1.5) + 1)
+                for k in range(n_leg):
+                    ly = ya + 0.1 + k * (yb - ya - 0.2) / (n_leg - 1)
+                    _box(bm_benches, bx - 0.12, bx + 0.12, ly - 0.03, ly + 0.03, z, z + 0.37)
+
+        # Słupki oświetleniowe na koronie
+        POLE_H = 3.2
+        _box(bm_lights, UPPER_X1 + 0.12, UPPER_X1 + 0.24, yc - 0.06, yc + 0.06, UPPER_Z1 + 1.0, UPPER_Z1 + 1.0 + POLE_H)
+        _box(bm_lights, UPPER_X1 + 0.05, UPPER_X1 + 0.35, yc - 0.65, yc + 0.65, UPPER_Z1 + 1.0 + POLE_H - 0.1, UPPER_Z1 + 1.0 + POLE_H)
+
+    # Dźwigary (15 osi): belka pod płytą, słup czołowy, ukośny odciąg do terenu za trybuną
+    for b in range(NUM_BAYS + 1):
+        y = b * BAY_WIDTH_Y
+        ya, yb = y - 0.25, y + 0.25
+        beam = [(LIP_X, underside(LIP_X)), (REAR_X, underside(REAR_X)), (REAR_X, underside(REAR_X) - 1.6), (LIP_X + 0.6, underside(LIP_X + 0.6) - 1.0)]
+        _extrude_profile(bm_girder, beam, ya, yb)
+        _box(bm_girder, LIP_X, LIP_X + 0.6, ya, yb, 0.0, underside(LIP_X))
+        sx = 30.0
+        strut = [(sx, underside(sx) - 1.0), (sx + 0.8, underside(sx + 0.8) - 1.0), (39.4, 0.0), (38.6, 0.0)]
+        _extrude_profile(bm_girder, strut, y - 0.22, y + 0.22)
+
+    obj_lower = _finish(col, bm_lower, "Widownia_Dolna", mats['concrete'])
+    obj_upper = _finish(col, bm_upper, "Widownia_Gorna", mats['concrete'])
+    _finish(col, bm_girder, "Dzwigary_i_Odciagi", mats['concrete'])
+    _finish(col, bm_vom, "Tunele_Sciany", mats['concrete'])
+    _finish(col, bm_stairs, "Schody_Tunele_i_Promenada", mats['concrete_dark'])
+    _finish(col, bm_benches, "Lawki_Sektor_Gorny", mats['wood'])
+    _finish(col, bm_lights, "Latarnie_Korona", mats['metal'])
+
+    # Podwieszony budynek z tyłu (biura/loże wg przekroju): X 32.5–41.5, Z 3.5–7.1, wstęga okien od zachodu
+    bm_rear = bmesh.new()
+    _box(bm_rear, 32.5, 41.5, 0.0, TOTAL_LENGTH_Y, 3.5, 7.1)
+    _finish(col, bm_rear, "Pawilon_Zachodni", mats['concrete'])
+    bm_w = bmesh.new()
+    _box(bm_w, 41.5, 41.55, 0.4, TOTAL_LENGTH_Y - 0.4, 4.3, 6.4)
+    _finish(col, bm_w, "Okna_Hala_Zachod", mats['glass'])
+
+    # Daszek sektora dolnego: z czoła (X 0.6, Z 4.6) do balustrady sektora górnego (X 11.3, Z 5.4).
+    # Podział kolorów jak na zdjęciach (widok_z_galery.jpg): od południowego krańca biały, czerwony, biały.
+    def make_canopy_section(name, ya, yb, mat):
         bm = bmesh.new()
-        pts = [
-            (1.0, y_start, 3.4),
-            (7.0, y_start, 4.3),
-            (7.0, y_start, 4.15),
-            (1.0, y_start, 3.25)
-        ]
-        f = bm.faces.new([bm.verts.new(p) for p in pts])
-        res = bmesh.ops.extrude_face_region(bm, geom=[f])
-        ev = [v for v in res['geom'] if isinstance(v, bmesh.types.BMVert)]
-        bmesh.ops.translate(bm, vec=(0.0, y_end - y_start, 0.0), verts=ev)
-        
+        prof = [(0.6, 4.6), (LIP_X - 0.1, 5.4), (LIP_X - 0.1, 5.28), (0.6, 4.48)]
+        _extrude_profile(bm, prof, ya, yb)
         uv_l = bm.loops.layers.uv.verify()
         for face in bm.faces:
             for loop in face.loops:
                 loop[uv_l].uv = (loop.vert.co.y / 4.0, loop.vert.co.x / 4.0)
-                
-        mesh = bpy.data.meshes.new(f"{name}_Mesh")
-        bm.normal_update()
-        bm.to_mesh(mesh)
-        bm.free()
-        obj = bpy.data.objects.new(name, mesh)
-        obj.data.materials.append(mat)
-        col.objects.link(obj)
-        return obj
+        return _finish(col, bm, name, mat)
 
-    # 1. Biały daszek od krańca południowego (przęsła 11..13: od 11*BAY_W do 14*BAY_W)
-    obj_canopy_s = make_canopy_section("Daszek_Bialy_Poludnie", 11.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, mats['roof_white'])
-    # 2. Czerwony daszek środkowy (przęsła 6..10: od 6*BAY_W do 11*BAY_W)
-    obj_canopy_c = make_canopy_section("Daszek_Czerwony_Srodek", 6.0 * BAY_WIDTH_Y, 11.0 * BAY_WIDTH_Y, mats['roof_red'])
-    # 3. Biały daszek północny zadaszonego sektora (przęsła 4..5: od 4*BAY_W do 6*BAY_W)
-    obj_canopy_n = make_canopy_section("Daszek_Bialy_Polnoc", 4.0 * BAY_WIDTH_Y, 6.0 * BAY_WIDTH_Y, mats['roof_white'])
-
-    # 4. Czysta, biała blenda / obróbka blacharska czoła daszku (na długości zadaszenia)
-    CANOPY_FRONT_Y_START = 4.0 * BAY_WIDTH_Y
-    CANOPY_FRONT_Y_END = 14.0 * BAY_WIDTH_Y
-    fascia_mesh = bpy.data.meshes.new("Blenda_Fasada_Biala_Mesh")
+    make_canopy_section("Daszek_Bialy_Poludnie", 11.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, mats['roof_white'])
+    make_canopy_section("Daszek_Czerwony_Srodek", 6.0 * BAY_WIDTH_Y, 11.0 * BAY_WIDTH_Y, mats['roof_red'])
+    make_canopy_section("Daszek_Bialy_Polnoc", 4.0 * BAY_WIDTH_Y, 6.0 * BAY_WIDTH_Y, mats['roof_white'])
     bm_f = bmesh.new()
-    FX = 0.95
-    FZ_BOT = 3.20
-    FZ_TOP = 3.48
-    f_pts_front = [
-        (FX, CANOPY_FRONT_Y_START, FZ_BOT),
-        (FX, CANOPY_FRONT_Y_START, FZ_TOP),
-        (FX, CANOPY_FRONT_Y_END, FZ_TOP),
-        (FX, CANOPY_FRONT_Y_END, FZ_BOT)
-    ]
-    bm_f.faces.new([bm_f.verts.new(p) for p in f_pts_front])
-    bm_f.normal_update()
-    bm_f.to_mesh(fascia_mesh)
-    bm_f.free()
-    obj_fascia = bpy.data.objects.new("Blenda_Fasada_Biala", fascia_mesh)
-    obj_fascia.data.materials.append(mats['roof_white'])
-    col.objects.link(obj_fascia)
+    _box(bm_f, 0.5, 0.6, 4.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, 4.3, 4.65)
+    _finish(col, bm_f, "Blenda_Fasada_Biala", mats['roof_white'])
 
-    # -------------------------------------------------------------------------
-    # 5. BIAŁE MURKI Z AUTENTYCZNĄ PRZEPLATANKĄ ŁKS NA WYŻSZEJ TRYBUNIE
-    # -------------------------------------------------------------------------
-    # Na wyższej trybunie, 4-5 rzędów od dołu (X = 9.85m, Z od 5.05m do 6.20m),
-    # w każdym przęśle stoi przerywany biały murek z czerwoną Przeplatanką
+    # Biały murek z Przeplatanką ŁKS: lico balustrady czołowej sektora górnego (widok_z_galery.jpg)
     bm_przp = bmesh.new()
-    WALL_X = 9.85
-    WALL_H = 1.15
-    WALL_Z_BOT = 5.05
-    WALL_Z_TOP = WALL_Z_BOT + WALL_H
     uv_przp = bm_przp.loops.layers.uv.verify()
-    
+    z_bot, z_top = underside(LIP_X), LIP_TOP
     for k in range(NUM_BAYS):
-        y0 = k * BAY_WIDTH_Y + 1.2
-        y1 = (k + 1) * BAY_WIDTH_Y - 0.2
-        
-        # Przednia ściana murka z Przeplatanką (skierowana ku murawie w -X)
-        p_front = [
-            (WALL_X, y0, WALL_Z_BOT),
-            (WALL_X, y0, WALL_Z_TOP),
-            (WALL_X, y1, WALL_Z_TOP),
-            (WALL_X, y1, WALL_Z_BOT)
-        ]
-        face_f = bm_przp.faces.new([bm_przp.verts.new(p) for p in p_front])
-        for loop in face_f.loops:
-            u = (y1 - loop.vert.co.y) / (y1 - y0)
-            v = (loop.vert.co.z - WALL_Z_BOT) / WALL_H
-            loop[uv_przp].uv = (u, v)
-            
-        # Grubość murka (wierzch)
-        p_top = [
-            (WALL_X, y0, WALL_Z_TOP),
-            (WALL_X + 0.18, y0, WALL_Z_TOP),
-            (WALL_X + 0.18, y1, WALL_Z_TOP),
-            (WALL_X, y1, WALL_Z_TOP)
-        ]
-        f_top = bm_przp.faces.new([bm_przp.verts.new(p) for p in p_top])
-        for loop in f_top.loops:
-            loop[uv_przp].uv = (0.05, 0.05)
-
-    mesh_przp = bpy.data.meshes.new("Murki_Przeplatanka_Upper_Mesh")
+        ya, yb = k * BAY_WIDTH_Y + 0.4, (k + 1) * BAY_WIDTH_Y - 0.4
+        face = bm_przp.faces.new([bm_przp.verts.new(p) for p in [(LIP_X - 0.02, ya, z_bot), (LIP_X - 0.02, ya, z_top),
+                                                               (LIP_X - 0.02, yb, z_top), (LIP_X - 0.02, yb, z_bot)]])
+        for loop in face.loops:
+            loop[uv_przp].uv = ((yb - loop.vert.co.y) / (yb - ya), (loop.vert.co.z - z_bot) / (z_top - z_bot))
+    mesh_przp = bpy.data.meshes.new("Murki_Przeplatanka_Mesh")
     bm_przp.normal_update()
     bm_przp.to_mesh(mesh_przp)
     bm_przp.free()
-    obj_przp = bpy.data.objects.new("Murki_Przeplatanka_Upper", mesh_przp)
+    obj_przp = bpy.data.objects.new("Murki_Przeplatanka", mesh_przp)
     obj_przp.data.materials.append(mats['przeplatanka'])
     col.objects.link(obj_przp)
 
-    # -------------------------------------------------------------------------
-    # 5. PAWILON ZAPLECZA I OKNA OD STRONY AL. UNII
-    # -------------------------------------------------------------------------
-    # Pionowa ściana hali: X od 24.0 do 27.5 m, wysokość Z = 5.5 m
-    pav_mesh = bpy.data.meshes.new("Pawilon_Al_Unii_Mesh")
-    bm_p = bmesh.new()
-    
-    pts_p = [
-        (24.5, 0.0, 0.0),
-        (24.5, 0.0, 5.5),
-        (27.5, 0.0, 5.5),
-        (27.5, 0.0, 0.0)
-    ]
-    v_p = [bm_p.verts.new(p) for p in pts_p]
-    bm_p.faces.new(v_p)
-    res_p = bmesh.ops.extrude_face_region(bm_p, geom=bm_p.faces[:])
-    ev_p = [v for v in res_p['geom'] if isinstance(v, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm_p, vec=(0.0, BAY_WIDTH_Y, 0.0), verts=ev_p)
-    
-    bm_p.normal_update()
-    bm_p.to_mesh(pav_mesh)
-    bm_p.free()
-    
-    obj_pav = bpy.data.objects.new("Pawilon_Al_Unii_Modul", pav_mesh)
-    obj_pav.data.materials.append(mats['concrete'])
-    col.objects.link(obj_pav)
+    print("Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, 4 tunele).")
+    return obj_lower, obj_upper
 
-    # Wstęga okien al. Unii
-    win_mesh = bpy.data.meshes.new("Okna_Hala_Al_Unii_Mesh")
-    bm_w = bmesh.new()
-    pts_w = [
-        (27.52, 0.3, 2.2),
-        (27.52, BAY_WIDTH_Y - 0.3, 2.2),
-        (27.52, BAY_WIDTH_Y - 0.3, 4.8),
-        (27.52, 0.3, 4.8)
-    ]
-    bm_w.faces.new([bm_w.verts.new(p) for p in pts_w])
-    bm_w.normal_update()
-    bm_w.to_mesh(win_mesh)
-    bm_w.free()
-    
-    obj_win = bpy.data.objects.new("Okna_Hala_Al_Unii_Modul", win_mesh)
-    obj_win.data.materials.append(mats['glass'])
-    col.objects.link(obj_win)
 
-    # -------------------------------------------------------------------------
-    # 6. SŁUPKI OŚWIETLENIOWE NA SZCZYCIE KORONY (JAK NA NAGRANIACH)
-    # -------------------------------------------------------------------------
-    # Na szczycie korony (X=25.0, Z=14.0) stoją charakterystyczne smukłe słupki
-    # oświetleniowe z oprawami skierowanymi ku murawie
-    lights_mesh = bpy.data.meshes.new("Latarnie_Korona_Mesh")
-    bm_lt = bmesh.new()
-    
-    POLE_H = 3.2
-    c_pole = bmesh.ops.create_cone(
-        bm_lt,
-        cap_ends=True,
-        segments=8,
-        radius1=0.06,
-        radius2=0.05,
-        depth=POLE_H
-    )
-    bmesh.ops.translate(bm_lt, vec=(25.0, BAY_WIDTH_Y / 2.0, 14.0 + POLE_H / 2.0), verts=c_pole['verts'])
-    
-    c_bar = bmesh.ops.create_cube(bm_lt, size=1.0)
-    bmesh.ops.scale(bm_lt, vec=(0.08, 1.2, 0.08), verts=c_bar['verts'])
-    bmesh.ops.translate(bm_lt, vec=(25.0, BAY_WIDTH_Y / 2.0, 14.0 + POLE_H), verts=c_bar['verts'])
-    
-    for ly in [BAY_WIDTH_Y / 2.0 - 0.45, BAY_WIDTH_Y / 2.0 + 0.45]:
-        lamp = bmesh.ops.create_cube(bm_lt, size=1.0)
-        bmesh.ops.scale(bm_lt, vec=(0.35, 0.22, 0.16), verts=lamp['verts'])
-        bmesh.ops.rotate(bm_lt, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(-30), 3, 'Y'), verts=lamp['verts'])
-        bmesh.ops.translate(bm_lt, vec=(24.85, ly, 14.0 + POLE_H + 0.05), verts=lamp['verts'])
-        
-    bm_lt.normal_update()
-    bm_lt.to_mesh(lights_mesh)
-    bm_lt.free()
-    
-    obj_roof_lights = bpy.data.objects.new("Latarnie_Korona_Modul", lights_mesh)
-    obj_roof_lights.data.materials.append(mats['metal'])
-    col.objects.link(obj_roof_lights)
+def lower_seat_rows():
+    """Rzędy krzesełek sektora dolnego: (x, z) siedziska w układzie lokalnym trybuny."""
+    return [(LOWER_X0 + (i + 0.55) * LOWER_DX, LOWER_Z0 + i * LOWER_DZ) for i in range(LOWER_ROWS)]
 
-    # -------------------------------------------------------------------------
-    # 7. DREWNIANE ŁAWKI (26 RZĘDÓW GÓRNYCH, 10 DOLNYCH) Z PRZEJŚCIAMI
-    # -------------------------------------------------------------------------
-    bm_benches = bmesh.new()
-    BENCH_THICK = 0.05
-    BENCH_DEPTH = 0.35
-    BENCH_Y_START = 0.9  # 90 cm na ciąg pieszy / schody przy dźwigarze
-    BENCH_Y_END = BAY_WIDTH_Y - 0.1
-    
-    # Ławki sektora górnego (26 rzędów)
-    for i in range(NUM_UPPER):
-        bx = 7.0 + (i + 0.5) * dx_up
-        bz = 3.2 + (i + 1) * dz_up + BENCH_THICK / 2.0 + 0.04
-        b_box = bmesh.ops.create_cube(bm_benches, size=1.0)
-        bmesh.ops.scale(bm_benches, vec=(BENCH_DEPTH, BENCH_Y_END - BENCH_Y_START, BENCH_THICK), verts=b_box['verts'])
-        bmesh.ops.translate(bm_benches, vec=(bx, (BENCH_Y_START + BENCH_Y_END) / 2.0, bz), verts=b_box['verts'])
-
-    # Ławki sektora dolnego (10 rzędów)
-    for i in range(NUM_LOWER):
-        bx = 0.0 + (i + 0.5) * dx_low
-        bz = 0.4 + (i + 1) * dz_low + BENCH_THICK / 2.0 + 0.04
-        b_box = bmesh.ops.create_cube(bm_benches, size=1.0)
-        bmesh.ops.scale(bm_benches, vec=(BENCH_DEPTH, BENCH_Y_END - BENCH_Y_START, BENCH_THICK), verts=b_box['verts'])
-        bmesh.ops.translate(bm_benches, vec=(bx, (BENCH_Y_START + BENCH_Y_END) / 2.0, bz), verts=b_box['verts'])
-
-    mesh_benches = bpy.data.meshes.new("Lawki_Drewniane_Mesh")
-    bm_benches.normal_update()
-    bm_benches.to_mesh(mesh_benches)
-    bm_benches.free()
-
-    obj_benches = bpy.data.objects.new("Lawki_Drewniane_Modul", mesh_benches)
-    if mats and 'wood' in mats:
-        obj_benches.data.materials.append(mats['wood'])
-    col.objects.link(obj_benches)
-
-    # -------------------------------------------------------------------------
-    # 8. MODYFIKATOR ARRAY DLA PRZĘSEŁ (14 POWTÓRZEŃ W OSI Y)
-    # -------------------------------------------------------------------------
-    modular_objs = [obj_girder, obj_upper, obj_lower, obj_pav, obj_win, obj_roof_lights, obj_benches]
-    for o in modular_objs:
-        arr = o.modifiers.new("Array_14_Przensel", 'ARRAY')
-        arr.count = NUM_BAYS
-        arr.use_relative_offset = False
-        arr.use_constant_offset = True
-        arr.constant_offset_displace = (0.0, BAY_WIDTH_Y, 0.0)
-
-    # Dźwigar końcowy zamykający skrajnię północną (15. oś)
-    end_girder = bpy.data.objects.new("Dzwigar_Zamykajacy_Os15", girder_mesh)
-    end_girder.location = (0.0, TOTAL_LENGTH_Y, 0.0)
-    end_girder.data.materials.append(mats['concrete'])
-    col.objects.link(end_girder)
-
-    print("Zbudowano Trybune Glowna bez dachu szczytowego (prawidlowe proporcje historyczne).")
 
 if __name__ == "__main__":
     bpy.ops.wm.read_factory_settings(use_empty=True)

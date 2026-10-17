@@ -1,8 +1,8 @@
 """
 Generowanie kompletnego stadionu ŁKS Łódź ("Estadio da Gruz", 1969-2012):
 1. Trybuna Główna (Zachodnia) arch. Wyżnikiewicza i Szklarka:
-   - 14 przęseł modułowych (108 m) z 15 kablobetonowymi dźwigarami
-   - Brutalistyczne ukośne odciągi od strony al. Unii
+   - 14 przęseł modułowych (130 m) z 15 kablobetonowymi dźwigarami
+   - Brutalistyczne ukośne odciągi od strony zachodniej (Atlas Arena)
    - Pawilon zaplecza z wstęgowymi oknami
    - Otwarta ku górze korona o realistycznej wysokości 14 m (bez dachu szczytowego)
    - Sektor dolny z niskim daszkiem blaszanym (sektor VIP / trybuna kryta z białą fasadą)
@@ -10,14 +10,15 @@ Generowanie kompletnego stadionu ŁKS Łódź ("Estadio da Gruz", 1969-2012):
 2. Korona Stadionu (Podkowa):
    - Murawa 105 x 68 m z bramkami piłkarskimi
    - Bieżnia żużlowa 400 m biegnąca w całości POMIĘDZY murawą a trybunami (nie zachodzi za Main Stand)
-   - Sucha fosa betonowa okalająca całą bieżnię (1.8m x 1.4m)
+   - Mur oporowy (1.5 m) ze stalowym ogrodzeniem na czole podkowy — bez fosy (docs/zrodla.md)
    - Wały ziemne z 20 betonowymi stopniami
-   - Historyczna tablica wyników z zegarem VIS A VIS Trybuny Głównej (na prostej wschodniej)
+   - Historyczna tablica wyników z zegarem na łuku południowym
 3. Cztery Maszty Oświetleniowe (Jupitery z 1970 r., h=46m):
    - Konstrukcja 3-nożna o przekroju trójkątnym zbieżnym ku górze
    - Głowica w kształcie ODWRÓCONEGO TRAPEZU (węższa podstawa na dole, szersza na górze)
    - 45 reflektorów pochylonych w dół o 28° w stronę murawy
-4. Eksport do formatu GLB pod Three.js
+4. Otoczenie wg ortofotomapy 2013: teren, plac, al. Unii, tory, Atlas Arena, drzewa
+5. Eksport do formatu GLB pod Three.js
 """
 
 import bpy
@@ -31,17 +32,23 @@ TOOLS_DIR = os.path.dirname(os.path.abspath(__file__))
 if TOOLS_DIR not in sys.path:
     sys.path.append(TOOLS_DIR)
 
-from build_grandstand import create_materials, build_grandstand
+from build_grandstand import (
+    create_materials, build_grandstand, lower_seat_rows,
+    TOTAL_LENGTH_Y as GRANDSTAND_LENGTH, NUM_BAYS, BAY_WIDTH_Y
+)
+from build_seats import place_seats, seat_material, seats_in_row
 from build_floodlight_mast import build_floodlight_mast
+from build_surroundings import build_surroundings
 from build_horseshoe_bowl import (
     build_pitch_and_track,
     build_pitch_lines,
-    build_moat_and_bowl,
+    build_bowl,
     build_fan_banners,
     build_scoreboard
 )
 
 ROOT = os.path.dirname(TOOLS_DIR)
+GRANDSTAND_CENTER_Y = 3.0  # przesunięcie środka trybuny głównej na północ (ortofotomapa 2013)
 UV_METERS_PER_UNIT = 4.0  # ta sama konwencja co UV daszków w build_grandstand.py
 
 
@@ -53,9 +60,12 @@ def prepare_meshes_for_export():
       tekstury PBR (beton, blacha) próbkowały jeden teksel, a exporter zapisywał texCoord: -1.
     """
     bpy.context.view_layer.update()
+    done = set()
     for obj in bpy.context.scene.objects:
-        if obj.type != 'MESH':
+        # siatki współdzielone (drzewa) przetwarzamy raz
+        if obj.type != 'MESH' or obj.data.name in done:
             continue
+        done.add(obj.data.name)
         bm = bmesh.new()
         bm.from_mesh(obj.data)
         bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
@@ -293,10 +303,11 @@ def assemble_full_stadium():
     
     col_pitch = bpy.data.collections.new("01_Murawa_i_Bieznia")
     col_grandstand = bpy.data.collections.new("02_Trybuna_Glowna_Zachodnia")
-    col_bowl = bpy.data.collections.new("03_Korona_Podkowa_Fosa")
+    col_bowl = bpy.data.collections.new("03_Korona_Podkowa")
     col_jupiters = bpy.data.collections.new("04_Jupitery_Maszty")
-    
-    for c in [col_pitch, col_grandstand, col_bowl, col_jupiters]:
+    col_surroundings = bpy.data.collections.new("05_Otoczenie")
+
+    for c in [col_pitch, col_grandstand, col_bowl, col_jupiters, col_surroundings]:
         root_col.children.link(c)
         
     print("--- 1. Generowanie Murawy, Linii Boiska, Bieżni i Bramek ---")
@@ -304,8 +315,8 @@ def assemble_full_stadium():
     build_pitch_lines(col_pitch, mats)
     build_goals_and_benches(col_pitch, mats)
     
-    print("--- 2. Generowanie Korony (Wały, Fosa, Banery Kibicowskie, Zegar od Południa) ---")
-    build_moat_and_bowl(col_bowl, mats)
+    print("--- 2. Generowanie Korony (Wały, Mur z Ogrodzeniem, Banery Kibicowskie, Zegar od Południa) ---")
+    build_bowl(col_bowl, mats)
     build_fan_banners(col_bowl, mats)
     build_scoreboard(col_bowl, mats)
     
@@ -323,22 +334,36 @@ def assemble_full_stadium():
     # Ustawienie pozycji Trybuny Głównej po zachodniej stronie:
     # Obrót o 180° wokół Z (front do murawy na wschód, tył na zachód w stronę parku)
     empty_grandstand.rotation_euler = (0.0, 0.0, math.radians(180))
-    # Pozycjonowanie: czoło dolnych stopni (X_local = 0.0) styka się z fosą zachodnią przy X = -47.0m,
-    # co gwarantuje, że bieżnia o szerokości 8m (od X = -37 do X = -45) i fosa (X = -45 do -46.8)
-    # biegną w całości przed trybuną główną!
-    empty_grandstand.location = (-47.0, 54.0, 0.0)
+    # Pozycjonowanie: czoło dolnych stopni (X_local = 0.0) przy zewnętrznej krawędzi bieżni X = -45 m
+    # (ortofotomapa: czoło daszku sektora dolnego -44.7 m). Środek trybuny ~3 m na północ od osi
+    # poprzecznej boiska (nakładka modelu na ortofotomapę, tools/add_ortho_reference.py).
+    empty_grandstand.location = (-45.0, GRANDSTAND_LENGTH / 2.0 + GRANDSTAND_CENTER_Y, 0.0)
+
+    # Krzesełka sektora dolnego: czerwone pod czerwonym daszkiem (przęsła 6..10), białe w pozostałych
+    red, white = [], []
+    for b in range(NUM_BAYS):
+        for x, z in lower_seat_rows():
+            row = seats_in_row(x, z, b * BAY_WIDTH_Y + 0.9, (b + 1) * BAY_WIDTH_Y - 0.1)
+            (red if 6 <= b < 11 else white).extend(row)
+    place_seats(col_grandstand, "Krzeselka_Trybuna_Czerwone", seat_material("Mat_Krzeselka_Czerwone", (0.62, 0.07, 0.09)), red, empty_grandstand)
+    place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86)), white, empty_grandstand)
 
     print("--- 4. Generowanie 4 Masztów Oświetleniowych (3-nożne jupitery z odwróconym trapezem) ---")
+    # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59). Zachodnich nie widać
+    # (cień trybuny głównej) — zostają w dotychczasowym, niezweryfikowanym położeniu (docs/zrodla.md).
     jupiters_cfg = [
         ("Jupiter_SW", (-68.0, -82.0, 0.0)),
         ("Jupiter_NW", (-68.0,  82.0, 0.0)),
-        ("Jupiter_SE", ( 68.0, -82.0, 0.0)),
-        ("Jupiter_NE", ( 68.0,  82.0, 0.0))
+        ("Jupiter_SE", ( 68.0, -61.5, 0.0)),
+        ("Jupiter_NE", ( 68.0,  61.5, 0.0))
     ]
     
     for name, loc in jupiters_cfg:
         mast = build_floodlight_mast(col_jupiters, mats=mats, name=name, pitch_target=(0.0, 0.0), mast_pos=(loc[0], loc[1]))
         mast.location = loc
+
+    print("--- 5. Generowanie Otoczenia (teren, al. Unii, tory, Atlas Arena, drzewa) ---")
+    build_surroundings(col_surroundings, mats)
 
     # Zapis pliku roboczego .blend
     prepare_meshes_for_export()
@@ -358,7 +383,8 @@ def assemble_full_stadium():
         export_format='GLB',
         use_selection=False,
         export_apply=True,
-        export_yup=True
+        export_yup=True,
+        export_gpu_instances=True
     )
     print(f"Pomyślnie wyeksportowano model GLB ({os.path.getsize(glb_path) / 1024 / 1024:.2f} MB)")
 

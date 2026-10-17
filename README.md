@@ -9,11 +9,11 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
 ## 🏛️ Główne Elementy Architektoniczne
 
 1. **Trybuna Główna (Zachodnia)**:
-   - Konstrukcja żelbetowa późnego modernizmu/brutalizmu PRL z 14 potężnymi dźwigarami i zewnętrznymi ukośnymi odciągami.
-   - Sektor górny: 26 rzędów z drewnianymi ławkami i przejściami schodowymi (nachylenie widowni $29^\circ$, wysokość korony $\approx 14\text{ m}$).
-   - Sektor dolny: 10 rzędów widowni pod niskim blaszanym zadaszeniem VIP z frontową blendą fasadową niosącą historyczne hasło klubowe:
-     `TUTAJ WYCHOWANI • ŁKS TO WIĘCEJ NIŻ KLUB • WIERNI I ODDANI`.
-   - Tylna ściana pawilonu z pasmami okien wychodząca w stronę Parku na Zdrowiu i boisk treningowych.
+   - Konstrukcja żelbetowa późnego modernizmu/brutalizmu PRL (proj. J. Wyżnikiewicz, 1969): 14 przęseł po ~9,3 m (ok. 130 m długości) i zewnętrzne ukośne odciągi.
+   - Przekrój wg rysunku projektowego: sektor górny 33 rzędy ławek (malowane drewno w kolorze kości słoniowej), korona ok. 18,4 m nad terenem, bez dachu; biała balustrada czołowa z Przeplatanką ŁKS.
+   - Sektor dolny: 10 rzędów plastikowych krzesełek pod daszkiem (biały–czerwony–biały), za nim promenada na wysokości 3,2 m.
+   - 4 tunele: schody z hali pod trybuną wyprowadzają w połowę sektora górnego.
+   - Z tyłu (od zachodu, strona Atlas Areny) podwieszony budynek ze wstęgą okien.
 
 2. **Maszty Oświetleniowe (Jupitery z 1970 r.)**:
    - 4 maszty kratownicowe o wysokości 46 m, każdy oparty na 3 rozszerzających się ku dołowi nogach.
@@ -23,17 +23,22 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
 3. **Podkowa Ziemna i Galera (Wschód)**:
    - Trybuna wschodnia (**Galera**) biegnąca wzdłuż **al. Unii Lubelskiej** z historycznymi banerami kibicowskimi (`RODOWICI ŁODZIANIE`, `GALERA JEST TYLKO JEDNA`).
    - Podkowa trybun oparta na wałach ziemnych z 20 betonowymi stopniami.
-   - Ciągła fosa betonowa (szerokość 1.8 m, głębokość 1.4 m) oddzielająca trybuny od bieżni.
+   - Mur oporowy (ok. 1,5 m) ze stalowym ogrodzeniem (pełne panele u dołu, siatka wyżej) na czole podkowy.
+   - Czerwone plastikowe krzesełka na prostej Galery.
 
 4. **Tablica Wyników i Zegar Omega (Południe)**:
    - Zlokalizowana na koronie krótkiej trybuny od południa, skierowana frontem na północ ku murawie.
    - Duża ciemna tablica z okrągłą białą tarczą zegarową Omega / ŁKS z cyframi rzymskimi.
 
-5. **Płyta Boiska i Bieżnia**:
+5. **Płyta Boiska**:
    - Pełnowymiarowe boisko piłkarskie $105\text{ m} \times 68\text{ m}$ z fotorealistyczną murawą PBR (CC0 ambientCG) i 20 naprzemiennymi pasami koszenia.
    - Oficjalne kredowe oznaczenia PZPN / FIFA (linie, koło środkowe $R=9.15\text{ m}$, pola karne, łuki).
    - Bramki z siatkami i ławki rezerwowych.
-   - 8-metrowa bieżnia lekkoatletyczna okalająca murawę, mieszcząca się w całości przed trybunami.
+   - Pas dawnej bieżni (8 m) porośnięty trawą aż do ogrodzenia: model pokazuje stan z lat 2010–2012.
+
+6. **Otoczenie (stan z ortofotomapy 2013)**: teren i plac wokół stadionu, al. Unii Lubelskiej, tory przy Łodzi Kaliskiej, Atlas Arena, drzewa oraz panorama bloków za torami, widoczna z trybuny głównej nad Galerą.
+
+Wymiary, kalibracja ortofotomapy, mapa zdjęć archiwalnych i otwarte pytania: [`docs/zrodla.md`](docs/zrodla.md).
 
 ---
 
@@ -50,14 +55,15 @@ npm run dev
 Aplikacja uruchomi się pod adresem: `http://localhost:3000/`.
 
 ### Sterowanie:
-- **[1]–[7]:** Teleportacja do kluczowych sektorów:
+- **[1]–[8]:** Teleportacja do kluczowych sektorów:
   - `1` — Środek Murawy
-  - `2` — Korona Trybuny Głównej (Rząd 26)
+  - `2` — Korona Trybuny Głównej (Rząd 33)
   - `3` — Loża VIP
   - `4` — Zegar (Łuk Południowy)
   - `5` — Galera (Al. Unii Lubelskiej)
   - `6` — Jupiter NW
   - `7` — Bramka Południowa
+  - `8` — Tunel pod Trybuną Główną (schody na widownię)
 - **[L]:** Przełączanie oświetlenia Dzień / Noc (włączenie jupiterów).
 - **[V]:** Przełączanie trybu: Spacer (widok FPV z kolizjami, grawitacją i wchodzeniem po stopniach do 48 cm) / Dron (lot swobodny).
 - **Mysz + WASD + Shift:** Rozglądanie po kliknięciu w canvas, poruszanie się, sprint.
@@ -69,7 +75,7 @@ Aplikacja uruchomi się pod adresem: `http://localhost:3000/`.
 npm run test:physics
 ```
 
-Uruchamia Vite i headless Chrome, sprawdza grawitację, wysokość skoku oraz schodzenie i wchodzenie po stopniach trybuny głównej i Galery.
+Uruchamia Vite i headless Chrome, sprawdza grawitację, wysokość skoku, schodzenie i wchodzenie po stopniach trybuny głównej i Galery, schody tunelu, ogrodzenie oraz teren za stadionem.
 
 ---
 
@@ -90,4 +96,8 @@ Wygenerowany model:
 - `public/assets/estadio_da_gruz.glb` (model GLTF ze spakowanymi teksturami PBR do Three.js)
 
 Tekstury źródłowe (wejście Blendera i `tools/generate_stadium_textures.py`) leżą w `assets/textures/`.
+
+Pomocnicze:
+- `python3 tools/extract_trees_from_ortho.py`: pozycje drzew z ortofotomapy (`tools/data/drzewa_ortofoto.json`).
+- `blender stadion_lks_pelny.blend --python tools/add_ortho_reference.py`: ortofotomapa jako podkład 1:1 do modelowania „po śladzie”.
 Do aplikacji trafiają wyłącznie spakowane w GLB — w `public/assets/textures/` potrzebny jest tylko `floodlight_glow.png` (sprite ładowany przez `src/main.ts`).

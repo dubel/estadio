@@ -422,6 +422,65 @@ def generate_goal_net_texture():
     img.save(save_path)
     print(f"Zapisano teksturę siatki bramkarskiej: {save_path}")
 
+def generate_fence_texture():
+    """
+    Przęsło ogrodzenia trybun (2.5 m x 2.5 m, widok_z_galery.jpg): u dołu pełne, rdzawobrązowe panele
+    blachy (~0.9 m), wyżej siatka z drutu w oczka ~10 cm, rama i słupki malowane na czerwonobrązowo.
+    RGB przezroczystych pikseli = kolor drutu, żeby mipmapy nie dawały ciemnych obwódek.
+    """
+    W = H = 256
+    px_per_m = W / 2.5
+    frame = np.array([118, 40, 34])
+    wire = np.array([96, 70, 58])
+    arr = np.zeros((H, W, 4), dtype=np.uint8)
+    arr[:, :, :3] = wire
+    # siatka: druty co 10 cm
+    step = int(round(0.10 * px_per_m))
+    for k in range(0, W, step):   # 2 px (~2 cm), żeby druty nie znikały w mipmapach przy alpha test
+        arr[:, k:k + 2, 3] = 255
+        arr[k:k + 2, :, 3] = 255
+    # pełny panel blachy u dołu z rdzawymi zaciekami
+    panel_top = H - int(0.9 * px_per_m)
+    rng = np.random.default_rng(7)
+    rust = np.clip(np.array([92, 52, 36]) + rng.normal(0, 9, (H - panel_top, W, 1)), 0, 255)
+    streaks = (rng.random(W) < 0.08)[None, :, None] * np.linspace(0, 25, H - panel_top)[:, None, None]
+    arr[panel_top:, :, :3] = np.clip(rust - streaks, 0, 255).astype(np.uint8)
+    arr[panel_top:, :, 3] = 255
+    # rama: górna poręcz, rygiel nad panelem, słupki na krańcach przęsła
+    for (y0, y1) in [(0, 7), (panel_top - 5, panel_top)]:
+        arr[y0:y1, :, :3] = frame
+        arr[y0:y1, :, 3] = 255
+    for (x0, x1) in [(0, 6), (W - 6, W)]:
+        arr[:, x0:x1, :3] = frame
+        arr[:, x0:x1, 3] = 255
+    save_path = os.path.join(TEXTURES_DIR, "fence_steel_red.png")
+    Image.fromarray(arr, 'RGBA').save(save_path)
+    print(f"Zapisano teksturę ogrodzenia: {save_path}")
+
+
+def generate_facade_texture():
+    """
+    Elewacja bloku z wielkiej płyty (szarości, mnożona przez kolor bloku w materiale): kafel = 2 kondygnacje
+    x 4 okna (5.6 m x 6 m), okna ciemne z lekkim zróżnicowaniem, pas podokienny jaśniejszy.
+    """
+    W = H = 256
+    rng = np.random.default_rng(11)
+    arr = np.full((H, W, 3), 225, dtype=np.float32)
+    floor_h, win_w = H // 2, W // 4
+    for f in range(2):
+        for w in range(4):
+            y0 = f * floor_h + int(floor_h * 0.28)
+            y1 = f * floor_h + int(floor_h * 0.78)
+            x0 = w * win_w + int(win_w * 0.18)
+            x1 = w * win_w + int(win_w * 0.82)
+            arr[y0:y1, x0:x1] = 70 + rng.uniform(-12, 25)
+        arr[f * floor_h:f * floor_h + 4] = 190      # styk płyt
+    arr += rng.normal(0, 4, arr.shape)
+    save_path = os.path.join(TEXTURES_DIR, "facade_blok.png")
+    Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), 'RGB').save(save_path)
+    print(f"Zapisano teksturę elewacji bloku: {save_path}")
+
+
 # Tekstury ładowane bezpośrednio przez Three.js; reszta trafia do aplikacji wyłącznie w GLB
 RUNTIME_TEXTURES = ["floodlight_glow.png"]
 
@@ -446,5 +505,7 @@ if __name__ == "__main__":
     generate_corrugated_roof_textures()
     generate_floodlight_glow_sprite()
     generate_goal_net_texture()
+    generate_fence_texture()
+    generate_facade_texture()
     sync_to_public()
     print("Wszystkie tekstury wygenerowane i zsynchronizowane pomyślnie!")

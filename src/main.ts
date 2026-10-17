@@ -25,9 +25,11 @@ renderer.toneMappingExposure = 1.0;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x7da4c4); // Błękitne niebo dzienne
-scene.fog = new THREE.FogExp2(0x7da4c4, 0.0035);
+// Gęstość dobrana tak, by bloki za torami (500–900 m) przebijały się przez lekką, niebieskawą mgiełkę
+const DAY_FOG_DENSITY = 0.0012;
+scene.fog = new THREE.FogExp2(0x7da4c4, DAY_FOG_DENSITY);
 
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 500);
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 2000);
 
 // --- OŚWIETLENIE ---
 // Światło ambient
@@ -54,8 +56,8 @@ const jupitersLights: THREE.SpotLight[] = [];
 const jupiterPositions = [
   new THREE.Vector3(-68.0, 48.2,  82.0), // SW (południowo-zachodni)
   new THREE.Vector3(-68.0, 48.2, -82.0), // NW (północno-zachodni)
-  new THREE.Vector3( 68.0, 48.2,  82.0), // SE (południowo-wschodni)
-  new THREE.Vector3( 68.0, 48.2, -82.0)  // NE (północno-wschodni)
+  new THREE.Vector3( 68.0, 48.2,  61.5), // SE (południowo-wschodni) — pozycja z ortofotomapy
+  new THREE.Vector3( 68.0, 48.2, -61.5)  // NE (północno-wschodni) — pozycja z ortofotomapy
 ];
 
 jupiterPositions.forEach((pos, idx) => {
@@ -106,13 +108,13 @@ const viewpoints: Viewpoint[] = [
     target: new THREE.Vector3(-60, 8, 0)
   },
   {
-    name: "Korona Trybuny Głównej (Rząd 26)",
-    pos: new THREE.Vector3(-69, 15.5, 0),
+    name: "Korona Trybuny Głównej (Rząd 33)",
+    pos: new THREE.Vector3(-81, 20.3, 0),
     target: new THREE.Vector3(0, 4, 0)
   },
   {
     name: "Trybuna Główna — Sektor VIP & Daszek",
-    pos: new THREE.Vector3(-49, 2.5, -12),
+    pos: new THREE.Vector3(-49, 3.6, -12),
     target: new THREE.Vector3(0, 2, 0)
   },
   {
@@ -122,7 +124,7 @@ const viewpoints: Viewpoint[] = [
   },
   {
     name: "Galera (Al. Unii Lubelskiej)",
-    pos: new THREE.Vector3(64, 8.5, 0),
+    pos: new THREE.Vector3(64, 8.2, 0),
     target: new THREE.Vector3(-55, 7, 0)
   },
   {
@@ -134,11 +136,17 @@ const viewpoints: Viewpoint[] = [
     name: "Bramka Południowa — Biało-Czerwono-Biała Siatka",
     pos: new THREE.Vector3(0, 1.6, 44),
     target: new THREE.Vector3(0, 1.2, 53.5)
+  },
+  {
+    name: "Tunel pod Trybuną Główną — Schody na Widownię",
+    pos: new THREE.Vector3(-74.5, 1.7, -16.9),
+    target: new THREE.Vector3(-55, 6, -16.9)
   }
 ];
 
 // --- FIZYKA, KOLIZJE I SCHODY (OCTREE & CAPSULE CONTROLLER) ---
 const worldOctree = new Octree();
+const COLLIDER_LAYER = 1;
 let octreeReady = false;
 
 const CAPSULE_RADIUS = 0.35;
@@ -182,12 +190,22 @@ function playerCollisions() {
 // Opuszcza kapsułę porcjami aż do pierwszego kontaktu z podłożem (max maxDrop).
 // Zanurzenie o całe maxDrop naraz dawało głęboką penetrację, a zagregowana normalna z sąsiednich
 // trójkątów (podstopnie, krawędzie) wypychała kapsułę w tył — postać stała w miejscu na schodach.
+// Pozioma korekta przeciwna do ruchu jest odrzucana: normalne z pobliskich krawędzi cofały kapsułę o tyle,
+// ile przeszła w sub-stepie (zacinanie przed pierwszym stopniem schodów tunelu). Korekta zgodna z ruchem
+// zostaje — pomaga zsunąć się z krawędzi stopnia przy schodzeniu.
 function lowerUntilFloor(maxDrop: number): boolean {
   const slice = new THREE.Vector3(0, -maxDrop / STEP_DOWN_SLICES, 0);
   playerOnFloor = false;
   for (let i = 0; i < STEP_DOWN_SLICES && !playerOnFloor; i++) {
+    const x = playerCollider.start.x;
+    const z = playerCollider.start.z;
     playerCollider.translate(slice);
     playerCollisions();
+    const dx = playerCollider.start.x - x;
+    const dz = playerCollider.start.z - z;
+    if (dx * playerVelocity.x + dz * playerVelocity.z < 0) {
+      playerCollider.translate(new THREE.Vector3(-dx, 0, -dz));
+    }
   }
   return playerOnFloor;
 }
@@ -396,6 +414,7 @@ window.addEventListener('keydown', (e) => {
     case 'Digit5': setViewpoint(4); break;
     case 'Digit6': setViewpoint(5); break;
     case 'Digit7': setViewpoint(6); break;
+    case 'Digit8': setViewpoint(7); break;
   }
 });
 
@@ -443,7 +462,7 @@ function toggleLighting() {
     if (label) label.textContent = 'Noc (Jupitery)';
   } else {
     scene.background = new THREE.Color(0x7da4c4);
-    scene.fog = new THREE.FogExp2(0x7da4c4, 0.0035);
+    scene.fog = new THREE.FogExp2(0x7da4c4, DAY_FOG_DENSITY);
     ambientLight.color.setHex(0xddeeff);
     ambientLight.groundColor.setHex(0x334433);
     ambientLight.intensity = 0.6;
@@ -574,7 +593,7 @@ loader.load(
               });
               std.emissive = new THREE.Color(0x000000);
               std.emissiveIntensity = 0.0;
-            } else if (std.name.includes('Goal_Net') || mesh.name.includes('Siatka')) {
+            } else if (std.name.includes('Goal_Net') || std.name.includes('Fence') || mesh.name.includes('Siatka')) {
               std.side = THREE.DoubleSide;
               std.transparent = true;
               std.alphaTest = 0.25;
@@ -588,6 +607,15 @@ loader.load(
     });
     scene.add(model);
     model.updateMatrixWorld(true);
+    // Kolizje tylko z warstwy COLLIDER_LAYER: bez instancji (krzesełka — Octree widziałby jedną kopię
+    // w początku układu) i bez dalekiej panoramy bloków (rozdęłaby drzewo do kilometra).
+    model.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && !mesh.name.startsWith('Panorama')) {
+        mesh.layers.enable(COLLIDER_LAYER);
+      }
+    });
+    worldOctree.layers.set(COLLIDER_LAYER);
     worldOctree.fromGraphNode(model);
     octreeReady = true;
     console.log('World Octree built successfully from stadium model!');
