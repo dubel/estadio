@@ -36,7 +36,7 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Żółte barierki trybuny głównej | detale_trybuny_zachodniej.png | wzdłuż przejść, na balustradzie czołowej i na koronie | przejście w osi każdego przęsła z poręczami po obu stronach | średnia |
 | Ławki rezerwowych | lawka_rezerwowych.png, uwaga użytkownika | ćwiartki walca z mlecznej pleksi, stelaż biało-czerwony, wpuszczone w sektor VIP | 2 × 7 m, ±12 m od linii środkowej, wnęka zamiast 3 pierwszych rzędów | średnia (wymiary) |
 | Tunele Galery | tunel_galera.png, kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | dwa duże tunele przy styku z łukami, symetryczne; wcięcie o przekroju trapezu w widownię w stronę al. Unii, w głębi wylot z Przeplatanką na białym nadprożu, przed nim zwykłe ogrodzenie | Y 33–39 m i −39…−33 m, wcięcie w 10 pierwszych rzędów (u góry 6 m, dno 4,2 m), prześwit przelotu 2,6 m | średnia (wymiary) |
-| Krzesełka | widok_z_galery.jpg, 516e09e1189ce, lks05 | czerwone na Galerze, czerwone/białe w sektorze dolnym | instancje GPU | średnia (rozmieszczenie kolorów) |
+| Krzesełka | widok_z_galery.jpg, 516e09e1189ce, lks05, krzeselka.png (typ krzesełka) | czerwone na Galerze, czerwone/białe w sektorze dolnym | kubełki o profilu L bez nóżek, mocowane do stopnia, oparcie przy podstopniu rzędu wyżej (`build_seats.py`); instancje GPU | średnia (rozmieszczenie kolorów) |
 | Ławki sektora górnego | widok_z_galery.jpg, uwaga użytkownika | jasne, kość słoniowa | malowane drewno (0,80; 0,76; 0,64) | średnia |
 | Panorama bloków | lks07, lks08 (kompozycja) | kierunek: za Galerą i łukiem południowym | 12 bloków, 480–900 m (`SKYLINE` w `build_surroundings.py`) | **orientacyjna** |
 | Galera | ortofotomapa | od X = 43,5 m do 69 m | od 45 do 67 m + skarpa | wysoka |
@@ -95,6 +95,7 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `lawka_rezerwowych.png` | kadr z transmisji (ŁKS – Pogoń) | ławka rezerwowych: pleksi na biało-czerwonym stelażu |
 | `tunel_galera.png` | kadr z transmisji, Galera przy łuku północnym | duży tunel wejściowy z podestem i żółtymi poręczami |
 | `pod_zegarem.png` | kadr z transmisji, łuk południowy | sektory krzesełek i ławek łuku, bandy na koronie, tablica wyników |
+| `krzeselka.png` | stadion Zbrojovki Brno (nie ŁKS) — ten sam typ krzesełek | kształt: zaokrąglony profil L, bez nóżek, przykręcone do stopnia, lśniący plastik |
 | `grafy_na_trybunie.png`, `screenshot-…19-36-47.png` | graffiti na murkach | tekstury murków |
 
 ## Zasoby zewnętrzne w modelu

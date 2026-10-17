@@ -12,7 +12,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_seats import place_seats, seat_material, seats_in_row, SEAT_PITCH  # noqa: E402
+from build_seats import place_seats, seat_material, seats_in_row, SEAT_PITCH, SEAT_BACK_GAP  # noqa: E402
 from build_grandstand import _beam, _extrude_profile, _rail, PRZEPLATANKA_ASPECT  # noqa: E402
 import mathutils  # noqa: E402
 
@@ -411,7 +411,7 @@ def build_bowl(col, mats):
             d, z = _row(i)
             gaps = tunnel_gaps if i < TUNNEL_ROWS else []
             for a, b in spans:
-                row = [s for s in seats_in_row(R_TRACK_OUT + d + 0.7, z, a, b) if not _in_any(s[1], gaps)]
+                row = [s for s in seats_in_row(R_TRACK_OUT + d + STEP_D - SEAT_BACK_GAP, z, a, b) if not _in_any(s[1], gaps)]
                 n = len(row) if b - a > 10.0 else 0          # napis tylko na szerszej części sekcji
                 for k, s in enumerate(reversed(row)):         # k: kolumna od północy (z boiska — od lewej)
                     color = _galera_seat_color(kind, i, k, n)
@@ -595,7 +595,7 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
     seats = []
     for i in range(NUM_STEPS):
         d, z = _row(i)
-        r = R_TRACK_OUT + d + 0.7
+        r = R_TRACK_OUT + d + STEP_D - SEAT_BACK_GAP
         for a0, a1 in SOUTH_SEAT_SECTORS:
             gap = math.degrees(0.6 / r)
             n = int(math.radians(a1 - a0 - 2 * gap) * r / SEAT_PITCH)

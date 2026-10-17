@@ -18,7 +18,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_seats import place_seats, seat_material  # noqa: E402
+from build_seats import place_seats, seat_material, SEAT_BACK_GAP  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -701,7 +701,7 @@ def build_dugouts(col, mats):
 
 def lower_seat_rows():
     """Rzędy krzesełek sektora dolnego: (x, z) siedziska w układzie lokalnym trybuny."""
-    return [(LOWER_X0 + (i + 0.55) * LOWER_DX, LOWER_Z0 + i * LOWER_DZ) for i in range(LOWER_ROWS)]
+    return [(LOWER_X0 + (i + 1) * LOWER_DX - SEAT_BACK_GAP, LOWER_Z0 + i * LOWER_DZ) for i in range(LOWER_ROWS)]
 
 
 def in_dugout(y, row):
