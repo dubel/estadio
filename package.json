@@ -13,7 +13,8 @@
     "perf": "node tools/perf.mjs"
   },
   "dependencies": {
-    "three": "^0.180.0"
+    "three": "^0.180.0",
+    "three-mesh-bvh": "0.9.15"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.5.1",

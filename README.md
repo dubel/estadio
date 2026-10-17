@@ -27,7 +27,7 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
    - Bez muru oporowego: rzędy kończą się ok. 1,5 m przed ogrodzeniem na gruncie. Przed Galerą i między jej sekcjami stoi stalowe ogrodzenie (pełne panele u dołu, siatka wyżej), na łukach niskie z biało-czerwonymi słupkami.
    - Galera ma 6 sekcji kolorystycznych krzesełek: czerwoną, cztery biało-czerwono-białe (w jednej pikselowy napis ŁKS) i sekcję z czerwonym pasem u góry i gołym betonem z żółtymi barierkami.
    - Czerwone plastikowe krzesełka na prostej Galery.
-   - Dwa duże tunele wejściowe Galery przy styku z łukami: przelot pod wałem wychodzi na chodnik przed pierwszym rzędem przez trapezowy portal z Przeplatanką.
+   - Dwa duże tunele wejściowe Galery przy styku z łukami: wcięcie o przekroju trapezu w 10 pierwszych rzędów, w jego głębi wylot przelotu pod wałem z Przeplatanką na nadprożu.
 
 4. **Tablica Wyników i Zegar Omega (Południe)**:
    - Zlokalizowana na koronie krótkiej trybuny od południa, skierowana frontem na północ ku murawie.

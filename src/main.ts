@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { Octree } from 'three/examples/jsm/math/Octree.js';
 import { Capsule } from 'three/examples/jsm/math/Capsule.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { Lighting } from './lighting';
 import { PostFX } from './postfx';
+import { WorldCollider } from './collision';
 
 // --- STAN APLIKACJI ---
 let isFlyMode = false;
@@ -80,7 +80,7 @@ const viewpoints: Viewpoint[] = [
 ];
 
 // --- FIZYKA, KOLIZJE I SCHODY (OCTREE & CAPSULE CONTROLLER) ---
-const worldOctree = new Octree();
+const world = new WorldCollider();
 const COLLIDER_LAYER = 1;
 let octreeReady = false;
 
@@ -106,7 +106,7 @@ function playerCollisions() {
   if (!octreeReady) return;
   playerOnFloor = false;
   for (let iter = 0; iter < 2; iter++) {
-    const result = worldOctree.capsuleIntersect(playerCollider);
+    const result = world.capsuleIntersect(playerCollider);
     // Styk o zerowej głębokości ma zerową normalną — liczony jako „ściana” gasił prędkość
     if (!result || result.depth < 1e-6) break;
 
@@ -212,7 +212,7 @@ function updatePlayer(subDelta: number) {
       playerCollider.translate(new THREE.Vector3(deltaPosition.x * probe, 0, deltaPosition.z * probe));
 
       // Rozwiązanie ewentualnych kolizji na podwyższonym poziomie
-      const wallCheck = worldOctree.capsuleIntersect(playerCollider);
+      const wallCheck = world.capsuleIntersect(playerCollider);
       if (wallCheck) {
         playerCollider.translate(wallCheck.normal.multiplyScalar(wallCheck.depth));
       }
@@ -494,7 +494,7 @@ loader.load(
     scene.add(model);
     lighting.refreshShadows();
     model.updateMatrixWorld(true);
-    // Kolizje tylko z warstwy COLLIDER_LAYER: bez instancji (krzesełka — Octree widziałby jedną kopię
+    // Kolizje tylko z warstwy COLLIDER_LAYER: bez instancji (krzesełka — BVH widziałby jedną kopię
     // w początku układu) i bez dalekiej panoramy bloków (rozdęłaby drzewo do kilometra).
     model.traverse((child) => {
       const mesh = child as THREE.Mesh;
@@ -502,10 +502,8 @@ loader.load(
         mesh.layers.enable(COLLIDER_LAYER);
       }
     });
-    worldOctree.layers.set(COLLIDER_LAYER);
-    worldOctree.fromGraphNode(model);
+    world.build(model, COLLIDER_LAYER);
     octreeReady = true;
-    console.log('World Octree built successfully from stadium model!');
 
     // Gotowe
     if (fillBar) fillBar.style.width = '100%';

@@ -274,14 +274,13 @@ LKS_FONT = [                               # 5 × 7, od góry; Ł, K, S rozdziel
 ]
 
 # Dwa tunele wejściowe Galery w sekcjach skrajnych (tunel_galera.png — północny, południowy symetrycznie):
-# przelot pod wałem z placu wychodzi na chodnik przed pierwszym rzędem, przed nim zwykłe ogrodzenie.
-# Portal o przekroju trapezu (pochyłe boki), nadproże z Przeplatanką na białym tle. Zakresy Y leżą
-# na wierzchołkach podziału prostej (co 3 m, stadium_path).
+# wcięcie o przekroju trapezu w widownię od chodnika w stronę al. Unii, w jego głębi wylot przelotu pod
+# wałem z Przeplatanką na białym nadprożu. Przed wcięciem zwykłe ogrodzenie. Zakresy Y leżą na
+# wierzchołkach podziału prostej (co 3 m, stadium_path).
 GALERA_TUNNELS = ((-39.0, -33.0), (33.0, 39.0))
-TUNNEL_OPEN_H = 2.6     # prześwit
-TUNNEL_TOP = 3.6        # wierzch portalu; nadproże TUNNEL_OPEN_H..TUNNEL_TOP
-TUNNEL_SLOPE = 0.9      # boki portalu: podstawa 6 m, wierzch i prześwit 4.2 m
-TUNNEL_ROWS = 10        # rzędy zastąpione portalem (rząd 10 leży już nad TUNNEL_TOP)
+TUNNEL_OPEN_H = 2.6     # prześwit przelotu
+TUNNEL_SLOPE = 0.9      # pochylenie ścian wcięcia: dno i wylot 4.2 m, u góry pełne 6 m
+TUNNEL_ROWS = 10        # głębokość wcięcia w rzędach; wylot pod rzędem 10 (nadproże 2.6–3.8 m)
 SOUTH_ADS = [(-142.0, 0), (-129.0, 1), (-116.0, 2), (-103.0, 3)]   # bandy na koronie: (kąt, wiersz atlasu)
 
 
@@ -464,47 +463,54 @@ def _extrude_yz(bm, pts_yz, x0, x1):
 
 def build_galera_tunnels(col, mats):
     """
-    Tunele wejściowe Galery (tunel_galera.png): przelot TUNNEL_OPEN_H pod wałem od tylnej skarpy do chodnika
-    przed pierwszym rzędem. Nad pierwszymi TUNNEL_ROWS rzędami wystaje portal o przekroju trapezu:
-    pochyłe boki, nadproże z Przeplatanką, na wierzchu żółte barierki. Bryły zamknięte (kolizje jednostronne).
+    Tunele wejściowe Galery (tunel_galera.png, kolorystyka_galery_oraz_budynki_tla.png): wcięcie w widownię
+    od chodnika w stronę al. Unii przez pierwsze TUNNEL_ROWS rzędów, o przekroju trapezu — dno na poziomie
+    chodnika, ściany pochylone na zewnątrz aż do krawędzi rzędów. W głębi wcięcia wylot przelotu pod wałem
+    z Przeplatanką na nadprożu, przelot (prześwit TUNNEL_OPEN_H) prowadzi do tylnej skarpy.
+    Bryły zamknięte (kolizje Octree/BVH w Three.js są jednostronne).
     """
     bm, bm_y, bm_p = bmesh.new(), bmesh.new(), bmesh.new()
     uv = bm_p.loops.layers.uv.verify()
-    x_front = R_TRACK_OUT + FRONT_WALK
-    x_hood = R_TRACK_OUT + _row(TUNNEL_ROWS)[0]
+    d_mouth, z_mouth = _row(TUNNEL_ROWS)
+    x_mouth = R_TRACK_OUT + d_mouth
     treads = []
-    for i in range(NUM_STEPS):
+    for i in range(TUNNEL_ROWS, NUM_STEPS):
         d, z = _row(i)
-        treads.append([(R_TRACK_OUT + d, z), (R_TRACK_OUT + d + STEP_D, z)])
+        treads += [(R_TRACK_OUT + d, z), (R_TRACK_OUT + d + STEP_D, z)]
     back = STAND_BACK + 5.0                                   # stopa tylnej skarpy (build_bowl)
     slope_x = lambda z: back - 5.0 * z / STAND_H
-    side = [(x_front, -0.05)] + [p for t in treads for p in t] + [(back, -0.05)]
-    roof = ([(x_front, TUNNEL_OPEN_H), (x_front, TUNNEL_TOP), (x_hood, TUNNEL_TOP)]
-            + [p for t in treads[TUNNEL_ROWS:] for p in t] + [(slope_x(TUNNEL_OPEN_H), TUNNEL_OPEN_H)])
+    side = [(x_mouth, -0.05)] + treads + [(back, -0.05)]
+    roof = [(x_mouth, TUNNEL_OPEN_H)] + treads + [(slope_x(TUNNEL_OPEN_H), TUNNEL_OPEN_H)]
     sl = TUNNEL_SLOPE
     for ya, yb in GALERA_TUNNELS:
-        # Ściany boczne z profilem widowni, strop z widownią powyżej, pochyłe boki portalu
+        # Wcięcie: w każdym rzędzie ściany od dna do wysokości stopnia, pochylone tak, że na wysokości
+        # wylotu sięgają krawędzi przęsła (ya, yb)
+        for i in range(TUNNEL_ROWS):
+            d, z = _row(i)
+            inset = sl * (1.0 - z / z_mouth)
+            x0, x1 = R_TRACK_OUT + d, R_TRACK_OUT + d + STEP_D
+            _extrude_yz(bm, [(ya, -0.05), (ya + sl, -0.05), (ya + inset, z), (ya, z)], x0, x1)
+            _extrude_yz(bm, [(yb - sl, -0.05), (yb, -0.05), (yb, z), (yb - inset, z)], x0, x1)
+        # Za wylotem: ściany przelotu z widownią na wierzchu i strop
         _extrude_profile(bm, side, ya, ya + sl)
         _extrude_profile(bm, side, yb - sl, yb)
         _extrude_profile(bm, roof, ya + sl, yb - sl)
-        _extrude_yz(bm, [(ya, -0.05), (ya + sl, -0.05), (ya + sl, TUNNEL_TOP)], x_front, x_hood)
-        _extrude_yz(bm, [(yb - sl, -0.05), (yb, -0.05), (yb - sl, TUNNEL_TOP)], x_front, x_hood)
 
-        # Nadproże: Przeplatanka na białym tle (tekstura 4:1, EXTEND — herb zachowuje proporcje)
-        w, h = yb - ya - 2 * sl, TUNNEL_TOP - TUNNEL_OPEN_H
+        # Nadproże wylotu: Przeplatanka na białym tle (tekstura 4:1, EXTEND — herb zachowuje proporcje)
+        w, h = yb - ya - 2 * sl, z_mouth - TUNNEL_OPEN_H
         half_u = w / h / PRZEPLATANKA_ASPECT / 2
-        x = x_front - 0.02
-        face = bm_p.faces.new([bm_p.verts.new(p) for p in [(x, ya + sl, TUNNEL_OPEN_H), (x, ya + sl, TUNNEL_TOP),
-                                                         (x, yb - sl, TUNNEL_TOP), (x, yb - sl, TUNNEL_OPEN_H)]])
+        x = x_mouth - 0.02
+        face = bm_p.faces.new([bm_p.verts.new(p) for p in [(x, ya + sl, TUNNEL_OPEN_H), (x, ya + sl, z_mouth),
+                                                         (x, yb - sl, z_mouth), (x, yb - sl, TUNNEL_OPEN_H)]])
         for loop in face.loops:
             t = (yb - sl - loop.vert.co.y) / w
             loop[uv].uv = (0.5 + (t - 0.5) * 2 * half_u, (loop.vert.co.z - TUNNEL_OPEN_H) / h)
 
-        # Barierki na wierzchu portalu (od boiska i wzdłuż krawędzi)
-        xr = x_front + 0.1
-        _rail(bm_y, (xr, ya + sl, TUNNEL_TOP), (xr, yb - sl, TUNNEL_TOP), 2.1)
-        for ye in (ya + sl + 0.05, yb - sl - 0.05):
-            _rail(bm_y, (xr, ye, TUNNEL_TOP), (x_hood, ye, TUNNEL_TOP), 2.0)
+        # Żółte barierki: wzdłuż obu krawędzi wcięcia i nad wylotem (rząd TUNNEL_ROWS)
+        (d0, z0), (d9, z9) = _row(0), _row(TUNNEL_ROWS - 1)
+        for ye in (ya + 0.05, yb - 0.05):
+            _rail(bm_y, (R_TRACK_OUT + d0 + 0.3, ye, z0), (R_TRACK_OUT + d9 + 0.3, ye, z9), 2.0)
+        _rail(bm_y, (x_mouth + 0.1, ya + 0.05, z_mouth), (x_mouth + 0.1, yb - 0.05, z_mouth), 2.0)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bmesh.ops.recalc_face_normals(bm_y, faces=bm_y.faces)
     _finish_mesh(col, bm, "Galera_Tunele", [mats['concrete']])
