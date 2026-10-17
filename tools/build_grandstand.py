@@ -329,6 +329,16 @@ def create_materials():
     mat_sheet.use_backface_culling = False
     mats['sheet_steel'] = mat_sheet
 
+    # Mural „Tutaj wychowani … wierni i oddani” i graffiti dzielnic na bloczkach (grafy_na_trybunie.png,
+    # tools/generate_stadium_textures.py: generate_tribune_graffiti_textures)
+    for key, name, tex in (('mural', "Mat_Mural_Tutaj_Wychowani", "mural_tutaj_wychowani.png"),
+                           ('graffiti_blocks', "Mat_Graffiti_Bloczki", "graffiti_bloczki.png")):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.85
+        setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, tex))
+        mats[key] = m
+
     # Żółta farba: barierki i obrzeża tuneli (detale_trybuny_zachodniej.png, widok_z_galery.jpg)
     mats['yellow'] = seat_material("Mat_Barierki_Zolte", (0.85, 0.66, 0.08))
 
@@ -396,6 +406,15 @@ AISLE_W = 1.4                           # przejście w osi przęsła: od korony 
 # nad daszkiem sektora dolnego i poniżej wyjść z tuneli. Stoją w osiach dźwigarów, więc przerwy między
 # nimi wypadają pod tunelami — schodzący z tunelu nie trafia na bloczek.
 BLOCK_ROW, BLOCK_W, BLOCK_H, BLOCK_D = 4, 3.6, 1.5, 0.4
+# Na 4 najbardziej północnych bloczkach zamiast Przeplatanki graffiti dzielnic (grafy_na_trybunie.png):
+# numer osi dźwigara -> wiersz atlasu graffiti_bloczki.png (…DZIANE, STARE, POLESIE, TOLECHÓW od południa)
+GRAFFITI_BLOCKS = {4: 0, 3: 1, 2: 2, 1: 3}
+# Mural na licu balustrady czołowej nad północną częścią sektora dolnego (grafy_na_trybunie.png):
+# od MURAL_Y[0] (lewy koniec patrząc z boiska, południe) do MURAL_Y[1]; ok. 35 m według podziału na przęsła
+MURAL_Y = (4.3 * TOTAL_LENGTH_Y / NUM_BAYS, 0.5 * TOTAL_LENGTH_Y / NUM_BAYS)
+# Platforma kamery telewizyjnej na koronie na wysokości linii środkowej (grafy_na_trybunie.png,
+# detale_trybuny_zachodniej.png): kabina na słupkach, otwarta ku boisku
+CAMERA_Y = 68.0
 
 # Ławki rezerwowych wpuszczone w sektor VIP (lawka_rezerwowych.png): ćwiartki walca z mlecznej pleksi
 # na stelażu z białych i czerwonych profili. Linia środkowa boiska leży na Y lokalnym 68 (środek trybuny
@@ -582,7 +601,7 @@ def build_grandstand(col, mats):
     _rail(bm_yellow, (LIP_X + 0.05, 0.3, LIP_TOP - 0.45), (LIP_X + 0.05, TOTAL_LENGTH_Y - 0.3, LIP_TOP - 0.45), 1.55)
     _rail(bm_yellow, (REAR_X - 0.08, 0.3, UPPER_Z1 + 0.6), (REAR_X - 0.08, TOTAL_LENGTH_Y - 0.3, UPPER_Z1 + 0.6), 1.55)
 
-    # Bloczki z Przeplatanką w osiach wewnętrznych dźwigarów (lico z herbem buduje build_przeplatanka_blocks)
+    # Bloczki z Przeplatanką w osiach wewnętrznych dźwigarów (lica malowideł buduje build_tribune_paintings)
     bx0, _, bz = upper_row(BLOCK_ROW)
     for k in range(1, NUM_BAYS):
         yk = k * BAY_WIDTH_Y
@@ -635,36 +654,78 @@ def build_grandstand(col, mats):
     _box(bm_f, 0.5, 0.6, 4.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, 4.3, 4.65)
     _finish(col, bm_f, "Blenda_Fasada_Biala", mats['roof_white'])
 
-    build_przeplatanka_blocks(col, mats)
+    build_tribune_paintings(col, mats)
+    build_camera_platform(col, mats)
     build_dugouts(col, mats)
 
     print(f"Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, {NUM_BAYS} tuneli).")
     return obj_lower, obj_upper
 
 
-def build_przeplatanka_blocks(col, mats):
-    """
-    Lica bloczków z Przeplatanką ŁKS (skierowane ku boisku). Tekstura 4:1 z trybem EXTEND: u poza [0, 1]
-    przedłuża białe tło, więc herb zachowuje proporcje na bloczku o innych proporcjach.
-    """
+def _wall_decal(col, name, mat, quads):
+    """Płaskie lica malowideł skierowane ku boisku (-X): quads = [(x, y_lewy, y_prawy, z0, z1, (u0, u1), (v0, v1))].
+    „Lewy” patrząc z boiska to większe Y (południe)."""
     bm = bmesh.new()
     uv = bm.loops.layers.uv.verify()
-    bx0, _, bz = upper_row(BLOCK_ROW)
-    x, z_bot, z_top = bx0 - 0.02, bz, bz + BLOCK_H
-    half_u = BLOCK_W / BLOCK_H / PRZEPLATANKA_ASPECT / 2
-    for k in range(1, NUM_BAYS):
-        ya, yb = k * BAY_WIDTH_Y - BLOCK_W / 2, k * BAY_WIDTH_Y + BLOCK_W / 2
-        face = bm.faces.new([bm.verts.new(p) for p in [(x, ya, z_bot), (x, ya, z_top), (x, yb, z_top), (x, yb, z_bot)]])
+    for x, y_left, y_right, z0, z1, (u0, u1), (v0, v1) in quads:
+        face = bm.faces.new([bm.verts.new(p) for p in [(x, y_right, z0), (x, y_right, z1), (x, y_left, z1), (x, y_left, z0)]])
         for loop in face.loops:
-            t = (yb - loop.vert.co.y) / BLOCK_W
-            loop[uv].uv = (0.5 + (t - 0.5) * 2 * half_u, (loop.vert.co.z - z_bot) / BLOCK_H)
-    mesh = bpy.data.meshes.new("Murki_Przeplatanka_Mesh")
+            t = (y_left - loop.vert.co.y) / (y_left - y_right)
+            loop[uv].uv = (u0 + t * (u1 - u0), v0 + (loop.vert.co.z - z0) / (z1 - z0) * (v1 - v0))
+    mesh = bpy.data.meshes.new(name + "_Mesh")
     bm.normal_update()
     bm.to_mesh(mesh)
     bm.free()
-    obj = bpy.data.objects.new("Murki_Przeplatanka", mesh)
-    obj.data.materials.append(mats['przeplatanka'])
+    obj = bpy.data.objects.new(name, mesh)
+    obj.data.materials.append(mat)
     col.objects.link(obj)
+
+
+def build_tribune_paintings(col, mats):
+    """
+    Malowidła na sektorze górnym:
+    - Przeplatanka ŁKS na licach bloczków; tekstura 4:1 z trybem EXTEND: u poza [0, 1] przedłuża białe tło,
+      więc herb zachowuje proporcje na bloczku o innych proporcjach;
+    - graffiti dzielnic na bloczkach GRAFFITI_BLOCKS (atlas graffiti_bloczki.png, 4 wiersze);
+    - mural „Tutaj wychowani … wierni i oddani” na licu balustrady czołowej (MURAL_Y).
+    """
+    bx0, _, bz = upper_row(BLOCK_ROW)
+    x, z_bot, z_top = bx0 - 0.02, bz, bz + BLOCK_H
+    half_u = BLOCK_W / BLOCK_H / PRZEPLATANKA_ASPECT / 2
+    przp, graf = [], []
+    for k in range(1, NUM_BAYS):
+        y_left, y_right = k * BAY_WIDTH_Y + BLOCK_W / 2, k * BAY_WIDTH_Y - BLOCK_W / 2
+        if k in GRAFFITI_BLOCKS:
+            row = GRAFFITI_BLOCKS[k]
+            graf.append((x, y_left, y_right, z_bot, z_top, (0.0, 1.0), (1.0 - (row + 1) / 4, 1.0 - row / 4)))
+        else:
+            przp.append((x, y_left, y_right, z_bot, z_top, (0.5 - half_u, 0.5 + half_u), (0.0, 1.0)))
+    _wall_decal(col, "Murki_Przeplatanka", mats['przeplatanka'], przp)
+    _wall_decal(col, "Bloczki_Graffiti", mats['graffiti_blocks'], graf)
+    _wall_decal(col, "Mural_Tutaj_Wychowani", mats['mural'],
+                [(LIP_X - 0.02, MURAL_Y[0], MURAL_Y[1], CANOPY_BACK_Z + 0.06, LIP_TOP, (0.0, 1.0), (0.0, 1.0))])
+
+
+def build_camera_platform(col, mats):
+    """
+    Platforma kamery telewizyjnej na koronie (grafy_na_trybunie.png): kabina 2.2 × 2.2 m na czterech
+    słupkach, podłoga 0.5 m nad koroną, ściany z tyłu i z boków, od boiska niski parapet, daszek z okapem.
+    """
+    bm = bmesh.new()
+    y0, y1 = CAMERA_Y - 1.1, CAMERA_Y + 1.1
+    xf, xb = UPPER_X1 - 1.8, REAR_X                     # przód kabiny nad 31. rzędem, tył na koronie
+    floor_z, roof_z = UPPER_Z1 + 1.5, UPPER_Z1 + 3.7
+    row_front = upper_row(int((xf - UPPER_X0) / UPPER_DX))
+    for px, base in ((xf + 0.05, row_front[2]), (xb - 0.05, UPPER_Z1 + 1.0)):
+        for py in (y0 + 0.05, y1 - 0.05):
+            _box(bm, px - 0.05, px + 0.05, py - 0.05, py + 0.05, base, floor_z)
+    _box(bm, xf, xb, y0, y1, floor_z, floor_z + 0.1)                   # podłoga
+    _box(bm, xb - 0.06, xb, y0, y1, floor_z + 0.1, roof_z)             # ściana tylna
+    for ya in (y0, y1 - 0.05):
+        _box(bm, xf, xb, ya, ya + 0.05, floor_z + 0.1, roof_z)         # ściany boczne
+    _box(bm, xf, xf + 0.05, y0, y1, floor_z + 0.1, floor_z + 1.0)      # parapet od boiska
+    _box(bm, xf - 0.35, xb + 0.1, y0 - 0.1, y1 + 0.1, roof_z, roof_z + 0.08)   # daszek z okapem
+    _finish(col, bm, "Platforma_Kamery", mats['metal'])
 
 
 def build_dugouts(col, mats):

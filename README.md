@@ -12,7 +12,7 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
    - Konstrukcja żelbetowa późnego modernizmu/brutalizmu PRL (proj. J. Wyżnikiewicz, 1969): 14 przęseł po ~9,3 m (ok. 130 m długości) i zewnętrzne ukośne odciągi.
    - Przekrój wg rysunku projektowego: sektor górny 33 rzędy ławek (malowane drewno w kolorze kości słoniowej), korona ok. 18,4 m nad terenem, bez dachu; biała balustrada czołowa z Przeplatanką ŁKS.
    - Sektor dolny: 10 rzędów plastikowych krzesełek pod daszkiem (biały–czerwony–biały), za nim promenada na wysokości 3,2 m.
-   - Tunel w każdym z 14 przęseł: schody z hali pod trybuną wyprowadzają na 7. rząd sektora górnego. Poniżej wyjść, 4–5 rzędów nad daszkiem, stoją bloczki z Przeplatanką. Przejścia mają żółte poręcze.
+   - Tunel w każdym z 14 przęseł: schody z hali pod trybuną wyprowadzają na 7. rząd sektora górnego. Poniżej wyjść, 4–5 rzędów nad daszkiem, stoją bloczki z Przeplatanką. Przejścia mają żółte poręcze. W północnej części mural „Tutaj wychowani … wierni i oddani” na balustradzie czołowej i graffiti dzielnic na bloczkach, na koronie platforma kamery.
    - Ławki rezerwowych z mlecznej pleksi wpuszczone w sektor dolny.
    - Z tyłu (od zachodu, strona Atlas Areny) podwieszony budynek ze wstęgą okien.
 

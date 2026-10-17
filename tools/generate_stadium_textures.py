@@ -283,25 +283,46 @@ def generate_przeplatanka_texture():
     wall_img.save(save_path)
     print(f"Zapisano teksturę murka z autentyczną Przeplatanką: {save_path}")
 
-def generate_canopy_graffiti_texture():
-    """Generuje autentyczne kibicowskie graffiti na murek północny pod Trybuną Główną."""
-    src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "zdjecia", "grafy_na_trybunie.png")
-    w, h = 1024, 256
-    
-    if os.path.exists(src_path):
-        im = Image.open(src_path)
-        # Wycinamy fragment z autentycznym graffiti osiedlowym ŁKS
-        crop = im.crop((120, 200, 2200, 440)).resize((w, h), Image.Resampling.LANCZOS)
-        save_path = os.path.join(TEXTURES_DIR, "murek_graffiti_north.png")
-        crop.save(save_path)
-        print(f"Zapisano teksturę graffiti północnego murka: {save_path}")
-    else:
-        img = Image.new("RGBA", (w, h), (230, 230, 225, 255))
-        draw = ImageDraw.Draw(img)
-        font = get_font(52)
-        draw.text((w // 2, h // 2), "ŁKS LIMANKA • TEOFILÓW • ŻUBARDŹ", fill=(195, 25, 30, 255), font=font, anchor="mm")
-        save_path = os.path.join(TEXTURES_DIR, "murek_graffiti_north.png")
-        img.save(save_path)
+GRAFFITI_PHOTO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "zdjecia", "grafy_na_trybunie.png")
+
+# Narożniki (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny) w pikselach grafy_na_trybunie.png (2858 x 1454)
+MURAL_QUAD = [(186, 636), (2803, 806), (2803, 895), (186, 745)]          # „Tutaj wychowani … wierni i oddani”
+BLOCK_QUADS = [                                                          # bloczki od południa (lewo na zdjęciu)
+    [(0, 458), (585, 488), (585, 590), (0, 560)],          # …DZIANE
+    [(700, 510), (1300, 540), (1300, 650), (700, 600)],    # STARE ŁK
+    [(1430, 582), (1950, 607), (1950, 700), (1430, 690)],  # POLESIE
+    [(2010, 625), (2470, 655), (2470, 750), (2010, 720)],  # TOLECHÓW
+]
+
+
+def _rectify(im, quad, size):
+    """Prostuje czworokąt ze zdjęcia do prostokąta size (przekształcenie perspektywiczne, nie dwuliniowe)."""
+    w, h = size
+    dst = [(0, 0), (w, 0), (w, h), (0, h)]
+    rows = []
+    for (x, y), (u, v) in zip(quad, dst):
+        rows.append([u, v, 1, 0, 0, 0, -x * u, -x * v])
+        rows.append([0, 0, 0, u, v, 1, -y * u, -y * v])
+    coeffs = np.linalg.solve(np.array(rows, dtype=float), np.array([c for p in quad for c in p], dtype=float))
+    return im.transform(size, Image.Transform.PERSPECTIVE, tuple(coeffs), Image.Resampling.BICUBIC)
+
+
+def generate_tribune_graffiti_textures():
+    """
+    Mural na licu balustrady czołowej sektora górnego i graffiti dzielnic na bloczkach (północna część
+    trybuny głównej), wyprostowane z grafy_na_trybunie.png:
+    - mural_tutaj_wychowani.png (2048 x 128),
+    - graffiti_bloczki.png: atlas 4 wierszy 512 x 256 (od góry …DZIANE, STARE, POLESIE, TOLECHÓW).
+    """
+    im = Image.open(GRAFFITI_PHOTO).convert("RGB")
+    mural = _rectify(im, MURAL_QUAD, (2048, 128))
+    mural.save(os.path.join(TEXTURES_DIR, "mural_tutaj_wychowani.png"))
+    atlas = Image.new("RGB", (512, 1024))
+    for k, quad in enumerate(BLOCK_QUADS):
+        atlas.paste(_rectify(im, quad, (512, 256)), (0, k * 256))
+    atlas.save(os.path.join(TEXTURES_DIR, "graffiti_bloczki.png"))
+    print("Zapisano mural i graffiti bloczków (grafy_na_trybunie.png)")
+
 
 def generate_corrugated_roof_textures():
     """Generuje tekstury blachy trapezowej / falistej w kolorze białym i czerwonym ŁKS."""
@@ -530,7 +551,7 @@ if __name__ == "__main__":
     generate_fan_graffiti_banners()
     generate_scoreboard_textures()
     generate_przeplatanka_texture()
-    generate_canopy_graffiti_texture()
+    generate_tribune_graffiti_textures()
     generate_corrugated_roof_textures()
     generate_floodlight_glow_sprite()
     generate_goal_net_texture()

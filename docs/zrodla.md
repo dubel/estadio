@@ -32,6 +32,8 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Trybuna główna: głębokość | przekrój Wyżnikiewicza + ortofotomapa | 41,7 m (przekrój), 39–44 m (orto) | 41,55 m (z budynkiem tylnym) | wysoka |
 | Trybuna główna: przekrój | przekrój Wyżnikiewicza (skala 0–10 m) | patrz niżej | 10 + 33 rzędy, korona 18,4 m (stałe w `build_grandstand.py`) | wysoka |
 | Tunele (vomitoria) | widok_na_trybune_z_sektora_gosci.png, detale_trybuny_zachodniej.png | tunel w każdym przęśle, żółte obrzeża ścian | 14 tuneli w osiach przęseł, wyjście na rząd 7 sektora górnego; przebieg schodów w hali to założenie | średnia |
+| Mural i graffiti | grafy_na_trybunie.png | mural na balustradzie czołowej nad północną częścią, graffiti dzielnic na 4 bloczkach | mural na licu balustrady, Y lokalne 4,6–39,9 m; graffiti na bloczkach w osiach dźwigarów 1–4 | średnia |
+| Platforma kamery | grafy_na_trybunie.png, detale_trybuny_zachodniej.png | kabina z daszkiem na słupkach na koronie | 2,2 × 2,2 m, podłoga 0,5 m nad koroną, oś linii środkowej | **założenie** (położenie) |
 | Bloczki z Przeplatanką | bloczki_na_trybunie.png, widok_na_trybune_z_sektora_gosci.png, uwaga użytkownika | 4–5 rzędów nad daszkiem, poniżej wyjść z tuneli, przerwy pod tunelami | 13 bloków 3,6 × 1,5 m na rzędzie 5, w osiach dźwigarów | średnia |
 | Żółte barierki trybuny głównej | detale_trybuny_zachodniej.png | wzdłuż przejść, na balustradzie czołowej i na koronie | przejście w osi każdego przęsła z poręczami po obu stronach | średnia |
 | Ławki rezerwowych | lawka_rezerwowych.png, uwaga użytkownika | ćwiartki walca z mlecznej pleksi, stelaż biało-czerwony, wpuszczone w sektor VIP | 2 × 7 m, ±12 m od linii środkowej, wnęka zamiast 3 pierwszych rzędów | średnia (wymiary) |
@@ -96,7 +98,7 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `tunel_galera.png` | kadr z transmisji, Galera przy łuku północnym | duży tunel wejściowy z podestem i żółtymi poręczami |
 | `pod_zegarem.png` | kadr z transmisji, łuk południowy | sektory krzesełek i ławek łuku, bandy na koronie, tablica wyników |
 | `krzeselka.png` | stadion Zbrojovki Brno (nie ŁKS) — ten sam typ krzesełek | kształt: zaokrąglony profil L, bez nóżek, przykręcone do stopnia, lśniący plastik |
-| `grafy_na_trybunie.png`, `screenshot-…19-36-47.png` | graffiti na murkach | tekstury murków |
+| `grafy_na_trybunie.png`, `screenshot-…19-36-47.png` | północna część trybuny głównej od boiska | mural „Tutaj wychowani … wierni i oddani” na balustradzie czołowej, graffiti dzielnic na bloczkach (…DZIANE, STARE, POLESIE, TOLECHÓW), platforma kamery na koronie — tekstury wyprostowane z tego zdjęcia (`generate_tribune_graffiti_textures`) |
 
 ## Zasoby zewnętrzne w modelu
 
@@ -120,7 +122,8 @@ Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba 
 6. **Panorama bloków**: pozycje i wysokości to kompozycja ze zdjęć lks07/lks08, bez pomiaru. Do zweryfikowania na mapie (rejon Karolewa / za stacją Łódź Kaliska).
 7. **Łuk północny**: model ma tam gołe stopnie (krzesełek, ławek i band brak). Nie ma zdjęcia, które by to pokazywało.
 9. **Granica ogrodzeń**: wysokie ogrodzenie stoi tylko na prostej Galery, niskie na łuku południowym i na łuku północnym za blachą. Dokładnego miejsca przejścia nie ma na zdjęciach.
-11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, platforma kamery na koronie trybuny głównej, graffiti na balustradzie czołowej (część przęseł), pawilon VIP w północnej części sektora dolnego.
+11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, pawilon VIP w północnej części sektora dolnego (na `grafy_na_trybunie.png` widać pod nim biały daszek, którego model w przęsłach 0–3 nie ma).
+12. **Mural i platforma kamery**: długość muralu (ok. 35 m, przęsła 0,5–4,3) oszacowana z podziału na przęsła na zdjęciu; platforma kamery postawiona w osi linii środkowej (typowe miejsce), na zdjęciu jej położenie wzdłuż trybuny jest niepewne. Graffiti bloczków ma wpieczone fragmenty poręczy ze zdjęcia.
 10. **Bandy na koronie**: 4 tablice z napisami odczytanymi z `widok_na_zegar_u2.png`; pozycje orientacyjne, łuk północny bez band.
 8. **Barierki**: żółte poręcze przy przejściach Galery, krótkie barierki w blokach krzesełek łuku południowego i poprzeczne na jego betonowej połowie są w modelu; ich dokładny przebieg to przybliżenie ze zdjęć.
 5. **Chodnik przed pierwszym rzędem**: 1,5 m i pierwszy stopień 0,45 m oszacowane ze zdjęć. Brak wymiaru.
