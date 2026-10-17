@@ -70,6 +70,9 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `DSC01679.jpg` | tablica MOSiR z planem sektorów | nazwy sektorów (G, F2, F1, E2, E1, E; D goście; trybuna B; loża C; VIP boxy) |
 | `widok_z_galery.jpg` | widok z sektora E (Galera) na trybunę główną, ok. 2010–2012 | brak fosy; ogrodzenie (pełne brązowe panele u dołu, siatka wyżej); trawa zamiast bieżni; podział daszku sektora dolnego (biały–czerwony–biały, długi biały na N); maszt SW tuż za południowym końcem trybuny głównej; tablica na łuku południowym |
 | `widok_na_zegar_u2.png` | łuk południowy nocą, ok. 2010–2012 (fotopolska) | czerwone krzesełka w sektorach łuku, ławki z żółtymi barierkami bliżej Galery; **niskie** ogrodzenie (~1,2 m, biało-czerwone słupki) na łuku; ciemny ślad bieżni w trawie; bandy reklamowe na słupach na koronie; maszt SW za łukiem |
+| `bloczki_na_trybunie.png` | z trybuny głównej na łuk południowy i Galerę | balustrada czołowa sektora górnego: betonowe bloki z graffiti i żółtą poręczą nad daszkiem; **wiata nad dolnymi rzędami Galery** (zielone słupy, ciemny dach); bandy na koronie łuku i Galery |
+| `detale_trybuny_zachodniej.png` | sektor górny trybuny głównej z bliska | żółte poręcze wzdłuż przejść i rzędów, graffiti na murkach, **reflektory na słupach na koronie**, platforma kamery, anteny GSM |
+| `widok_na_trybune_z_sektora_gosci.png` | z sektora gości (NE) na trybunę główną | Atlas Arena tuż za trybuną; w północnej części długi biały pawilon (loże/VIP) przed sektorem dolnym; **pełne ogrodzenie z blachy** przy łuku północnym |
 | `516e09e41f411…`, `516e09e800a6f…`, `516e09e9f3933…`, `516e09e31b4d3…` | łuki i Galera z ogrodzeniem | mur czołowy, ogrodzenie, wyjścia ewakuacyjne |
 | `516e09e1189ce…`, `516e09e210a69…`, `lks05.jpg`, `lks04.jpg` | sektor dolny pod daszkiem | krzesełka, konstrukcja daszku, fasada lóż |
 | `4ff5cb…` (3 pliki, cz-b) | trybuna główna i bieżnia z torami | bieżnia lekkoatletyczna z liniami torów (okres wcześniejszy) |
@@ -92,6 +95,7 @@ Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba 
 6. **Panorama bloków**: pozycje i wysokości to kompozycja ze zdjęć lks07/lks08, bez pomiaru. Do zweryfikowania na mapie (rejon Karolewa / za stacją Łódź Kaliska).
 7. **Łuk północny**: model ma tam gołe stopnie (krzesełek, ławek i band brak). Nie ma zdjęcia, które by to pokazywało.
 9. **Granica ogrodzeń**: wysokie ogrodzenie stoi tylko na prostej Galery, niskie na obu łukach. Dokładnego miejsca przejścia nie ma na zdjęciach.
+11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, reflektory na słupach i platforma kamery na koronie trybuny głównej, żółte poręcze w sektorze górnym, graffiti na balustradzie czołowej (część przęseł), pawilon VIP w północnej części sektora dolnego, ogrodzenie z blachy przy łuku północnym.
 10. **Bandy na koronie**: 4 tablice z napisami odczytanymi z `widok_na_zegar_u2.png`; pozycje orientacyjne, łuk północny bez band.
 8. **Barierki**: żółte poręcze przy przejściach Galery i barierka poprzeczna w sekcji ławek łuku są w modelu; ich dokładny przebieg to przybliżenie ze zdjęć.
 5. **Wysokość muru czołowego**: 1,5 m oszacowane z lks02. Brak wymiaru.
