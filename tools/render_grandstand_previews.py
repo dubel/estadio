@@ -4,8 +4,11 @@ Renderuje dwa ujęcia Trybuny Głównej: od strony murawy oraz od al. Unii.
 import bpy
 import mathutils
 import math
+import os
 
-blend_path = "/home/mike/Projects/estadiodagruz/trybuna_glowna_pelna.blend"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+blend_path = os.path.join(ROOT, "trybuna_glowna_pelna.blend")
 bpy.ops.wm.open_mainfile(filepath=blend_path)
 
 # Kamera
@@ -39,7 +42,7 @@ direction = target - cam_pos
 cam_obj.location = cam_pos
 cam_obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
 
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/preview_grandstand_front.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/preview_grandstand_front.png")
 bpy.ops.render.render(write_still=True)
 print("Wyrenderowano: preview_grandstand_front.png")
 
@@ -50,6 +53,6 @@ direction_rear = target_rear - cam_pos_rear
 cam_obj.location = cam_pos_rear
 cam_obj.rotation_euler = direction_rear.to_track_quat('-Z', 'Y').to_euler()
 
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/preview_grandstand_rear.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/preview_grandstand_rear.png")
 bpy.ops.render.render(write_still=True)
 print("Wyrenderowano: preview_grandstand_rear.png")

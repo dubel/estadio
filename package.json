@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:physics": "node tools/test_physics.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

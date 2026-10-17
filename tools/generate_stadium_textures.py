@@ -1,5 +1,6 @@
 import os
 import math
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 
 TEXTURES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "textures")
@@ -264,21 +265,8 @@ def generate_przeplatanka_texture():
     # Wczytanie wypreparowanej Przeplatanki
     przep_path = os.path.join(TEXTURES_DIR, "przeplatanka_clean.png")
     if not os.path.exists(przep_path):
-        brain_path = "/home/mike/.gemini/antigravity/brain/82c65cda-bf05-435a-8352-5d980746f828/.user_uploaded/media_1792191650618.png"
-        if os.path.exists(brain_path):
-            im = Image.open(brain_path).convert('RGB')
-            arr = np.array(im, dtype=np.float32)
-            bg = np.array([247, 247, 247], dtype=np.float32)
-            dist = np.sqrt(np.sum((arr - bg)**2, axis=2))
-            alpha = np.clip((dist - 15.0) / 30.0, 0.0, 1.0) * 255.0
-            out = np.zeros((arr.shape[0], arr.shape[1], 4), dtype=np.uint8)
-            out[:,:,:3] = np.array(im)
-            out[:,:,3] = alpha.astype(np.uint8)
-            out_img = Image.fromarray(out, 'RGBA')
-            przep = out_img.crop(out_img.getbbox())
-            przep.save(przep_path)
-        else:
-            return
+        print(f"Brak {przep_path} — pomijam teksturę murka z Przeplatanką.")
+        return
     else:
         przep = Image.open(przep_path).convert('RGBA')
 
@@ -293,9 +281,6 @@ def generate_przeplatanka_texture():
 
     save_path = os.path.join(TEXTURES_DIR, "przeplatanka_wall.png")
     wall_img.save(save_path)
-    # Kopia do public dla Three.js
-    pub_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "assets", "textures", "przeplatanka_wall.png")
-    wall_img.save(pub_path)
     print(f"Zapisano teksturę murka z autentyczną Przeplatanką: {save_path}")
 
 def generate_canopy_graffiti_texture():
@@ -371,18 +356,84 @@ def generate_floodlight_glow_sprite():
     img.save(save_path)
     print(f"Zapisano sprite rozbłysku jupitera: {save_path}")
 
+def generate_goal_net_texture():
+    """
+    Generuje teksturę siatki bramkarskiej z oczkami i pasami biało-czerwono-białymi
+    (w stylu Ajaxu Amsterdam i barw ŁKS Łódź).
+    Siatka ma transparentne oczka oraz 3 pionowe pasy:
+    Lewy pas: biały (1/3 szerokości)
+    Środkowy pas: czerwony ŁKS (1/3 szerokości)
+    Prawy pas: biały (1/3 szerokości)
+    """
+    W, H = 2048, 1024
+    num_cells_x = 48
+    num_cells_y = 24
+    
+    # Inicjalizacja tła z kolorem pasów, ale z alpha = 0 (dla idealnego filtrowania mipmap bez ciemnych obwódek)
+    arr = np.zeros((H, W, 4), dtype=np.uint8)
+    split1 = int(W * 0.333)
+    split2 = int(W * 0.667)
+    
+    # Kolory bazowe pasów
+    WHITE_RGB = np.array([255, 255, 255], dtype=np.uint8)
+    RED_RGB = np.array([235, 25, 30], dtype=np.uint8)
+    
+    arr[:, :split1, :3] = WHITE_RGB
+    arr[:, split1:split2, :3] = RED_RGB
+    arr[:, split2:, :3] = WHITE_RGB
+    arr[:, :, 3] = 0 # początkowo całe tło jest przezroczyste
+    
+    img = Image.fromarray(arr, 'RGBA')
+    draw = ImageDraw.Draw(img)
+    
+    dx = W / num_cells_x
+    dy = H / num_cells_y
+    cord_w = 8 # grubosc sznurka w pikselach
+    
+    WHITE_RGBA = (255, 255, 255, 255)
+    RED_RGBA = (235, 25, 30, 255)
+    
+    # 1. Sznurki pionowe
+    for i in range(num_cells_x + 1):
+        x = int(i * dx)
+        if x >= W: x = W - 1
+        col = RED_RGBA if (split1 <= x <= split2) else WHITE_RGBA
+        draw.line([(x, 0), (x, H)], fill=col, width=cord_w)
+        
+    # 2. Sznurki poziome
+    for j in range(num_cells_y + 1):
+        y = int(j * dy)
+        if y >= H: y = H - 1
+        draw.line([(0, y), (split1, y)], fill=WHITE_RGBA, width=cord_w)
+        draw.line([(split1, y), (split2, y)], fill=RED_RGBA, width=cord_w)
+        draw.line([(split2, y), (W, y)], fill=WHITE_RGBA, width=cord_w)
+        
+    # 3. Węzły na skrzyżowaniach
+    for i in range(num_cells_x + 1):
+        x = int(i * dx)
+        if x >= W: x = W - 1
+        col = RED_RGBA if (split1 <= x <= split2) else WHITE_RGBA
+        for j in range(num_cells_y + 1):
+            y = int(j * dy)
+            if y >= H: y = H - 1
+            draw.ellipse([(x - 4, y - 4), (x + 4, y + 4)], fill=col)
+            
+    save_path = os.path.join(TEXTURES_DIR, "goal_net_striped.png")
+    img.save(save_path)
+    print(f"Zapisano teksturę siatki bramkarskiej: {save_path}")
+
+# Tekstury ładowane bezpośrednio przez Three.js; reszta trafia do aplikacji wyłącznie w GLB
+RUNTIME_TEXTURES = ["floodlight_glow.png"]
+
+
 def sync_to_public():
-    """Kopiuje wszystkie tekstury z assets/textures do public/assets/textures dla Three.js."""
+    """Kopiuje do public/assets/textures tylko tekstury używane w runtime przez src/main.ts."""
     import shutil
     pub_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "assets", "textures")
     os.makedirs(pub_dir, exist_ok=True)
-    for root, dirs, files in os.walk(TEXTURES_DIR):
-        rel = os.path.relpath(root, TEXTURES_DIR)
-        target_dir = os.path.join(pub_dir, rel)
-        os.makedirs(target_dir, exist_ok=True)
-        for f in files:
-            shutil.copy2(os.path.join(root, f), os.path.join(target_dir, f))
-    print(f"Zsynchronizowano tekstury do: {pub_dir}")
+    for name in RUNTIME_TEXTURES:
+        shutil.copy2(os.path.join(TEXTURES_DIR, name), os.path.join(pub_dir, name))
+    print(f"Zsynchronizowano tekstury runtime do: {pub_dir}")
 
 if __name__ == "__main__":
     generate_pitch_texture()
@@ -394,5 +445,6 @@ if __name__ == "__main__":
     generate_canopy_graffiti_texture()
     generate_corrugated_roof_textures()
     generate_floodlight_glow_sprite()
+    generate_goal_net_texture()
     sync_to_public()
     print("Wszystkie tekstury wygenerowane i zsynchronizowane pomyślnie!")

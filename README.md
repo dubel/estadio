@@ -50,15 +50,26 @@ npm run dev
 Aplikacja uruchomi się pod adresem: `http://localhost:3000/`.
 
 ### Sterowanie:
-- **[1]–[5]:** Teleportacja do kluczowych sektorów:
+- **[1]–[7]:** Teleportacja do kluczowych sektorów:
   - `1` — Środek Murawy
   - `2` — Korona Trybuny Głównej (Rząd 26)
   - `3` — Loża VIP
   - `4` — Zegar (Łuk Południowy)
   - `5` — Galera (Al. Unii Lubelskiej)
+  - `6` — Jupiter NW
+  - `7` — Bramka Południowa
 - **[L]:** Przełączanie oświetlenia Dzień / Noc (włączenie jupiterów).
-- **[V]:** Przełączanie trybu: Spacer (widok FPV z kolizją gruntu) / Dron (lot swobodny).
+- **[V]:** Przełączanie trybu: Spacer (widok FPV z kolizjami, grawitacją i wchodzeniem po stopniach do 48 cm) / Dron (lot swobodny).
 - **Mysz + WASD + Shift:** Rozglądanie po kliknięciu w canvas, poruszanie się, sprint.
+- **Spacja:** skok (Spacer, ok. 0.5 m) / wznoszenie (Dron). **[C]:** opadanie (Dron).
+
+### Test fizyki
+
+```bash
+npm run test:physics
+```
+
+Uruchamia Vite i headless Chrome, sprawdza grawitację, wysokość skoku oraz schodzenie i wchodzenie po stopniach trybuny głównej i Galery.
 
 ---
 
@@ -76,4 +87,7 @@ blender -b --python tools/render_stadium_cinematic.py
 
 Wygenerowany model:
 - `stadion_lks_pelny.blend` (scena źródłowa Blendera)
-- `assets/estadio_da_gruz.glb` (model GLTF ze spakowanymi teksturami PBR do Three.js)
+- `public/assets/estadio_da_gruz.glb` (model GLTF ze spakowanymi teksturami PBR do Three.js)
+
+Tekstury źródłowe (wejście Blendera i `tools/generate_stadium_textures.py`) leżą w `assets/textures/`.
+Do aplikacji trafiają wyłącznie spakowane w GLB — w `public/assets/textures/` potrzebny jest tylko `floodlight_glow.png` (sprite ładowany przez `src/main.ts`).

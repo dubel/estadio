@@ -4,8 +4,11 @@ Renderuje widok perspektywiczny z ukosa pokazujący cały przekrój i 108 m tryb
 import bpy
 import mathutils
 import math
+import os
 
-blend_path = "/home/mike/Projects/estadiodagruz/trybuna_glowna_baza.blend"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+blend_path = os.path.join(ROOT, "trybuna_glowna_baza.blend")
 bpy.ops.wm.open_mainfile(filepath=blend_path)
 
 # Dodaj kamerę
@@ -33,7 +36,7 @@ sun_obj.rotation_euler = (math.radians(50), math.radians(20), math.radians(-35))
 bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 bpy.context.scene.render.resolution_x = 1280
 bpy.context.scene.render.resolution_y = 720
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/preview_wide.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/preview_wide.png")
 
 bpy.ops.render.render(write_still=True)
 print("Zapisano szeroki render podglądu do tools/preview_wide.png")

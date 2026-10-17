@@ -3,8 +3,11 @@ Renderuje szybki rzut izometryczny / perspektywiczny wygenerowanej bazy trybuny.
 """
 import bpy
 import math
+import os
 
-blend_path = "/home/mike/Projects/estadiodagruz/trybuna_glowna_baza.blend"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+blend_path = os.path.join(ROOT, "trybuna_glowna_baza.blend")
 bpy.ops.wm.open_mainfile(filepath=blend_path)
 
 # Dodaj kamerę
@@ -28,7 +31,7 @@ sun_obj.rotation_euler = (math.radians(45), math.radians(30), math.radians(-45))
 bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 bpy.context.scene.render.resolution_x = 960
 bpy.context.scene.render.resolution_y = 540
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/preview.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/preview.png")
 
 bpy.ops.render.render(write_still=True)
 print("Zapisano render podglądu do tools/preview.png")

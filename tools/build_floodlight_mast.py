@@ -9,6 +9,9 @@ import bpy
 import bmesh
 import mathutils
 import math
+import os
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0), mast_pos=(0.0, 0.0)):
     """
@@ -228,5 +231,5 @@ if __name__ == "__main__":
     mast = build_floodlight_mast(col, "Jupiter_SW", pitch_target=(0.0, 0.0), mast_pos=(-65.0, -80.0))
     mast.location = (-65.0, -80.0, 0.0)
     
-    bpy.ops.wm.save_as_mainfile(filepath="/home/mike/Projects/estadiodagruz/jupiter_trapez_test.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, "jupiter_trapez_test.blend"))
     print("Zapisano test masztu trojnogiego z odwroconym trapezem.")

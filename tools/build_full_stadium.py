@@ -26,7 +26,6 @@ import mathutils
 import math
 import sys
 import os
-import shutil
 
 TOOLS_DIR = os.path.dirname(os.path.abspath(__file__))
 if TOOLS_DIR not in sys.path:
@@ -42,59 +41,209 @@ from build_horseshoe_bowl import (
     build_scoreboard
 )
 
-def build_goals_and_benches(col, mats):
-    """Bramki piłkarskie i ławki rezerwowych."""
-    POST_R = 0.06
-    for sign_y in [-1, 1]:
+ROOT = os.path.dirname(TOOLS_DIR)
+UV_METERS_PER_UNIT = 4.0  # ta sama konwencja co UV daszków w build_grandstand.py
+
+
+def prepare_meshes_for_export():
+    """
+    Ostatni przebieg przed eksportem GLB:
+    - usuwa zdegenerowane trójkąty (zerowa normalna psuje kolizje Octree w Three.js),
+    - nadaje UV metodą box projection w przestrzeni świata siatkom bez UV — bez tego
+      tekstury PBR (beton, blacha) próbkowały jeden teksel, a exporter zapisywał texCoord: -1.
+    """
+    bpy.context.view_layer.update()
+    for obj in bpy.context.scene.objects:
+        if obj.type != 'MESH':
+            continue
         bm = bmesh.new()
-        goal_y = sign_y * 52.5
-        # Słupki pionowe
-        for gx in [-3.66, 3.66]:
-            p = bmesh.ops.create_cone(bm, cap_ends=True, segments=8, radius1=POST_R, radius2=POST_R, depth=2.44)
-            bmesh.ops.translate(bm, vec=(gx, goal_y, 1.22), verts=p['verts'])
-        # Poprzeczka
-        bar = bmesh.ops.create_cube(bm, size=1.0)
-        bmesh.ops.scale(bm, vec=(7.32 + 2*POST_R, POST_R*2, POST_R*2), verts=bar['verts'])
-        bmesh.ops.translate(bm, vec=(0.0, goal_y, 2.44), verts=bar['verts'])
-        # Rama bramki (słupki i poprzeczka)
-        mesh_frame = bpy.data.meshes.new(f"Bramka_{'N' if sign_y > 0 else 'S'}_Rama_Mesh")
-        bm.normal_update()
-        bm.to_mesh(mesh_frame)
+        bm.from_mesh(obj.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+        bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-5)
+
+        if not obj.data.uv_layers:
+            uv = bm.loops.layers.uv.new("UVMap")
+            mw = obj.matrix_world
+            rot = mw.to_3x3()
+            for face in bm.faces:
+                n = rot @ face.normal
+                ax = max(range(3), key=lambda k: abs(n[k]))
+                a, b = [(1, 2), (0, 2), (0, 1)][ax]
+                for loop in face.loops:
+                    co = mw @ loop.vert.co
+                    loop[uv].uv = (co[a] / UV_METERS_PER_UNIT, co[b] / UV_METERS_PER_UNIT)
+
+        bm.to_mesh(obj.data)
         bm.free()
+
+
+def add_cylinder(bm, p1, p2, radius=0.06, segments=12):
+    v1 = mathutils.Vector(p1)
+    v2 = mathutils.Vector(p2)
+    diff = v2 - v1
+    length = diff.length
+    if length < 1e-4:
+        return
+    center = (v1 + v2) / 2.0
+    res = bmesh.ops.create_cone(bm, cap_ends=True, segments=segments, radius1=radius, radius2=radius, depth=length)
+    dir_vec = diff.normalized()
+    z_axis = mathutils.Vector((0, 0, 1))
+    rot_quat = z_axis.rotation_difference(dir_vec)
+    bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=rot_quat.to_matrix(), verts=res['verts'])
+    bmesh.ops.translate(bm, vec=center, verts=res['verts'])
+
+def build_goals_and_benches(col, mats):
+    """Bramki piłkarskie (białe ramy, siatki w pasy biało-czerwono-białe) i ławki rezerwowych."""
+    POST_R = 0.06
+    PIPE_R = 0.035
+    mat_frame = mats.get('goal_white', mats.get('fascia'))
+    mat_net = mats.get('goal_net', mats.get('fascia'))
+
+    for sign_y in [-1, 1]:
+        goal_y = sign_y * 52.5
+
+        # 1. Biała rama bramki (słupki, poprzeczka, tylne odciągi i rama dolna)
+        bm_frame = bmesh.new()
+        # Słupki pionowe
+        add_cylinder(bm_frame, (-3.66, goal_y, 0.0), (-3.66, goal_y, 2.44), radius=POST_R, segments=12)
+        add_cylinder(bm_frame, ( 3.66, goal_y, 0.0), ( 3.66, goal_y, 2.44), radius=POST_R, segments=12)
+        # Poprzeczka
+        add_cylinder(bm_frame, (-3.66 - POST_R, goal_y, 2.44), (3.66 + POST_R, goal_y, 2.44), radius=POST_R, segments=12)
+        # Górne rury poziome do tyłu (głębokość dachu siatki 1.0 m)
+        add_cylinder(bm_frame, (-3.66, goal_y, 2.44), (-3.66, goal_y + sign_y * 1.0, 2.44), radius=PIPE_R, segments=8)
+        add_cylinder(bm_frame, ( 3.66, goal_y, 2.44), ( 3.66, goal_y + sign_y * 1.0, 2.44), radius=PIPE_R, segments=8)
+        add_cylinder(bm_frame, (-3.66, goal_y + sign_y * 1.0, 2.44), (3.66, goal_y + sign_y * 1.0, 2.44), radius=PIPE_R, segments=8)
+        # Tylne ukośne odciągi do podłoża (głębokość przy ziemi 2.0 m)
+        add_cylinder(bm_frame, (-3.66, goal_y + sign_y * 2.0, 0.03), (-3.66, goal_y + sign_y * 1.0, 2.44), radius=PIPE_R, segments=8)
+        add_cylinder(bm_frame, ( 3.66, goal_y + sign_y * 2.0, 0.03), ( 3.66, goal_y + sign_y * 1.0, 2.44), radius=PIPE_R, segments=8)
+        # Przyziemna rama stabilizująca
+        add_cylinder(bm_frame, (-3.66, goal_y, 0.03), (-3.66, goal_y + sign_y * 2.0, 0.03), radius=PIPE_R, segments=8)
+        add_cylinder(bm_frame, ( 3.66, goal_y, 0.03), ( 3.66, goal_y + sign_y * 2.0, 0.03), radius=PIPE_R, segments=8)
+        add_cylinder(bm_frame, (-3.66, goal_y + sign_y * 2.0, 0.03), (3.66, goal_y + sign_y * 2.0, 0.03), radius=PIPE_R, segments=8)
+
+        mesh_frame = bpy.data.meshes.new(f"Bramka_{'N' if sign_y > 0 else 'S'}_Rama_Mesh")
+        bm_frame.normal_update()
+        bm_frame.to_mesh(mesh_frame)
+        bm_frame.free()
+
         obj_frame = bpy.data.objects.new(f"Bramka_{'N' if sign_y > 0 else 'S'}_Rama", mesh_frame)
-        if mats and 'fascia' in mats:
-            obj_frame.data.materials.append(mats['fascia'])
+        if mat_frame:
+            obj_frame.data.materials.append(mat_frame)
         col.objects.link(obj_frame)
 
-        # Siatka za bramką (kratownica wireframe)
+        # 2. Siatka bramki w pasy biało-czerwono-białe (ŁKS / Ajax)
         bm_net = bmesh.new()
-        back_y = goal_y + sign_y * 1.8
-        v_net = [
-            bm_net.verts.new((-3.66, goal_y, 2.44)),
-            bm_net.verts.new(( 3.66, goal_y, 2.44)),
-            bm_net.verts.new(( 3.66, back_y, 1.8)),
-            bm_net.verts.new((-3.66, back_y, 1.8)),
-            bm_net.verts.new((-3.66, back_y, 0.0)),
-            bm_net.verts.new(( 3.66, back_y, 0.0)),
-            bm_net.verts.new(( 3.66, goal_y, 0.0)),
-            bm_net.verts.new((-3.66, goal_y, 0.0))
+        uv_layer = bm_net.loops.layers.uv.verify()
+
+        # Profil siatki: dach (od poprzeczki do tyłu) i opadający tył
+        profile = [
+            (0.0, 2.44, 1.0),
+            (sign_y * 1.0, 2.44, 0.72),
+            (sign_y * 1.5, 1.22, 0.36),
+            (sign_y * 2.0, 0.0, 0.0)
         ]
-        bm_net.faces.new([v_net[0], v_net[1], v_net[2], v_net[3]]) # góra
-        bm_net.faces.new([v_net[3], v_net[2], v_net[5], v_net[4]]) # tył
-        bm_net.faces.new([v_net[0], v_net[3], v_net[4], v_net[7]]) # bok L
-        bm_net.faces.new([v_net[1], v_net[6], v_net[5], v_net[2]]) # bok P
-        
+
+        # Podział szerokości na 6 segmentów (pas lewy biały, pas środkowy czerwony, pas prawy biały)
+        N_X = 6
+        x_steps = [-3.66 + i * (7.32 / N_X) for i in range(N_X + 1)]
+
+        grid = []
+        for p_idx, (y_off, z_h, v_val) in enumerate(profile):
+            row = []
+            py = goal_y + y_off
+            for i, x_val in enumerate(x_steps):
+                v = bm_net.verts.new((x_val, py, z_h))
+                row.append((v, x_val, v_val))
+            grid.append(row)
+
+        # Tworzenie czworokątów dachu i ściany tylnej z mapowaniem UV
+        for j in range(len(profile) - 1):
+            for i in range(N_X):
+                v00, x0, v_top = grid[j][i]
+                v10, x1, _     = grid[j][i+1]
+                v11, _,  v_bot = grid[j+1][i+1]
+                v01, _,  _     = grid[j+1][i]
+
+                # Widok od strony boiska w stronę bramki:
+                # Bramka północna (+Y): lewa strona to -X, prawa to +X
+                # Bramka południowa (-Y): lewa strona to +X, prawa to -X
+                if sign_y > 0:
+                    u0 = (x0 + 3.66) / 7.32
+                    u1 = (x1 + 3.66) / 7.32
+                    face = bm_net.faces.new([v00, v10, v11, v01])
+                    for loop in face.loops:
+                        if loop.vert == v00:
+                            loop[uv_layer].uv = (u0, v_top)
+                        elif loop.vert == v10:
+                            loop[uv_layer].uv = (u1, v_top)
+                        elif loop.vert == v11:
+                            loop[uv_layer].uv = (u1, v_bot)
+                        elif loop.vert == v01:
+                            loop[uv_layer].uv = (u0, v_bot)
+                else:
+                    u0 = (3.66 - x0) / 7.32
+                    u1 = (3.66 - x1) / 7.32
+                    face = bm_net.faces.new([v00, v01, v11, v10])
+                    for loop in face.loops:
+                        if loop.vert == v00:
+                            loop[uv_layer].uv = (u0, v_top)
+                        elif loop.vert == v01:
+                            loop[uv_layer].uv = (u0, v_bot)
+                        elif loop.vert == v11:
+                            loop[uv_layer].uv = (u1, v_bot)
+                        elif loop.vert == v10:
+                            loop[uv_layer].uv = (u1, v_top)
+
+        # Boki siatki (oba białe, zmapowane do białego pasa siatki w U in [0.05, 0.33])
+        for side_x in [-3.66, 3.66]:
+            col_idx = 0 if side_x < 0 else N_X
+            vs_fb = bm_net.verts.new((side_x, goal_y, 0.0))
+            vs_ft = grid[0][col_idx][0]
+            vs_bt = grid[1][col_idx][0]
+            vs_bm = grid[2][col_idx][0]
+            vs_bb = grid[3][col_idx][0]
+            vs_g_mid = bm_net.verts.new((side_x, goal_y + sign_y * 1.0, 0.0))
+
+            f_side1 = bm_net.faces.new([vs_fb, vs_ft, vs_bt, vs_g_mid])
+            for l in f_side1.loops:
+                if l.vert == vs_fb:
+                    l[uv_layer].uv = (0.05, 0.0)
+                elif l.vert == vs_ft:
+                    l[uv_layer].uv = (0.05, 1.0)
+                elif l.vert == vs_bt:
+                    l[uv_layer].uv = (0.20, 1.0)
+                elif l.vert == vs_g_mid:
+                    l[uv_layer].uv = (0.20, 0.0)
+
+            vs_g_slope = bm_net.verts.new((side_x, goal_y + sign_y * 1.5, 0.0))
+            f_side2 = bm_net.faces.new([vs_g_mid, vs_bt, vs_bm, vs_g_slope])
+            for l in f_side2.loops:
+                if l.vert == vs_g_mid:
+                    l[uv_layer].uv = (0.20, 0.0)
+                elif l.vert == vs_bt:
+                    l[uv_layer].uv = (0.20, 1.0)
+                elif l.vert == vs_bm:
+                    l[uv_layer].uv = (0.28, 0.5)
+                elif l.vert == vs_g_slope:
+                    l[uv_layer].uv = (0.28, 0.0)
+
+            f_side3 = bm_net.faces.new([vs_g_slope, vs_bm, vs_bb])
+            for l in f_side3.loops:
+                if l.vert == vs_g_slope:
+                    l[uv_layer].uv = (0.28, 0.0)
+                elif l.vert == vs_bm:
+                    l[uv_layer].uv = (0.28, 0.5)
+                elif l.vert == vs_bb:
+                    l[uv_layer].uv = (0.33, 0.0)
+
         mesh_net = bpy.data.meshes.new(f"Bramka_{'N' if sign_y > 0 else 'S'}_Siatka_Mesh")
         bm_net.normal_update()
         bm_net.to_mesh(mesh_net)
         bm_net.free()
-        
+
         obj_net = bpy.data.objects.new(f"Bramka_{'N' if sign_y > 0 else 'S'}_Siatka", mesh_net)
-        if mats and 'fascia' in mats:
-            obj_net.data.materials.append(mats['fascia'])
-        mod_net_wf = obj_net.modifiers.new("Siatka_Wireframe", 'WIREFRAME')
-        mod_net_wf.thickness = 0.02
-        mod_net_wf.use_replace = True
+        if mat_net:
+            obj_net.data.materials.append(mat_net)
         col.objects.link(obj_net)
         obj_net.parent = obj_frame
 
@@ -192,15 +341,17 @@ def assemble_full_stadium():
         mast.location = loc
 
     # Zapis pliku roboczego .blend
-    blend_path = "/home/mike/Projects/estadiodagruz/stadion_lks_pelny.blend"
+    prepare_meshes_for_export()
+
+    blend_path = os.path.join(ROOT, "stadion_lks_pelny.blend")
     bpy.ops.wm.save_as_mainfile(filepath=blend_path)
     print(f"Scena stadionu zapisana do: {blend_path}")
 
-    # Eksport do formatu GLB (zoptymalizowany pod Three.js)
-    glb_dir = "/home/mike/Projects/estadiodagruz/assets"
+    # Eksport do formatu GLB (zoptymalizowany pod Three.js) — public/ to jedyne miejsce, z którego czyta aplikacja
+    glb_dir = os.path.join(ROOT, "public", "assets")
     os.makedirs(glb_dir, exist_ok=True)
     glb_path = os.path.join(glb_dir, "estadio_da_gruz.glb")
-    
+
     print(f"Eksportowanie modelu GLB do: {glb_path} ...")
     bpy.ops.export_scene.gltf(
         filepath=glb_path,
@@ -210,13 +361,6 @@ def assemble_full_stadium():
         export_yup=True
     )
     print(f"Pomyślnie wyeksportowano model GLB ({os.path.getsize(glb_path) / 1024 / 1024:.2f} MB)")
-
-    # Kopiujemy również bezpośrednio do folderu public/assets aplikacji Three.js
-    pub_dir = "/home/mike/Projects/estadiodagruz/public/assets"
-    os.makedirs(pub_dir, exist_ok=True)
-    pub_glb = os.path.join(pub_dir, "estadio_da_gruz.glb")
-    shutil.copyfile(glb_path, pub_glb)
-    print(f"Zaktualizowano plik Three.js w: {pub_glb}")
 
 if __name__ == "__main__":
     assemble_full_stadium()

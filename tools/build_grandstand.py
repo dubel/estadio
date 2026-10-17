@@ -15,6 +15,8 @@ import mathutils
 import math
 import os
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 TEXTURES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "textures")
 
 def setup_pbr_nodes(mat, color_path=None, normal_path=None, roughness_path=None, scale=(1.0, 1.0)):
@@ -71,7 +73,7 @@ def create_materials():
     c_col = os.path.join(TEXTURES_DIR, "concrete", "Concrete019_1K-JPG_Color.jpg")
     c_norm = os.path.join(TEXTURES_DIR, "concrete", "Concrete019_1K-JPG_NormalGL.jpg")
     c_rough = os.path.join(TEXTURES_DIR, "concrete", "Concrete019_1K-JPG_Roughness.jpg")
-    setup_pbr_nodes(mat_concrete, c_col, c_norm, c_rough, scale=(6.0, 6.0))
+    setup_pbr_nodes(mat_concrete, c_col, c_norm, c_rough, scale=(1.33, 1.33))
     mats['concrete'] = mat_concrete
 
     # 2. Ciemny beton (fosa, fundamenty)
@@ -81,7 +83,7 @@ def create_materials():
     if bsdf:
         bsdf.inputs['Base Color'].default_value = (0.32, 0.31, 0.30, 1.0)
         bsdf.inputs['Roughness'].default_value = 0.92
-    setup_pbr_nodes(mat_concrete_dark, c_col, c_norm, c_rough, scale=(4.0, 4.0))
+    setup_pbr_nodes(mat_concrete_dark, c_col, c_norm, c_rough, scale=(1.33, 1.33))
     mats['concrete_dark'] = mat_concrete_dark
 
     # 3. Fotorealistyczna murawa z pasami koszenia (PBR CC0)
@@ -113,8 +115,6 @@ def create_materials():
     if bsdf:
         bsdf.inputs['Base Color'].default_value = (0.18, 0.24, 0.28, 1.0)
         bsdf.inputs['Roughness'].default_value = 0.15
-        if 'Transmission Weight' in bsdf.inputs:
-            bsdf.inputs['Transmission Weight'].default_value = 0.7
     mats['glass'] = mat_glass
 
     # 6. Drewno / ławki
@@ -253,6 +253,39 @@ def create_materials():
     fan_col = os.path.join(TEXTURES_DIR, "fan_graffiti_banners.png")
     setup_pbr_nodes(mat_fan, fan_col, scale=(1.0, 1.0))
     mats['fan_banners'] = mat_fan
+
+    # 19. Lakierowane na biało bramki piłkarskie
+    mat_gw = bpy.data.materials.new("Mat_Goal_White")
+    mat_gw.use_nodes = True
+    bsdf = mat_gw.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.96, 0.96, 0.96, 1.0)
+        bsdf.inputs['Roughness'].default_value = 0.20
+        bsdf.inputs['Metallic'].default_value = 0.15
+    mats['goal_white'] = mat_gw
+
+    # 20. Siatka bramki w biało-czerwono-białe pasy (Ajax / ŁKS) z przezroczystością
+    mat_net = bpy.data.materials.new("Mat_Goal_Net")
+    mat_net.use_nodes = True
+    bsdf = mat_net.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Roughness'].default_value = 0.85
+    net_col = os.path.join(TEXTURES_DIR, "goal_net_striped.png")
+    if os.path.exists(net_col):
+        img_net = bpy.data.images.load(net_col)
+        node_tex = mat_net.node_tree.nodes.new('ShaderNodeTexImage')
+        node_tex.image = img_net
+        tc = mat_net.node_tree.nodes.new('ShaderNodeTexCoord')
+        mat_net.node_tree.links.new(tc.outputs['UV'], node_tex.inputs['Vector'])
+        mat_net.node_tree.links.new(node_tex.outputs['Color'], bsdf.inputs['Base Color'])
+        mat_net.node_tree.links.new(node_tex.outputs['Alpha'], bsdf.inputs['Alpha'])
+    
+    if hasattr(mat_net, 'blend_method'):
+        mat_net.blend_method = 'CLIP'
+        mat_net.alpha_threshold = 0.20
+    if hasattr(mat_net, 'use_backface_culling'):
+        mat_net.use_backface_culling = False
+    mats['goal_net'] = mat_net
 
     return mats
 
@@ -654,5 +687,5 @@ if __name__ == "__main__":
     bpy.context.scene.collection.children.link(col)
     build_grandstand(col, mats)
     
-    bpy.ops.wm.save_as_mainfile(filepath="/home/mike/Projects/estadiodagruz/trybuna_glowna_v2.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, "trybuna_glowna_v2.blend"))
     print("Zapisano v2 trybuny glownej.")

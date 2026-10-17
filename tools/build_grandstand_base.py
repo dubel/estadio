@@ -12,6 +12,9 @@ Uruchomienie w Blenderze:
 import bpy
 import bmesh
 import mathutils
+import os
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def clear_scene():
     """Czyści scenę z domyślnych obiektów (kostka, światło, kamera)."""
@@ -182,6 +185,6 @@ if __name__ == "__main__":
     clear_scene()
     create_grandstand_module()
     # Zapis pliku roboczego .blend w celach weryfikacji i inspekcji
-    blend_path = "/home/mike/Projects/estadiodagruz/trybuna_glowna_baza.blend"
+    blend_path = os.path.join(ROOT, "trybuna_glowna_baza.blend")
     bpy.ops.wm.save_as_mainfile(filepath=blend_path)
     print(f"Zapisano plik sceny: {blend_path}")

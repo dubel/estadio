@@ -8,8 +8,11 @@ Renderuje 3 ikoniczne ujęcia zrekonstruowanego stadionu ŁKS:
 import bpy
 import mathutils
 import math
+import os
 
-bpy.ops.wm.open_mainfile(filepath="/home/mike/Projects/estadiodagruz/stadion_lks_pelny.blend")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+bpy.ops.wm.open_mainfile(filepath=os.path.join(ROOT, "stadion_lks_pelny.blend"))
 
 # Ustawienie oświetlenia
 sun_data = bpy.data.lights.new(name="SunMain", type='SUN')
@@ -47,7 +50,7 @@ target_south = mathutils.Vector((-10.0, -40.0, 3.0))
 cam_obj.location = pos_north
 cam_obj.rotation_euler = (target_south - pos_north).to_track_quat('-Z', 'Y').to_euler()
 
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/shot1_panorama_south.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/shot1_panorama_south.png")
 bpy.ops.render.render(write_still=True)
 print("Wyrenderowano: shot1_panorama_south.png")
 
@@ -59,7 +62,7 @@ target_pitch = mathutils.Vector((-55.0, 0.0, 7.5))
 cam_obj.location = pos_pitch
 cam_obj.rotation_euler = (target_pitch - pos_pitch).to_track_quat('-Z', 'Y').to_euler()
 
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/shot2_pitch_grandstand.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/shot2_pitch_grandstand.png")
 bpy.ops.render.render(write_still=True)
 print("Wyrenderowano: shot2_pitch_grandstand.png")
 
@@ -71,7 +74,7 @@ target_galera = mathutils.Vector((58.0, 0.0, 5.5))
 cam_obj.location = pos_galera
 cam_obj.rotation_euler = (target_galera - pos_galera).to_track_quat('-Z', 'Y').to_euler()
 
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/shot3_al_unii.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/shot3_al_unii.png")
 bpy.ops.render.render(write_still=True)
 print("Wyrenderowano: shot3_al_unii.png")
 
@@ -83,7 +86,20 @@ target_clock = mathutils.Vector((0.0, -110.5, 9.0))
 cam_obj.location = pos_clock
 cam_obj.rotation_euler = (target_clock - pos_clock).to_track_quat('-Z', 'Y').to_euler()
 
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/shot4_vis_a_vis_zegar.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/shot4_vis_a_vis_zegar.png")
 bpy.ops.render.render(write_still=True)
 print("Wyrenderowano: shot4_vis_a_vis_zegar.png")
+
+# -------------------------------------------------------------------------
+# UJĘCIE 5: BIAŁA BRAMKA I BIAŁO-CZERWONO-BIAŁA SIATKA (PAS W STYLU AJAX / ŁKS)
+# -------------------------------------------------------------------------
+pos_goal = mathutils.Vector((-6.5, -42.0, 1.8))
+target_goal = mathutils.Vector((0.0, -52.5, 1.3))
+cam_obj.location = pos_goal
+cam_obj.rotation_euler = (target_goal - pos_goal).to_track_quat('-Z', 'Y').to_euler()
+
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/shot5_bramka_siatka_pasy.png")
+bpy.ops.render.render(write_still=True)
+print("Wyrenderowano: shot5_bramka_siatka_pasy.png")
+
 

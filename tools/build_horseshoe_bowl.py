@@ -8,6 +8,38 @@ import bmesh
 import mathutils
 import math
 
+STRAIGHT_L = 84.0  # długość prostych bieżni 400 m (środki łuków w Y = ±42 m)
+
+
+def stadium_path(r, ang_start, ang_end, arc_step_deg=4.0, straight_step=3.0, close_west=False):
+    """
+    Punkty (x, y, nx, ny) na obrysie „stadionowym” (2 łuki + proste) w odległości r od osi bieżni,
+    od kąta ang_start (0..180°, łuk północny) zgodnie z ruchem wskazówek zegara przez prostą
+    wschodnią do ang_end (-180..0°, łuk południowy). Proste są dzielone co straight_step metrów —
+    jeden quad na całą prostą dawał 89-metrowe trójkąty, na których kapsuła gracza się zacinała.
+    close_west dokłada punkty prostej zachodniej (pełna pętla).
+    """
+    cy = STRAIGHT_L / 2.0
+    pts = []
+
+    def arc(a0, a1, c):
+        n = max(1, math.ceil(abs(a1 - a0) / arc_step_deg))
+        for i in range(n + 1):
+            a = math.radians(a0 + (a1 - a0) * i / n)
+            pts.append((r * math.cos(a), c + r * math.sin(a), math.cos(a), math.sin(a)))
+
+    def straight(x, y0, y1, nx):
+        n = max(1, math.ceil(abs(y1 - y0) / straight_step))
+        for i in range(1, n):
+            pts.append((x, y0 + (y1 - y0) * i / n, nx, 0.0))
+
+    arc(ang_start, 0.0, cy)
+    straight(r, cy, -cy, 1.0)
+    arc(0.0, ang_end, -cy)
+    if close_west:
+        straight(-r, -cy, cy, -1.0)
+    return pts
+
 def build_pitch_and_track(col, mats):
     """Tworzy murawę oraz bieżnię lekkoatletyczną 400m."""
     PITCH_L = 105.0
@@ -38,7 +70,6 @@ def build_pitch_and_track(col, mats):
 
     # 2. Bieżnia lekkoatletyczna (czerwono-grafitowy żużel)
     # Mieści się POMIĘDZY boiskiem a trybunami (zarówno podkową, jak i Trybuną Główną)
-    STRAIGHT_L = 84.0
     R_IN = 37.0
     R_OUT = 45.0  # szerokość bieżni 8.0 m
     NUM_ARC_SEGS = 32
@@ -193,7 +224,6 @@ def build_moat_and_bowl(col, mats):
     Podkowa wałów ziemnych biegnie od łuku południowego przez prostą wschodnią do łuku północnego.
     Strona zachodnia pozostaje wolna na Trybunę Główną.
     """
-    STRAIGHT_L = 84.0
     R_TRACK_OUT = 45.0
     MOAT_W = 1.8
     MOAT_DEPTH = 1.4
@@ -207,20 +237,8 @@ def build_moat_and_bowl(col, mats):
     
     # 1. PEŁNA PĘTLA FOSY WOKÓŁ BIEŻNI
     # (Fosa biegnie również przed Trybuną Główną na zachodzie)
-    NUM_FULL_SEGS = 72
-    full_moat_path = []
-    
-    for i in range(NUM_FULL_SEGS):
-        ang = 2.0 * math.pi * (i / NUM_FULL_SEGS)
-        cos_a = math.cos(ang)
-        sin_a = math.sin(ang)
-        cy = (STRAIGHT_L / 2.0) if sin_a > 0 else (-STRAIGHT_L / 2.0)
-        px = R_TRACK_OUT * cos_a
-        py = cy + R_TRACK_OUT * sin_a
-        full_moat_path.append((px, py, cos_a, sin_a))
-        
     moat_rings = []
-    for px, py, nx, ny in full_moat_path:
+    for px, py, nx, ny in stadium_path(R_TRACK_OUT, 180.0, -180.0, close_west=True):
         p0 = (px, py, 0.0)
         p1 = (px, py, -MOAT_DEPTH)
         p2 = (px + nx * MOAT_W, py + ny * MOAT_W, -MOAT_DEPTH)
@@ -246,21 +264,10 @@ def build_moat_and_bowl(col, mats):
     # 2. PODKOWA TRYBUN (Łuk Południowy -> Prosta Wschodnia -> Łuk Północny)
     # Zostawia otwarty zachód (gdzie stoi Trybuna Główna o długości 108 m)
     # Kąt podkowy: od kąta w osi północno-zachodniej (155°) przez wschód (0°) do południowo-zachodniej (-155°)
-    NUM_BOWL_SEGS = 56
     bowl_rings = []
-    
-    for i in range(NUM_BOWL_SEGS + 1):
-        # Kąt od +152° (północ-zachód) przez wschód do -152° (południe-zachód)
-        ang = math.radians(152.0 - (304.0 * (i / NUM_BOWL_SEGS)))
-        cos_a = math.cos(ang)
-        sin_a = math.sin(ang)
-        
-        cy = (STRAIGHT_L / 2.0) if sin_a > 0 else (-STRAIGHT_L / 2.0)
-        px = (R_TRACK_OUT + MOAT_W) * cos_a
-        py = cy + (R_TRACK_OUT + MOAT_W) * sin_a
-        nx = cos_a
-        ny = sin_a
-        
+
+    # Kąt podkowy: od +152° (północ-zachód) przez wschód do -152° (południe-zachód)
+    for px, py, nx, ny in stadium_path(R_TRACK_OUT + MOAT_W, 152.0, -152.0):
         # Stopnie na wale ziemnym
         b_pts = []
         cur_d = 0.0
@@ -428,5 +435,5 @@ if __name__ == "__main__":
     build_moat_and_bowl(col, mats)
     build_scoreboard(col, mats)
     
-    bpy.ops.wm.save_as_mainfile(filepath="/home/mike/Projects/estadiodagruz/bowl_v2_test.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "bowl_v2_test.blend"))
     print("Zapisano test korony z bieznią i zegarem vis a vis.")

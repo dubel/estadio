@@ -1,8 +1,11 @@
 import bpy
 import mathutils
 import math
+import os
 
-bpy.ops.wm.open_mainfile(filepath="/home/mike/Projects/estadiodagruz/jupiter_test.blend")
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+bpy.ops.wm.open_mainfile(filepath=os.path.join(ROOT, "jupiter_test.blend"))
 
 cam_data = bpy.data.cameras.new("Cam")
 cam_obj = bpy.data.objects.new("Cam", cam_data)
@@ -23,7 +26,7 @@ sun_obj.rotation_euler = (math.radians(35), math.radians(20), math.radians(-30))
 bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 bpy.context.scene.render.resolution_x = 960
 bpy.context.scene.render.resolution_y = 720
-bpy.context.scene.render.filepath = "/home/mike/Projects/estadiodagruz/tools/preview_jupiter_head.png"
+bpy.context.scene.render.filepath = os.path.join(ROOT, "tools/preview_jupiter_head.png")
 
 bpy.ops.render.render(write_still=True)
 print("Saved preview_jupiter_head.png")
