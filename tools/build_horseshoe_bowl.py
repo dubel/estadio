@@ -1,6 +1,6 @@
 """
-Generowanie korony stadionu (wały ziemne, podkowa), murawy, bieżni żużlowej,
-betonowej fosy oraz historycznej tablicy świetlnej z zegarem.
+Generowanie podkowy trybun na wałach ziemnych (łuki i Galera z sekcjami krzesełek i tunelami),
+murawy z zarośniętą bieżnią, ogrodzeń oraz historycznej tablicy świetlnej z zegarem.
 """
 
 import bpy
@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_seats import place_seats, seat_material, seats_in_row, SEAT_PITCH  # noqa: E402
-from build_grandstand import _extrude_profile, _rail  # noqa: E402
+from build_grandstand import _extrude_profile, _rail, PRZEPLATANKA_ASPECT  # noqa: E402
 import mathutils  # noqa: E402
 
 STRAIGHT_L = 84.0  # długość prostych bieżni 400 m (środki łuków w Y = ±42 m)
@@ -233,28 +233,55 @@ def build_pitch_lines(col, mats):
     return obj_lines
 
 
-R_TRACK_OUT = 45.0     # zewnętrzna krawędź bieżni = czoło trybun
-FRONT_WALL_H = 1.5     # mur oporowy przed pierwszym rzędem (zdjęcia lks02, 516e09e41f411, przekrój Wyżnikiewicza — bez fosy)
-FENCE_H = 2.5          # stalowe ogrodzenie na koronie muru: pełne panele u dołu, siatka wyżej (widok_z_galery.jpg)
+R_TRACK_OUT = 45.0     # ogrodzenie z siatki na gruncie przy zewnętrznej krawędzi dawnej bieżni
+FRONT_WALK = 1.5       # chodnik między ogrodzeniem a pierwszym rzędem — muru oporowego nie było
+                       # (widok_z_galery.jpg, kolorystyka_galery_oraz_budynki_tla.png)
+ROW0_H = 0.45          # wysokość pierwszego stopnia nad chodnikiem
+FENCE_H = 2.5          # stalowe ogrodzenie na gruncie: pełne panele u dołu, siatka wyżej (widok_z_galery.jpg)
 BOWL_ANGLE = 149.0     # podkowa kończy się tam, gdzie zaczyna się trybuna główna (Y = ±65 m)
-STAND_DEPTH = 22.0     # głębokość wału ziemnego
+STAND_DEPTH = 22.0     # głębokość widowni na wale ziemnym
 STAND_H = 6.8          # wysokość korony wału (na niej stoi tablica wyników, build_scoreboard)
 NUM_STEPS = 20         # 20 betonowych stopni
 STEP_D = STAND_DEPTH / NUM_STEPS
-STEP_H = (STAND_H - FRONT_WALL_H) / (NUM_STEPS - 1)  # ~0.28 m
+STEP_H = (STAND_H - ROW0_H) / (NUM_STEPS - 1)  # ~0.33 m
+STAND_BACK = R_TRACK_OUT + FRONT_WALK + STAND_DEPTH   # tylna krawędź korony
 LOW_FENCE_H = 1.2      # niskie ogrodzenie łuków z biało-czerwonymi słupkami (widok_na_zegar_u2.png)
 
 # Łuk południowy (kąty jak w stadium_path, środek łuku w Y = -42 m), widok_na_zegar_u2.png:
 # od zachodniego krańca do osi stadionu czerwone krzesełka w sektorach, dalej ku Galerze ławki z żółtymi barierkami
 SOUTH_SEAT_SECTORS = [(-149.0, -135.0), (-135.0, -121.0), (-121.0, -107.0), (-107.0, -93.0)]
 SOUTH_BENCH_ARC = (-88.0, -3.0)
-# Dwa duże tunele wejściowe Galery przy styku z łukami (tunel_galera.png — północny, południowy symetrycznie):
-# przelot pod wałem od bieżni do placu, nad wylotem podest na wysokości rzędu GALERA_TUNNEL_ROW.
-# Zakresy Y na wierzchołkach podziału prostej (co 3 m, stadium_path).
+
+# Galera od północy (kolorystyka_galery_oraz_budynki_tla.png): 6 sekcji rozdzielonych siatką od chodnika
+# po koronę. (y_od, y_do, kolorystyka, oś przejścia):
+# red — same czerwone krzesełka (z tunelem); bcb — od góry cienki pas biały, gruby czerwony, cienki biały;
+# lks — jak bcb, na czerwonym pasie pikselowy napis ŁKS z białych krzesełek;
+# top_red — czerwony pas w górnych rzędach, niżej goły beton z żółtymi barierkami (z tunelem).
+GALERA_SECTIONS = [(28.0, 42.0, 'red', 30.5), (14.0, 28.0, 'bcb', 21.0), (0.0, 14.0, 'bcb', 7.0),
+                   (-14.0, 0.0, 'bcb', -7.0), (-28.0, -14.0, 'lks', -26.5), (-42.0, -28.0, 'top_red', -30.5)]
+GALERA_PARTITIONS = (28.0, 14.0, 0.0, -14.0, -28.0)
+BCB_WHITE_LOW, BCB_WHITE_HIGH = 4, 17      # rzędy < 4 i >= 17 białe
+TOP_RED_FROM = 15                          # sekcja top_red: czerwone od rzędu 15
+LKS_ROWS = (6, 12)                         # napis: rzędy 6–12 (7 pikseli wysokości)
+LKS_FONT = [                               # 5 × 7, od góry; Ł, K, S rozdzielone pustą kolumną
+    ".#....#...#..###.",
+    ".#....#..#..#...#",
+    ".##...#.#...#....",
+    "##....##.....###.",
+    ".#....#.#.......#",
+    ".#....#..#..#...#",
+    ".####.#...#..###.",
+]
+
+# Dwa tunele wejściowe Galery w sekcjach skrajnych (tunel_galera.png — północny, południowy symetrycznie):
+# przelot pod wałem z placu wychodzi na chodnik przed pierwszym rzędem, przed nim zwykłe ogrodzenie.
+# Portal o przekroju trapezu (pochyłe boki), nadproże z Przeplatanką na białym tle. Zakresy Y leżą
+# na wierzchołkach podziału prostej (co 3 m, stadium_path).
 GALERA_TUNNELS = ((-39.0, -33.0), (33.0, 39.0))
-GALERA_TUNNEL_H = 2.8
-GALERA_TUNNEL_ROW = 6
-GALERA_TUNNEL_WALL = 0.3
+TUNNEL_OPEN_H = 2.6     # prześwit
+TUNNEL_TOP = 3.6        # wierzch portalu; nadproże TUNNEL_OPEN_H..TUNNEL_TOP
+TUNNEL_SLOPE = 0.9      # boki portalu: podstawa 6 m, wierzch i prześwit 4.2 m
+TUNNEL_ROWS = 10        # rzędy zastąpione portalem (rząd 10 leży już nad TUNNEL_TOP)
 SOUTH_ADS = [(-142.0, 0), (-129.0, 1), (-116.0, 2), (-103.0, 3)]   # bandy na koronie: (kąt, wiersz atlasu)
 
 
@@ -267,7 +294,7 @@ def _obox(bm, center, size, yaw=0.0, pitch=0.0):
 
 def _row(i):
     """(odległość przodu stopnia od czoła, wysokość stopnia) rzędu i podkowy."""
-    return i * STEP_D, FRONT_WALL_H + i * STEP_H
+    return FRONT_WALK + i * STEP_D, ROW0_H + i * STEP_H
 
 
 def _arc_point(r, ang_deg, cy=-42.0):
@@ -294,28 +321,21 @@ def _finish_mesh(col, bm, name, mats_list):
 def build_bowl(col, mats):
     """
     Podkowa trybun na wałach ziemnych: od łuku północnego przez prostą wschodnią (Galera) do łuku
-    południowego. Czoło to mur oporowy FRONT_WALL_H przy zewnętrznej krawędzi bieżni, dalej
-    20 betonowych stopni i tylna skarpa. Strona zachodnia pozostaje wolna na Trybunę Główną.
-    Fosy nie było — wcześniejsza wersja modelu ją zakładała, źródła (docs/zrodla.md) tego nie potwierdzają.
+    południowego. Przy zewnętrznej krawędzi dawnej bieżni ogrodzenie na gruncie, za nim chodnik
+    FRONT_WALK, dalej 20 betonowych stopni i tylna skarpa. Muru oporowego ani fosy nie było
+    (widok_z_galery.jpg, kolorystyka_galery_oraz_budynki_tla.png). Strona zachodnia pozostaje wolna
+    na Trybunę Główną.
     """
     bm_bowl = bmesh.new()
     bowl_rings = []
     bowl_path = stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE)
     for px, py, nx, ny in bowl_path:
-        # Mur oporowy, potem stopnie na wale ziemnym
-        b_pts = [(px, py, 0.0)]
-        cur_d = 0.0
-        cur_z = FRONT_WALL_H - STEP_H
+        b_pts = [(px + nx * FRONT_WALK, py + ny * FRONT_WALK, -0.05)]
         for s in range(NUM_STEPS):
-            cur_z += STEP_H
-            b_pts.append((px + nx * cur_d, py + ny * cur_d, cur_z))
-            cur_d += STEP_D
-            b_pts.append((px + nx * cur_d, py + ny * cur_d, cur_z))
-
-        # Tylna skarpa wału
-        cur_d += 5.0
-        b_pts.append((px + nx * cur_d, py + ny * cur_d, 0.0))
-
+            d, z = _row(s)
+            b_pts += [(px + nx * d, py + ny * d, z), (px + nx * (d + STEP_D), py + ny * (d + STEP_D), z)]
+        d_back = FRONT_WALK + STAND_DEPTH + 5.0                  # stopa tylnej skarpy
+        b_pts.append((px + nx * d_back, py + ny * d_back, 0.0))
         bowl_rings.append([bm_bowl.verts.new(p) for p in b_pts])
 
     for i in range(len(bowl_rings) - 1):
@@ -335,14 +355,21 @@ def build_bowl(col, mats):
     obj_bowl.data.materials.append(mats['concrete'])
     col.objects.link(obj_bowl)
 
-    # Wysokie ogrodzenie tylko przed Galerą (prosta): panele z teksturą alfa (u w metrach / 2.5 m przęsła).
-    # Dwie ściany 4 cm od siebie: kolizje Octree w Three.js są jednostronne, pojedyncza płaszczyzna
-    # przepuszczała gracza schodzącego z trybuny. Na łukach niskie ogrodzenie (build_bowl_details).
+    # Wysokie ogrodzenie na gruncie przed Galerą (prosta) i siatki między jej sekcjami: panele z teksturą
+    # alfa (u w metrach / 2.5 m przęsła). Dwie ściany 4 cm od siebie: kolizje Octree w Three.js są
+    # jednostronne, pojedyncza płaszczyzna przepuszczała gracza. Na łukach niskie ogrodzenie (build_bowl_details).
     bm_f = bmesh.new()
     uv = bm_f.loops.layers.uv.verify()
-    # Nad tunelami Galery panele stoją na podeście nad wylotem, nie na murze oporowym
-    path = stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE, straight_step=3.0)
-    landing_z = _row(GALERA_TUNNEL_ROW)[1]
+
+    def panel(corners, flip):
+        """corners: (x, y, z, u, v) w kolejności obiegu; flip odwraca lico."""
+        if flip:
+            corners = corners[::-1]
+        face = bm_f.faces.new([bm_f.verts.new(c[:3]) for c in corners])
+        for loop, c in zip(face.loops, corners):
+            loop[uv].uv = (c[3] / 2.5, c[4])
+
+    path = stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE)
     for off, flip in [(0.02, False), (0.06, True)]:
         dist = 0.0
         for (x0, y0, nx0, ny0), (x1, y1, nx1, ny1) in zip(path, path[1:]):
@@ -351,15 +378,16 @@ def build_bowl(col, mats):
                 continue
             a0 = (x0 + nx0 * off, y0 + ny0 * off)
             a1 = (x1 + nx1 * off, y1 + ny1 * off)
-            zb = landing_z if _in_galera_tunnel((y0 + y1) / 2) else FRONT_WALL_H
-            corners = [(a0, zb, dist, 0.0), (a1, zb, dist + seg, 0.0),
-                       (a1, zb + FENCE_H, dist + seg, 1.0), (a0, zb + FENCE_H, dist, 1.0)]
-            if flip:
-                corners.reverse()
-            face = bm_f.faces.new([bm_f.verts.new((p[0], p[1], z)) for p, z, _, _ in corners])
-            for loop, (_, _, u, v) in zip(face.loops, corners):
-                loop[uv].uv = (u / 2.5, v)
+            panel([(*a0, 0.0, dist, 0.0), (*a1, 0.0, dist + seg, 0.0),
+                   (*a1, FENCE_H, dist + seg, 1.0), (*a0, FENCE_H, dist, 1.0)], flip)
             dist += seg
+    for yp in GALERA_PARTITIONS:
+        for off, flip in [(-0.02, False), (0.02, True)]:
+            for i in range(NUM_STEPS):
+                d, z = _row(i)
+                xa, xe = R_TRACK_OUT + d, R_TRACK_OUT + d + STEP_D
+                panel([(xa, yp + off, z, xa, 0.0), (xe, yp + off, z, xe, 0.0),
+                       (xe, yp + off, z + FENCE_H, xe, 1.0), (xa, yp + off, z + FENCE_H, xa, 1.0)], flip)
     mesh_f = bpy.data.meshes.new("Ogrodzenie_Trybun_Mesh")
     bm_f.normal_update()
     bm_f.to_mesh(mesh_f)
@@ -368,53 +396,121 @@ def build_bowl(col, mats):
     obj_f.data.materials.append(mats['fence'])
     col.objects.link(obj_f)
 
-    # Czerwone krzesełka na prostej Galery (widok_z_galery.jpg); przejścia co 10 m
-    seats = []
-    cy = STRAIGHT_L / 2.0
-    aisles = [-cy + 2.0 + k * 10.0 for k in range(9)]
-    for i in range(NUM_STEPS):
-        d, z = _row(i)
-        for a, b in zip(aisles, aisles[1:]):
-            seats += [s for s in seats_in_row(R_TRACK_OUT + d + 0.7, z, a + 0.6, b - 0.6)
-                      if not (i <= GALERA_TUNNEL_ROW and _in_galera_tunnel(s[1], 0.3))]
+    # Krzesełka Galery według sekcji; w sekcji top_red pod czerwonym pasem żółte barierki na gołym betonie
+    red, white = [], []
+    bm_y = bmesh.new()
+    tunnel_gaps = [(a - 0.3, b + 0.3) for a, b in GALERA_TUNNELS]
+    for y0, y1, kind, aisle in GALERA_SECTIONS:
+        spans = [(y0 + 0.3, aisle - 0.6), (aisle + 0.6, y1 - 0.3)]
+        for i in range(NUM_STEPS):
+            d, z = _row(i)
+            gaps = tunnel_gaps if i < TUNNEL_ROWS else []
+            for a, b in spans:
+                row = [s for s in seats_in_row(R_TRACK_OUT + d + 0.7, z, a, b) if not _in_any(s[1], gaps)]
+                n = len(row) if b - a > 10.0 else 0          # napis tylko na szerszej części sekcji
+                for k, s in enumerate(reversed(row)):         # k: kolumna od północy (z boiska — od lewej)
+                    color = _galera_seat_color(kind, i, k, n)
+                    if color:
+                        (red if color == 'red' else white).append(s)
+            if kind == 'top_red' and i in (3, 7, 11):
+                for a, b in _minus(y0 + 0.3, y1 - 0.3, [(aisle - 0.6, aisle + 0.6)] + gaps):
+                    _rail(bm_y, (R_TRACK_OUT + d + 0.15, a, z), (R_TRACK_OUT + d + 0.15, b, z), 2.0)
     red_seat = seat_material("Mat_Krzeselka_Czerwone_Galera", (0.62, 0.07, 0.09))
-    place_seats(col, "Krzeselka_Galera", red_seat, seats)
+    place_seats(col, "Krzeselka_Galera", red_seat, red)
+    place_seats(col, "Krzeselka_Galera_Biale", seat_material("Mat_Krzeselka_Biale_Galera", (0.88, 0.88, 0.86)), white)
+    bmesh.ops.recalc_face_normals(bm_y, faces=bm_y.faces)
+    _finish_mesh(col, bm_y, "Barierki_Zolte_Galera", [mats['yellow']])
 
-    build_bowl_details(col, mats, red_seat, aisles)
+    build_bowl_details(col, mats, red_seat, [s[3] for s in GALERA_SECTIONS])
     build_galera_tunnels(col, mats)
     return obj_bowl, obj_f
 
 
+def _in_any(y, gaps):
+    return any(a <= y <= b for a, b in gaps)
+
+
+def _minus(a, b, gaps):
+    """Odcinek [a, b] bez przedziałów gaps."""
+    out = [(a, b)]
+    for g0, g1 in gaps:
+        out = [p for s0, s1 in out for p in ([(s0, s1)] if g1 <= s0 or g0 >= s1 else
+                                             [q for q in ((s0, g0), (g1, s1)) if q[1] - q[0] > 0.05])]
+    return out
+
+
+def _galera_seat_color(kind, row, col_from_north, n_cols):
+    """'red', 'white' albo None (goły beton) dla krzesełka sekcji Galery."""
+    if kind == 'red':
+        return 'red'
+    if kind == 'top_red':
+        return 'red' if row >= TOP_RED_FROM else None
+    if row < BCB_WHITE_LOW or row >= BCB_WHITE_HIGH:
+        return 'white'
+    if kind == 'lks' and LKS_ROWS[0] <= row <= LKS_ROWS[1] and n_cols >= len(LKS_FONT[0]):
+        c = col_from_north - (n_cols - len(LKS_FONT[0])) // 2
+        if 0 <= c < len(LKS_FONT[0]) and LKS_FONT[LKS_ROWS[1] - row][c] == '#':
+            return 'white'
+    return 'red'
+
+
+def _extrude_yz(bm, pts_yz, x0, x1):
+    """Bryła z wielokąta w płaszczyźnie YZ wyciągniętego od x0 do x1."""
+    face = bm.faces.new([bm.verts.new((x0, y, z)) for y, z in pts_yz])
+    res = bmesh.ops.extrude_face_region(bm, geom=[face])
+    ev = [v for v in res['geom'] if isinstance(v, bmesh.types.BMVert)]
+    bmesh.ops.translate(bm, vec=(x1 - x0, 0.0, 0.0), verts=ev)
+
+
 def build_galera_tunnels(col, mats):
     """
-    Tunele wejściowe Galery (tunel_galera.png): przelot GALERA_TUNNEL_H pod wałem od bieżni do tylnej skarpy.
-    Nad wylotem podest na wysokości rzędu GALERA_TUNNEL_ROW wysunięty do muru oporowego, ściany boczne
-    sięgają podestu, po krawędziach żółte barierki. Bryły zamknięte (kolizje Octree są jednostronne).
+    Tunele wejściowe Galery (tunel_galera.png): przelot TUNNEL_OPEN_H pod wałem od tylnej skarpy do chodnika
+    przed pierwszym rzędem. Nad pierwszymi TUNNEL_ROWS rzędami wystaje portal o przekroju trapezu:
+    pochyłe boki, nadproże z Przeplatanką, na wierzchu żółte barierki. Bryły zamknięte (kolizje jednostronne).
     """
-    bm = bmesh.new()
-    bm_y = bmesh.new()
-    d_land, z_land = _row(GALERA_TUNNEL_ROW)
+    bm, bm_y, bm_p = bmesh.new(), bmesh.new(), bmesh.new()
+    uv = bm_p.loops.layers.uv.verify()
+    x_front = R_TRACK_OUT + FRONT_WALK
+    x_hood = R_TRACK_OUT + _row(TUNNEL_ROWS)[0]
     treads = []
-    for i in range(GALERA_TUNNEL_ROW, NUM_STEPS):
+    for i in range(NUM_STEPS):
         d, z = _row(i)
-        treads += [(R_TRACK_OUT + d, z), (R_TRACK_OUT + d + STEP_D, z)]
-    back = R_TRACK_OUT + STAND_DEPTH + 5.0                    # stopa tylnej skarpy (build_bowl)
+        treads.append([(R_TRACK_OUT + d, z), (R_TRACK_OUT + d + STEP_D, z)])
+    back = STAND_BACK + 5.0                                   # stopa tylnej skarpy (build_bowl)
     slope_x = lambda z: back - 5.0 * z / STAND_H
-    side = [(R_TRACK_OUT, 0.0), (R_TRACK_OUT, z_land)] + treads + [(back, 0.0)]
-    roof = ([(R_TRACK_OUT, GALERA_TUNNEL_H), (R_TRACK_OUT, z_land)] + treads
-            + [(slope_x(GALERA_TUNNEL_H), GALERA_TUNNEL_H)])
-    w = GALERA_TUNNEL_WALL
+    side = [(x_front, -0.05)] + [p for t in treads for p in t] + [(back, -0.05)]
+    roof = ([(x_front, TUNNEL_OPEN_H), (x_front, TUNNEL_TOP), (x_hood, TUNNEL_TOP)]
+            + [p for t in treads[TUNNEL_ROWS:] for p in t] + [(slope_x(TUNNEL_OPEN_H), TUNNEL_OPEN_H)])
+    sl = TUNNEL_SLOPE
     for ya, yb in GALERA_TUNNELS:
-        _extrude_profile(bm, side, ya, ya + w)
-        _extrude_profile(bm, side, yb - w, yb)
-        _extrude_profile(bm, roof, ya + w, yb - w)
-        # Barierki wzdłuż obu krawędzi podestu (od strony boiska stoi ogrodzenie Galery)
-        for ye in (ya + w / 2, yb - w / 2):
-            _rail(bm_y, (R_TRACK_OUT + 0.15, ye, z_land), (R_TRACK_OUT + d_land, ye, z_land), 2.2)
+        # Ściany boczne z profilem widowni, strop z widownią powyżej, pochyłe boki portalu
+        _extrude_profile(bm, side, ya, ya + sl)
+        _extrude_profile(bm, side, yb - sl, yb)
+        _extrude_profile(bm, roof, ya + sl, yb - sl)
+        _extrude_yz(bm, [(ya, -0.05), (ya + sl, -0.05), (ya + sl, TUNNEL_TOP)], x_front, x_hood)
+        _extrude_yz(bm, [(yb - sl, -0.05), (yb, -0.05), (yb - sl, TUNNEL_TOP)], x_front, x_hood)
+
+        # Nadproże: Przeplatanka na białym tle (tekstura 4:1, EXTEND — herb zachowuje proporcje)
+        w, h = yb - ya - 2 * sl, TUNNEL_TOP - TUNNEL_OPEN_H
+        half_u = w / h / PRZEPLATANKA_ASPECT / 2
+        x = x_front - 0.02
+        face = bm_p.faces.new([bm_p.verts.new(p) for p in [(x, ya + sl, TUNNEL_OPEN_H), (x, ya + sl, TUNNEL_TOP),
+                                                         (x, yb - sl, TUNNEL_TOP), (x, yb - sl, TUNNEL_OPEN_H)]])
+        for loop in face.loops:
+            t = (yb - sl - loop.vert.co.y) / w
+            loop[uv].uv = (0.5 + (t - 0.5) * 2 * half_u, (loop.vert.co.z - TUNNEL_OPEN_H) / h)
+
+        # Barierki na wierzchu portalu (od boiska i wzdłuż krawędzi)
+        xr = x_front + 0.1
+        _rail(bm_y, (xr, ya + sl, TUNNEL_TOP), (xr, yb - sl, TUNNEL_TOP), 2.1)
+        for ye in (ya + sl + 0.05, yb - sl - 0.05):
+            _rail(bm_y, (xr, ye, TUNNEL_TOP), (x_hood, ye, TUNNEL_TOP), 2.0)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bmesh.ops.recalc_face_normals(bm_y, faces=bm_y.faces)
     _finish_mesh(col, bm, "Galera_Tunele", [mats['concrete']])
     _finish_mesh(col, bm_y, "Galera_Tunele_Barierki", [mats['yellow']])
+    bm_p.normal_update()
+    _finish_mesh(col, bm_p, "Galera_Tunele_Przeplatanka", [mats['przeplatanka']])
 
 
 def build_bowl_details(col, mats, red_seat, galera_aisles):
@@ -460,7 +556,7 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
     bm_y = bmesh.new()
     run = math.hypot(STEP_D, STEP_H)
     pitch = -math.atan2(STEP_H, STEP_D)
-    for a in galera_aisles[1:-1]:
+    for a in galera_aisles:
         y = a + 0.52
         for i in range(NUM_STEPS - 1):
             d, z = _row(i)
@@ -491,8 +587,8 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
         seg = math.hypot(x1 - x0, y1 - y0)
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
         for h in (0.6, LOW_FENCE_H - 0.03):
-            _obox(bm_lf, (mx, my, FRONT_WALL_H + h), (0.05, seg, 0.05), yaw=yaw)
-        post = _obox(bm_lf, (x0, y0, FRONT_WALL_H + LOW_FENCE_H / 2), (0.09, 0.09, LOW_FENCE_H), yaw=yaw)
+            _obox(bm_lf, (mx, my, h), (0.05, seg, 0.05), yaw=yaw)
+        post = _obox(bm_lf, (x0, y0, LOW_FENCE_H / 2), (0.09, 0.09, LOW_FENCE_H), yaw=yaw)
         for f in {f for v in post['verts'] for f in v.link_faces}:
             f.material_index = k % 2
         k += 1
@@ -512,7 +608,7 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
     # Bandy reklamowe na słupach na koronie łuku południowego (atlas ads_crown.png: 4 wiersze 4:1)
     bm_ad = bmesh.new()
     uv = bm_ad.loops.layers.uv.verify()
-    r = R_TRACK_OUT + STAND_DEPTH - 0.4
+    r = STAND_BACK - 0.4
     for ang, row in SOUTH_ADS:
         (x, y), a = _arc_point(r, ang)
         board = _obox(bm_ad, (x, y, STAND_H + 3.05), (0.08, 3.6, 0.9), yaw=a)
@@ -549,9 +645,9 @@ def build_fan_banners(col, mats):
     Tworzy kibicowskie banery i historyczne graffiti wzdłuż prostej wschodniej ("Galera").
     """
     bm = bmesh.new()
-    BX = R_TRACK_OUT - 0.03  # lico muru oporowego Galery
-    BY_START = -32.5   # między tunelami Galery (GALERA_TUNNELS)
-    BY_END = 32.5
+    BX = R_TRACK_OUT - 0.03  # przed ogrodzeniem Galery (banery wieszane na siatce)
+    BY_START = -36.0
+    BY_END = 36.0
     BZ_BOT = 0.2
     BZ_TOP = 1.3
     

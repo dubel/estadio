@@ -24,9 +24,10 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
 3. **Podkowa Ziemna i Galera (Wschód)**:
    - Trybuna wschodnia (**Galera**) biegnąca wzdłuż **al. Unii Lubelskiej** z historycznymi banerami kibicowskimi (`RODOWICI ŁODZIANIE`, `GALERA JEST TYLKO JEDNA`).
    - Podkowa trybun oparta na wałach ziemnych z 20 betonowymi stopniami.
-   - Mur oporowy (ok. 1,5 m) ze stalowym ogrodzeniem (pełne panele u dołu, siatka wyżej) na czole podkowy.
+   - Bez muru oporowego: rzędy kończą się ok. 1,5 m przed ogrodzeniem na gruncie. Przed Galerą i między jej sekcjami stoi stalowe ogrodzenie (pełne panele u dołu, siatka wyżej), na łukach niskie z biało-czerwonymi słupkami.
+   - Galera ma 6 sekcji kolorystycznych krzesełek: czerwoną, cztery biało-czerwono-białe (w jednej pikselowy napis ŁKS) i sekcję z czerwonym pasem u góry i gołym betonem z żółtymi barierkami.
    - Czerwone plastikowe krzesełka na prostej Galery.
-   - Dwa duże tunele wejściowe Galery przy styku z łukami: przelot pod wałem z podestem nad wylotem.
+   - Dwa duże tunele wejściowe Galery przy styku z łukami: przelot pod wałem wychodzi na chodnik przed pierwszym rzędem przez trapezowy portal z Przeplatanką.
 
 4. **Tablica Wyników i Zegar Omega (Południe)**:
    - Zlokalizowana na koronie krótkiej trybuny od południa, skierowana frontem na północ ku murawie.

@@ -71,13 +71,13 @@ try {
     out.tunnelEnd = out.tunnelStart;   // najwyższy punkt: po wyjściu z tunelu ścieżka schodzi ku boisku
     for (let i = 0; i < 70; i++) { W.__simulateWalk(0.1, true); out.tunnelEnd = Math.max(out.tunnelEnd, y()); }
 
-    W.__setCam(40, 1.65, 10, 100, 1.65, 10); // bieżnia -> mur oporowy z ogrodzeniem Galery
+    W.__setCam(40, 1.65, 10, 100, 1.65, 10); // bieżnia -> ogrodzenie Galery na gruncie
     W.__simulateWalk(3, true);
     out.fenceX = x();
     out.fenceY = y();
 
-    // tunel wejściowy Galery (północny, Y 33–39 m): z bieżni pod wałem na plac za stadionem
-    W.__setCam(40, 1.65, -36, 100, 1.65, -36);
+    // tunel wejściowy Galery (północny, Y 33–39 m): z chodnika przed pierwszym rzędem pod wałem na plac
+    W.__setCam(46.2, 1.65, -36, 100, 1.65, -36);
     W.__simulateWalk(8, true);
     out.galeraTunnelX = x();
     out.galeraTunnelY = y();
@@ -113,7 +113,7 @@ try {
   check('tunel: schody na sektor górny', r.tunnelStart < 2 && r.tunnelEnd > 8.5, `y ${f(r.tunnelStart)} → ${f(r.tunnelEnd)}`);
   check('tunel: schody poza osią', r.tunnelOffAxis.every((m) => m > 8.5), r.tunnelOffAxis.map(f).join(', '));
   check('tunel Galery: przejście pod wałem', r.galeraTunnelX > 75 && r.galeraTunnelY < 2, `x=${f(r.galeraTunnelX)} y=${f(r.galeraTunnelY)}`);
-  check('mur z ogrodzeniem zatrzymuje na bieżni', r.fenceX < 45 && r.fenceY < 2, `x=${f(r.fenceX)} y=${f(r.fenceY)}`);
+  check('ogrodzenie Galery zatrzymuje na bieżni', r.fenceX < 45 && r.fenceY < 2, `x=${f(r.fenceX)} y=${f(r.fenceY)}`);
   check('teren za Galerą (bez spadania)', r.outsideX > 75 && Math.abs(r.outsideY - 1.40) < 0.1, `x=${f(r.outsideX)} y=${f(r.outsideY)}`);
 } finally {
   await browser.close();

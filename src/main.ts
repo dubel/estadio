@@ -59,8 +59,8 @@ const viewpoints: Viewpoint[] = [
   },
   {
     name: "Galera (Al. Unii Lubelskiej)",
-    pos: new THREE.Vector3(64, 8.2, 0),
-    target: new THREE.Vector3(-55, 7, 0)
+    pos: new THREE.Vector3(64, 7.2, 3.5), // rząd 16, sekcja przy linii środkowej (siatka na Y = 0)
+    target: new THREE.Vector3(-55, 7, 3.5)
   },
   {
     name: "Jupiter NW — Szczyt Masztu Oświetleniowego",

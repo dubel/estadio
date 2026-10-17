@@ -35,12 +35,13 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Bloczki z Przeplatanką | bloczki_na_trybunie.png, widok_na_trybune_z_sektora_gosci.png, uwaga użytkownika | 4–5 rzędów nad daszkiem, poniżej wyjść z tuneli, przerwy pod tunelami | 13 bloków 3,6 × 1,5 m na rzędzie 5, w osiach dźwigarów | średnia |
 | Żółte barierki trybuny głównej | detale_trybuny_zachodniej.png | wzdłuż przejść, na balustradzie czołowej i na koronie | przejście w osi każdego przęsła z poręczami po obu stronach | średnia |
 | Ławki rezerwowych | lawka_rezerwowych.png, uwaga użytkownika | ćwiartki walca z mlecznej pleksi, stelaż biało-czerwony, wpuszczone w sektor VIP | 2 × 7 m, ±12 m od linii środkowej, wnęka zamiast 3 pierwszych rzędów | średnia (wymiary) |
-| Tunele Galery | tunel_galera.png, uwaga użytkownika | dwa duże tunele przy styku z łukami, symetryczne | Y 33–39 m i −39…−33 m, prześwit 5,4 × 2,8 m, podest na wysokości rzędu 7 | średnia (wymiary) |
+| Tunele Galery | tunel_galera.png, kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | dwa duże tunele przy styku z łukami, symetryczne; trapezowy portal z Przeplatanką na białym tle, wylot na parter sektora, przed nim zwykłe ogrodzenie | Y 33–39 m i −39…−33 m, prześwit 4,2 × 2,6 m, portal nad 10 pierwszymi rzędami | średnia (wymiary) |
 | Krzesełka | widok_z_galery.jpg, 516e09e1189ce, lks05 | czerwone na Galerze, czerwone/białe w sektorze dolnym | instancje GPU | średnia (rozmieszczenie kolorów) |
 | Ławki sektora górnego | widok_z_galery.jpg, uwaga użytkownika | jasne, kość słoniowa | malowane drewno (0,80; 0,76; 0,64) | średnia |
 | Panorama bloków | lks07, lks08 (kompozycja) | kierunek: za Galerą i łukiem południowym | 12 bloków, 480–900 m (`SKYLINE` w `build_surroundings.py`) | **orientacyjna** |
 | Galera | ortofotomapa | od X = 43,5 m do 69 m | od 45 do 67 m + skarpa | wysoka |
-| Czoło podkowy | zdjęcia widok_z_galery, 516e09e41f411, 516e09e800a6f, lks02 + przekrój | mur ok. 1,5 m + stalowe ogrodzenie; **brak fosy** | mur 1,5 m, ogrodzenie 2 m | wysoka (mur), średnia (wysokość) |
+| Czoło podkowy (2010–2012) | widok_z_galery.jpg, kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | **bez muru i fosy**: rzędy kończą się 1–2 m przed ogrodzeniem z siatki na gruncie (lks02 z okresu żużlowego pokazuje wcześniejszy mur) | chodnik 1,5 m, pierwszy stopień 0,45 m, ogrodzenie 2,5 m (Galera), 1,2 m (łuki) | wysoka |
+| Sekcje Galery | kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | od północy: czerwona z tunelem; 4 × biały–czerwony–biały (ostatnia z napisem ŁKS z białych krzesełek); czerwony pas u góry, niżej beton z żółtymi barierkami i tunel; siatki między sekcjami | 6 sekcji po 14 m (`GALERA_SECTIONS`), siatki na Y 28, 14, 0, −14, −28 m | średnia (granice sekcji) |
 | Maszt NE / SE | cienie na ortofotomapie | (≈68, +64) / (≈68, −59) | (68, ±61,5) | średnia |
 | Maszt NW / SW | brak (w cieniu trybuny) | — | (−68, ±82), bez zmian | **niezweryfikowane** |
 | Konstrukcja masztów | punkt_swietlny_jupiter.png, widok_na_trybune_z_sektora_gosci.png | trzon kratownicowy, u dołu trzy rozchodzące się nogi na betonowych blokach; dodatkowe reflektory w połowie wysokości | rozejście nóg na 15 m, rozstaw stóp 8 × 7 m, pomost z 6 lampami na 25 m | średnia |
@@ -81,7 +82,9 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `516e09e41f411…`, `516e09e800a6f…`, `516e09e9f3933…`, `516e09e31b4d3…` | łuki i Galera z ogrodzeniem | mur czołowy, ogrodzenie, wyjścia ewakuacyjne |
 | `516e09e1189ce…`, `516e09e210a69…`, `lks05.jpg`, `lks04.jpg` | sektor dolny pod daszkiem | krzesełka, konstrukcja daszku, fasada lóż |
 | `4ff5cb…` (3 pliki, cz-b) | trybuna główna i bieżnia z torami | bieżnia lekkoatletyczna z liniami torów (okres wcześniejszy) |
-| `lks02.jpg` | łuk z bieżnią żużlową | mur czołowy łuku (ok. wysokości samochodu) |
+| `lks02.jpg` | łuk z bieżnią żużlową (okres wcześniejszy) | mur czołowy łuku — w latach 2010–2012 już go nie było |
+| `kolorystyka_galery_oraz_budynki_tla.png` | kadr z transmisji, z trybuny głównej na Galerę | sekcje kolorystyczne krzesełek Galery, tunele z Przeplatanką, siatki między sekcjami, zabudowa za torami |
+| `jupitery_dajace_plamy_swietlne.png` | kadr z transmisji o zmierzchu (ŁKS – Pogoń) | jupitery dają wyraźne, jasne plamy światła na murawie z ciemniejszymi strefami między nimi — wzorzec do oświetlenia nocnego (Faza 4) |
 | `lks22.jpg`, `screenshot-…19-37-09.png` | tablica wyników z zegarem | tekstura i proporcje tablicy |
 | `jupiter.png` | głowica masztu | głowica (odwrócony trapez) |
 | `34dec5jwrh…jpeg` | schody wejściowe z bramą „ŁKS WITA” | wejścia (tunele) |
@@ -107,4 +110,4 @@ Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba 
 11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, platforma kamery na koronie trybuny głównej, graffiti na balustradzie czołowej (część przęseł), pawilon VIP w północnej części sektora dolnego, ogrodzenie z blachy przy łuku północnym.
 10. **Bandy na koronie**: 4 tablice z napisami odczytanymi z `widok_na_zegar_u2.png`; pozycje orientacyjne, łuk północny bez band.
 8. **Barierki**: żółte poręcze przy przejściach Galery i barierka poprzeczna w sekcji ławek łuku są w modelu; ich dokładny przebieg to przybliżenie ze zdjęć.
-5. **Wysokość muru czołowego**: 1,5 m oszacowane z lks02. Brak wymiaru.
+5. **Chodnik przed pierwszym rzędem**: 1,5 m i pierwszy stopień 0,45 m oszacowane ze zdjęć. Brak wymiaru.
