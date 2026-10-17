@@ -92,6 +92,10 @@ try {
       out.tunnelOffAxis.push(m);
     }
 
+    W.__setCam(10, 1.65, -50, 10, 1.65, -120); // z boiska na północ — ogrodzenie z blachy na Y = 62 m
+    W.__simulateWalk(4, true);
+    out.sheetZ = W.__getPlayerState().pos[2];
+
     W.__setCam(64, 8.5, 1.3, 200, 8.5, 1.3); // przez koronę Galery na teren za stadionem
     W.__simulateWalk(6, true);
     out.outsideX = x();
@@ -114,6 +118,7 @@ try {
   check('tunel: schody poza osią', r.tunnelOffAxis.every((m) => m > 8.5), r.tunnelOffAxis.map(f).join(', '));
   check('tunel Galery: przejście pod wałem', r.galeraTunnelX > 75 && r.galeraTunnelY < 2, `x=${f(r.galeraTunnelX)} y=${f(r.galeraTunnelY)}`);
   check('ogrodzenie Galery zatrzymuje na bieżni', r.fenceX < 45 && r.fenceY < 2, `x=${f(r.fenceX)} y=${f(r.fenceY)}`);
+  check('ogrodzenie z blachy zamyka północ', r.sheetZ > -62 && r.sheetZ < -60, `z=${f(r.sheetZ)}`);
   check('teren za Galerą (bez spadania)', r.outsideX > 75 && Math.abs(r.outsideY - 1.40) < 0.1, `x=${f(r.outsideX)} y=${f(r.outsideY)}`);
 } finally {
   await browser.close();

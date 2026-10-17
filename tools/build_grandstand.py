@@ -319,6 +319,16 @@ def create_materials():
 
     mats['fence'] = make_alpha_material("Mat_Fence_Red", os.path.join(TEXTURES_DIR, "fence_steel_red.png"), 0.55)
 
+    # Blacha trapezowa ocynkowana ogrodzenia północnego (ambientCG CorrugatedSteel005, CC0)
+    mat_sheet = bpy.data.materials.new("Mat_Blacha_Falista")
+    mat_sheet.use_nodes = True
+    bsdf = mat_sheet.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Metallic'].default_value = 0.6
+    steel = os.path.join(TEXTURES_DIR, "corrugated_steel", "CorrugatedSteel005_1K-JPG_")
+    setup_pbr_nodes(mat_sheet, steel + "Color.jpg", steel + "NormalGL.jpg", steel + "Roughness.jpg")
+    mat_sheet.use_backface_culling = False
+    mats['sheet_steel'] = mat_sheet
+
     # Żółta farba: barierki i obrzeża tuneli (detale_trybuny_zachodniej.png, widok_z_galery.jpg)
     mats['yellow'] = seat_material("Mat_Barierki_Zolte", (0.85, 0.66, 0.08))
 

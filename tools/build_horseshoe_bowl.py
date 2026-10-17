@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_seats import place_seats, seat_material, seats_in_row, SEAT_PITCH  # noqa: E402
-from build_grandstand import _extrude_profile, _rail, PRZEPLATANKA_ASPECT  # noqa: E402
+from build_grandstand import _beam, _extrude_profile, _rail, PRZEPLATANKA_ASPECT  # noqa: E402
 import mathutils  # noqa: E402
 
 STRAIGHT_L = 84.0  # długość prostych bieżni 400 m (środki łuków w Y = ±42 m)
@@ -281,6 +281,12 @@ GALERA_TUNNELS = ((-39.0, -33.0), (33.0, 39.0))
 TUNNEL_OPEN_H = 2.6     # prześwit przelotu
 TUNNEL_SLOPE = 0.9      # pochylenie ścian wcięcia: dno i wylot 4.2 m, u góry pełne 6 m
 TUNNEL_ROWS = 10        # głębokość wcięcia w rzędach; wylot pod rzędem 10 (nadproże 2.6–3.8 m)
+# Ogrodzenie z blachy trapezowej na północnym krańcu (widok_na_trybune_z_sektora_gosci.png): prosto w poprzek
+# ok. 9.5 m za linią bramkową od trybuny głównej do łuku, dalej po czole łuku do Galery. Położenie z kadru,
+# bez pomiaru. Na odcinku łuku zastępuje niskie ogrodzenie.
+SHEET_FENCE_Y = 62.0
+SHEET_FENCE_H = 2.0
+SHEET_TILE_M = 1.4      # 8 przetłoczeń na kafel: rozstaw ok. 17 cm
 SOUTH_ADS = [(-142.0, 0), (-129.0, 1), (-116.0, 2), (-103.0, 3)]   # bandy na koronie: (kąt, wiersz atlasu)
 
 
@@ -422,6 +428,7 @@ def build_bowl(col, mats):
 
     build_bowl_details(col, mats, red_seat, [s[3] for s in GALERA_SECTIONS])
     build_galera_tunnels(col, mats)
+    build_north_sheet_fence(col, mats)
     return obj_bowl, obj_f
 
 
@@ -519,6 +526,62 @@ def build_galera_tunnels(col, mats):
     _finish_mesh(col, bm_p, "Galera_Tunele_Przeplatanka", [mats['przeplatanka']])
 
 
+def _sheet_fence_path():
+    """
+    Punkty (x, y) ogrodzenia z blachy: prosto w poprzek za bramką północną od czoła trybuny głównej
+    do łuku, dalej po czole łuku do początku prostej Galery (widok_na_trybune_z_sektora_gosci.png).
+    """
+    x_arc = math.sqrt((R_TRACK_OUT + 0.1) ** 2 - (SHEET_FENCE_Y - STRAIGHT_L / 2) ** 2)
+    n = math.ceil((x_arc + R_TRACK_OUT) / 2.5)
+    pts = [(-R_TRACK_OUT + (x_arc + R_TRACK_OUT) * k / n, SHEET_FENCE_Y) for k in range(n + 1)]
+    a0 = math.degrees(math.atan2(SHEET_FENCE_Y - STRAIGHT_L / 2, x_arc))
+    m = math.ceil(a0 / 4.0)
+    for k in range(1, m + 1):
+        (x, y), _ = _arc_point(R_TRACK_OUT + 0.1, a0 * (1 - k / m), cy=STRAIGHT_L / 2)
+        pts.append((x, y))
+    return pts, a0
+
+
+def build_north_sheet_fence(col, mats):
+    """
+    Ogrodzenie z blachy trapezowej (ocynk, pionowe przetłoczenia) zamykające północny kraniec boiska:
+    za nim trawa przed stopniami łuku północnego. Panele SHEET_FENCE_H na słupkach co ~2.5 m,
+    zastrzały co drugi słupek od strony trybun. Blacha to dwie ściany 3 cm od siebie
+    (kolizje są jednostronne); UV: 1 kafel tekstury (ambientCG CorrugatedSteel005) = SHEET_TILE_M.
+    """
+    pts, _ = _sheet_fence_path()
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.verify()
+    bm_post = bmesh.new()
+    dist = 0.0
+    for k, ((x0, y0), (x1, y1)) in enumerate(zip(pts, pts[1:])):
+        seg = math.hypot(x1 - x0, y1 - y0)
+        nx, ny = (y1 - y0) / seg, -(x1 - x0) / seg              # normalna w poziomie
+        for off, flip in [(-0.015, False), (0.015, True)]:
+            c = [(x0 + nx * off, y0 + ny * off, 0.0, dist), (x1 + nx * off, y1 + ny * off, 0.0, dist + seg),
+                 (x1 + nx * off, y1 + ny * off, SHEET_FENCE_H, dist + seg), (x0 + nx * off, y0 + ny * off, SHEET_FENCE_H, dist)]
+            if flip:
+                c = c[::-1]
+            face = bm.faces.new([bm.verts.new(p[:3]) for p in c])
+            for loop, p in zip(face.loops, c):
+                loop[uv].uv = (p[3] / SHEET_TILE_M, p[2] / SHEET_TILE_M)   # przetłoczenia pionowe jak w teksturze
+        yaw = math.atan2(y1 - y0, x1 - x0)
+        _obox(bm_post, (x0, y0, SHEET_FENCE_H / 2 + 0.05), (0.08, 0.08, SHEET_FENCE_H + 0.1), yaw=yaw)
+        if k % 2 == 0:
+            # zastrzał od strony trybun (od środka boiska na zewnątrz): od 2/3 wysokości słupka do gruntu 1.2 m dalej
+            side = 1.0 if nx * x0 + ny * y0 > 0 else -1.0
+            sx, sy = nx * side, ny * side
+            top = (x0, y0, SHEET_FENCE_H * 0.65)
+            foot = (x0 + sx * 1.2, y0 + sy * 1.2, 0.0)
+            _beam(bm_post, top, foot, 0.06, 0.06)
+        dist += seg
+    _obox(bm_post, (pts[-1][0], pts[-1][1], SHEET_FENCE_H / 2 + 0.05), (0.08, 0.08, SHEET_FENCE_H + 0.1))
+    bm.normal_update()
+    _finish_mesh(col, bm, "Ogrodzenie_Blacha_Polnoc", [mats['sheet_steel']])
+    bmesh.ops.recalc_face_normals(bm_post, faces=bm_post.faces)
+    _finish_mesh(col, bm_post, "Ogrodzenie_Blacha_Slupki", [mats['metal']])
+
+
 def build_bowl_details(col, mats, red_seat, galera_aisles):
     """
     Wyposażenie podkowy ze zdjęć 2010–2012 (widok_z_galery.jpg, widok_na_zegar_u2.png): krzesełka i ławki
@@ -582,12 +645,16 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
         ang += seg_deg
     _finish_mesh(col, bm_y, "Barierki_Zolte", [yellow])
 
-    # Niskie ogrodzenie łuków: słupki co ~2.5 m na przemian czerwone i białe, dwie poręcze
+    # Niskie ogrodzenie łuków: słupki co ~2.5 m na przemian czerwone i białe, dwie poręcze.
+    # Na łuku północnym przy Galerze zamiast niego blacha (build_north_sheet_fence).
+    _, sheet_arc_deg = _sheet_fence_path()
     bm_lf = bmesh.new()
     path = stadium_path(R_TRACK_OUT + 0.15, BOWL_ANGLE, -BOWL_ANGLE, arc_step_deg=3.0)
     k = 0
     for (x0, y0, nx0, ny0), (x1, y1, nx1, ny1) in zip(path, path[1:]):
         if abs(ny0) < 1e-6 and abs(ny1) < 1e-6:     # prosta Galery ma wysokie ogrodzenie
+            continue
+        if y0 > 0 and math.degrees(math.atan2(y0 - STRAIGHT_L / 2, x0)) < sheet_arc_deg - 1e-6 and x0 > 0:
             continue
         yaw = math.atan2(y1 - y0, x1 - x0) - math.pi / 2
         seg = math.hypot(x1 - x0, y1 - y0)

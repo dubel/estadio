@@ -41,6 +41,7 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Panorama bloków | lks07, lks08 (kompozycja) | kierunek: za Galerą i łukiem południowym | 12 bloków, 480–900 m (`SKYLINE` w `build_surroundings.py`) | **orientacyjna** |
 | Galera | ortofotomapa | od X = 43,5 m do 69 m | od 45 do 67 m + skarpa | wysoka |
 | Czoło podkowy (2010–2012) | widok_z_galery.jpg, kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | **bez muru i fosy**: rzędy kończą się 1–2 m przed ogrodzeniem z siatki na gruncie (lks02 z okresu żużlowego pokazuje wcześniejszy mur) | chodnik 1,5 m, pierwszy stopień 0,45 m, ogrodzenie 2,5 m (Galera), 1,2 m (łuki) | wysoka |
+| Ogrodzenie z blachy (północ) | widok_na_trybune_z_sektora_gosci.png | blacha trapezowa ocynkowana ok. 2 m, słupki z zastrzałami; prosto w poprzek za bramką północną, za nim trawa przed łukiem | Y = 62 m od trybuny głównej do łuku, dalej po czole łuku do Galery; 2 m, słupki co 2,5 m | średnia (położenie z kadru) |
 | Sekcje Galery | kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | od północy: czerwona z tunelem; 4 × biały–czerwony–biały (ostatnia z napisem ŁKS z białych krzesełek); czerwony pas u góry, niżej beton z żółtymi barierkami i tunel; siatki między sekcjami | 6 sekcji po 14 m (`GALERA_SECTIONS`), siatki na Y 28, 14, 0, −14, −28 m | średnia (granice sekcji) |
 | Maszt NE / SE | cienie na ortofotomapie | (≈68, +64) / (≈68, −59) | (68, ±61,5) | średnia |
 | Maszt NW / SW | brak (w cieniu trybuny) | — | (−68, ±82), bez zmian | **niezweryfikowane** |
@@ -105,6 +106,7 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | Kora brzozy i sosny | [TextureCan](https://www.texturecan.com/terms/) | CC0 | j.w., przez EZ-Tree |
 | HDRI Overcast Soil (Pure Sky) | [Poly Haven](https://polyhaven.com/a/overcast_soil_puresky) | CC0 | `public/assets/env/` |
 | Trawa (murawa, teren) | ambientCG | CC0 | `assets/textures/grass/` |
+| Blacha trapezowa (CorrugatedSteel005) | [ambientCG](https://ambientcg.com/a/CorrugatedSteel005) | CC0 | `assets/textures/corrugated_steel/` |
 
 Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba ustalić licencje albo usunąć zdjęcia z repozytorium.
 
@@ -116,8 +118,8 @@ Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba 
 4. **Okres**: model pokazuje stan z lat 2010–2012 (decyzja z 17.10.2026), stąd trawa zamiast bieżni i plastikowe krzesełka.
 6. **Panorama bloków**: pozycje i wysokości to kompozycja ze zdjęć lks07/lks08, bez pomiaru. Do zweryfikowania na mapie (rejon Karolewa / za stacją Łódź Kaliska).
 7. **Łuk północny**: model ma tam gołe stopnie (krzesełek, ławek i band brak). Nie ma zdjęcia, które by to pokazywało.
-9. **Granica ogrodzeń**: wysokie ogrodzenie stoi tylko na prostej Galery, niskie na obu łukach. Dokładnego miejsca przejścia nie ma na zdjęciach.
-11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, platforma kamery na koronie trybuny głównej, graffiti na balustradzie czołowej (część przęseł), pawilon VIP w północnej części sektora dolnego, ogrodzenie z blachy przy łuku północnym.
+9. **Granica ogrodzeń**: wysokie ogrodzenie stoi tylko na prostej Galery, niskie na łuku południowym i na łuku północnym za blachą. Dokładnego miejsca przejścia nie ma na zdjęciach.
+11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, platforma kamery na koronie trybuny głównej, graffiti na balustradzie czołowej (część przęseł), pawilon VIP w północnej części sektora dolnego.
 10. **Bandy na koronie**: 4 tablice z napisami odczytanymi z `widok_na_zegar_u2.png`; pozycje orientacyjne, łuk północny bez band.
 8. **Barierki**: żółte poręcze przy przejściach Galery i barierka poprzeczna w sekcji ławek łuku są w modelu; ich dokładny przebieg to przybliżenie ze zdjęć.
 5. **Chodnik przed pierwszym rzędem**: 1,5 m i pierwszy stopień 0,45 m oszacowane ze zdjęć. Brak wymiaru.
