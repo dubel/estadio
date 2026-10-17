@@ -4,7 +4,9 @@ Przekrój wg rysunku J. Wyżnikiewicza (1969), długość i rozstaw przęseł wg
 - 14 przęseł × ~9.3 m (130 m), 15 dźwigarów z ukośnymi odciągami od strony zachodniej
 - Sektor dolny: 10 rzędów pod daszkiem (biały–czerwony–biały), promenada na 3.2 m
 - Sektor górny: 33 rzędy ławek, korona ok. 18.4 m nad terenem, bez dachu
-- 4 tunele ze schodami z hali pod trybuną do połowy sektora górnego
+- tunel w każdym przęśle: schody z hali pod trybuną na 7. rząd sektora górnego, żółte barierki
+- bloczki z Przeplatanką 4–5 rzędów nad daszkiem sektora dolnego, poniżej wyjść z tuneli
+- ławki rezerwowych z pleksi wpuszczone w sektor dolny
 - Podwieszony budynek z tyłu (wstęga okien od zachodu, strona Atlas Areny)
 """
 
@@ -13,6 +15,10 @@ import bmesh
 import mathutils
 import math
 import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from build_seats import place_seats, seat_material  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -313,6 +319,21 @@ def create_materials():
 
     mats['fence'] = make_alpha_material("Mat_Fence_Red", os.path.join(TEXTURES_DIR, "fence_steel_red.png"), 0.55)
 
+    # Żółta farba: barierki i obrzeża tuneli (detale_trybuny_zachodniej.png, widok_z_galery.jpg)
+    mats['yellow'] = seat_material("Mat_Barierki_Zolte", (0.85, 0.66, 0.08))
+
+    # Mleczna pleksi ławek rezerwowych (lawka_rezerwowych.png): półprzezroczysta, dwustronna
+    mat_plexi = bpy.data.materials.new("Mat_Pleksi_Mleczna")
+    mat_plexi.use_nodes = True
+    bsdf = mat_plexi.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.90, 0.91, 0.92, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.35
+    bsdf.inputs['Alpha'].default_value = 0.6
+    if hasattr(mat_plexi, 'surface_render_method'):
+        mat_plexi.surface_render_method = 'BLENDED'
+    mat_plexi.use_backface_culling = False
+    mats['plexi'] = mat_plexi
+
     return mats
 
 
@@ -351,13 +372,28 @@ def upper_row(i):
     return x, x + UPPER_DX, UPPER_Z0 + i * UPPER_DZ
 
 
-# Tunele (vomitoria): schody z hali pod trybuną, wyjście na stopień VOM_EXIT_ROW w połowie przęsła
-VOM_BAYS = (2, 5, 8, 11)
+# Tunele (vomitoria) w każdym przęśle (widok_na_trybune_z_sektora_gosci.png): schody z hali pod trybuną,
+# wyjście na stopień VOM_EXIT_ROW w osi przęsła. Ściany tunelu mają żółto malowane obrzeża
+# (detale_trybuny_zachodniej.png).
 VOM_EXIT_ROW = 6
 VOM_SLOT_ROWS = 4                       # usunięte stopnie nad biegiem schodów (prześwit > 2.1 m)
 VOM_WIDTH = 2.4
 VOM_WALL = 0.25
 VOM_RISE, VOM_TREAD = 0.2933, 0.42
+AISLE_W = 1.4                           # przejście w osi przęsła: od korony do tunelu i od tunelu w dół
+
+# Bloczki z Przeplatanką (bloczki_na_trybunie.png): rząd betonowych bloków na stopniu BLOCK_ROW, 4–5 rzędów
+# nad daszkiem sektora dolnego i poniżej wyjść z tuneli. Stoją w osiach dźwigarów, więc przerwy między
+# nimi wypadają pod tunelami — schodzący z tunelu nie trafia na bloczek.
+BLOCK_ROW, BLOCK_W, BLOCK_H, BLOCK_D = 4, 3.6, 1.5, 0.4
+
+# Ławki rezerwowych wpuszczone w sektor VIP (lawka_rezerwowych.png): ćwiartki walca z mlecznej pleksi
+# na stelażu z białych i czerwonych profili. Linia środkowa boiska leży na Y lokalnym 68 (środek trybuny
+# 3 m na północ od niej, build_full_stadium.py), ławki po ±12 m od niej. Zakresy Y w układzie lokalnym.
+DUGOUTS = ((52.5, 59.5), (76.5, 83.5))
+DUG_ROWS = 3                            # usunięte rzędy sektora dolnego nad wnęką ławki
+DUG_X0 = 0.35                           # pionowe lico (oś walca) od czoła trybuny
+DUG_R = 2.3                             # promień ćwiartki walca: dach 2.3 m nad posadzką przy licu
 
 
 def _extrude_profile(bm, pts_xz, y0, y1):
@@ -374,6 +410,31 @@ def _box(bm, x0, x1, y0, y1, z0, z1):
     bmesh.ops.translate(bm, vec=((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), verts=c['verts'])
 
 
+def _beam(bm, p0, p1, w=0.05, h=0.05):
+    """Prostopadłościan od p0 do p1 o przekroju w × h (poręcze, profile stelaży)."""
+    p0, p1 = mathutils.Vector(p0), mathutils.Vector(p1)
+    d = p1 - p0
+    ax = d.normalized()
+    side = mathutils.Vector((0.0, 0.0, 1.0)).cross(ax)
+    if side.length < 1e-6:                                  # odcinek pionowy
+        side = mathutils.Vector((0.0, 1.0, 0.0))
+    side.normalize()
+    m = mathutils.Matrix((ax, side, ax.cross(side))).transposed().to_4x4()
+    m.translation = (p0 + p1) / 2
+    bmesh.ops.create_cube(bm, size=1.0, matrix=m @ mathutils.Matrix.Diagonal((d.length, w, h, 1.0)))
+
+
+def _rail(bm, p0, p1, post_every):
+    """Poręcz 0.9 m nad linią p0–p1 i słupki co post_every metrów (bryły — kolizje są jednostronne)."""
+    p0, p1 = mathutils.Vector(p0), mathutils.Vector(p1)
+    up = mathutils.Vector((0.0, 0.0, 0.9))
+    _beam(bm, p0 + up, p1 + up)
+    n = max(1, round((p1 - p0).length / post_every))
+    for k in range(n + 1):
+        p = p0.lerp(p1, k / n)
+        _beam(bm, p, p + up, 0.05, 0.05)
+
+
 def _finish(col, bm, name, mat):
     mesh = bpy.data.meshes.new(name + "_Mesh")
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
@@ -386,9 +447,13 @@ def _finish(col, bm, name, mat):
     return obj
 
 
-def _lower_profile():
-    pts = [(0.0, 0.0), (0.0, FRONT_PARAPET_H), (LOWER_X0, FRONT_PARAPET_H)]
-    for i in range(LOWER_ROWS):
+def _lower_profile(first_row=0):
+    """Przekrój sektora dolnego z promenadą; first_row > 0 — bez pierwszych rzędów (wnęka ławki rezerwowych)."""
+    if first_row == 0:
+        pts = [(0.0, 0.0), (0.0, FRONT_PARAPET_H), (LOWER_X0, FRONT_PARAPET_H)]
+    else:
+        pts = [(LOWER_X0 + first_row * LOWER_DX, 0.0)]
+    for i in range(first_row, LOWER_ROWS):
         z = LOWER_Z0 + i * LOWER_DZ
         pts += [(LOWER_X0 + i * LOWER_DX, z), (LOWER_X0 + (i + 1) * LOWER_DX, z)]
     pts += [(CONCOURSE_X1, CONCOURSE_Z), (CONCOURSE_X1, 0.0)]
@@ -416,15 +481,16 @@ def _upper_profiles(slot=None):
 
 def build_grandstand(col, mats):
     """
-    Trybuna główna w lokalnym układzie (patrz stałe przekroju). 14 przęseł budowanych jawnie,
-    bo przęsła z tunelami (VOM_BAYS) mają wycięcie w widowni. Każdy element to zamknięta bryła:
-    kolizje Octree w Three.js są jednostronne.
+    Trybuna główna w lokalnym układzie (patrz stałe przekroju). 14 przęseł budowanych jawnie, bo każde
+    ma tunel z wycięciem w widowni. Każdy element to zamknięta bryła: kolizje Octree w Three.js są jednostronne.
     """
     bm_lower, bm_upper, bm_girder, bm_vom, bm_stairs = (bmesh.new() for _ in range(5))
-    bm_benches, bm_lights = bmesh.new(), bmesh.new()
+    bm_benches, bm_lights, bm_yellow = bmesh.new(), bmesh.new(), bmesh.new()
 
-    # Sektor dolny + promenada (jedna bryła na całą długość)
-    _extrude_profile(bm_lower, _lower_profile(), 0.0, TOTAL_LENGTH_Y)
+    # Sektor dolny + promenada; we wnękach ławek rezerwowych bez pierwszych DUG_ROWS rzędów
+    cuts = [0.0] + [y for span in DUGOUTS for y in span] + [TOTAL_LENGTH_Y]
+    for k, (ya, yb) in enumerate(zip(cuts, cuts[1:])):
+        _extrude_profile(bm_lower, _lower_profile(DUG_ROWS if k % 2 else 0), ya, yb)
 
     # Schody z terenu na promenadę na obu krańcach trybuny
     n_end = math.ceil(CONCOURSE_Z / 0.3)
@@ -438,39 +504,57 @@ def build_grandstand(col, mats):
     n_steps = math.ceil(exit_z / VOM_RISE)
     vom_x_start = exit_x0 + n_steps * VOM_TREAD
     slot = (VOM_EXIT_ROW, VOM_EXIT_ROW + VOM_SLOT_ROWS)
+    xb, _, z_back = upper_row(slot[1])
+    wall = [(exit_x0, 0.0), (exit_x0, exit_z + 1.0), (xb, z_back + 1.0),
+            (xb, underside(xb)), (vom_x_start, underside(vom_x_start)), (vom_x_start, 0.0)]
+    paint = [(exit_x0 - 0.01, exit_z + 0.8), (exit_x0 - 0.01, exit_z + 1.02), (xb, z_back + 1.02), (xb, z_back + 0.8)]
+    in_slot = lambda i: slot[0] <= i < slot[1]
+    # Bieg schodów tunelu jako jedna bryła z profilu zębatego: osobne stopnie-prostopadłościany miały
+    # zdublowane ściany na podstopniach, a kontroler kapsuły zacinał się na nich zależnie od kolejności
+    # trójkątów w Octree
+    stair_profile = [(vom_x_start, 0.0)]
+    for k in range(n_steps):
+        xs1 = vom_x_start - k * VOM_TREAD
+        stair_profile += [(xs1, (k + 1) * VOM_RISE), (xs1 - VOM_TREAD, (k + 1) * VOM_RISE)]
+    stair_profile.append((exit_x0, 0.0))
 
     for b in range(NUM_BAYS):
         y0, y1 = b * BAY_WIDTH_Y, (b + 1) * BAY_WIDTH_Y
         yc = (y0 + y1) / 2
+        sa, sb = yc - VOM_WIDTH / 2, yc + VOM_WIDTH / 2
 
-        # Widownia sektora górnego (z wycięciem nad tunelem)
-        if b in VOM_BAYS:
-            sa, sb = yc - VOM_WIDTH / 2, yc + VOM_WIDTH / 2
-            for prof in _upper_profiles():
-                _extrude_profile(bm_upper, prof, y0, sa)
-                _extrude_profile(bm_upper, prof, sb, y1)
-            for prof in _upper_profiles(slot):
-                _extrude_profile(bm_upper, prof, sa, sb)
+        # Widownia sektora górnego z wycięciem nad tunelem
+        for prof in _upper_profiles():
+            _extrude_profile(bm_upper, prof, y0, sa)
+            _extrude_profile(bm_upper, prof, sb, y1)
+        for prof in _upper_profiles(slot):
+            _extrude_profile(bm_upper, prof, sa, sb)
 
-            # Schody tunelu (bryły od terenu) i ściany boczne: tunel pod płytą, balustrada w wycięciu
-            for k in range(n_steps):
-                xs1 = vom_x_start - k * VOM_TREAD
-                _box(bm_stairs, xs1 - VOM_TREAD, xs1, sa + VOM_WALL, sb - VOM_WALL, 0.0, (k + 1) * VOM_RISE)
-            xb = upper_row(slot[1])[0]
-            wall = [(exit_x0, 0.0), (exit_x0, exit_z + 1.0), (xb, upper_row(slot[1])[2] + 1.0),
-                    (xb, underside(xb)), (vom_x_start, underside(vom_x_start)), (vom_x_start, 0.0)]
-            _extrude_profile(bm_vom, wall, sa, sa + VOM_WALL)
-            _extrude_profile(bm_vom, wall, sb - VOM_WALL, sb)
-        else:
-            for prof in _upper_profiles():
-                _extrude_profile(bm_upper, prof, y0, y1)
+        # Schody tunelu (bryła od terenu), ściany boczne z żółtym obrzeżem i balustrada nad wylotem schodów
+        _extrude_profile(bm_stairs, stair_profile, sa + VOM_WALL, sb - VOM_WALL)
+        for wa in (sa, sb - VOM_WALL):
+            _extrude_profile(bm_vom, wall, wa, wa + VOM_WALL)
+            _extrude_profile(bm_yellow, paint, wa - 0.01, wa + VOM_WALL + 0.01)
+        _box(bm_vom, xb, xb + 0.25, sa + VOM_WALL, sb - VOM_WALL, z_back, z_back + 1.0)
+        _box(bm_yellow, xb - 0.01, xb + 0.26, sa + VOM_WALL, sb - VOM_WALL, z_back + 0.8, z_back + 1.02)
 
-        # Ławki sektora górnego (malowane drewno, kość słoniowa): siedzisko 0.40 m nad stopniem, wsporniki co ~1.5 m
+        # Przejście w osi przęsła (poza wycięciem): stopnie pośrednie i żółte poręcze po obu stronach
+        for i in range(UPPER_ROWS - 1):
+            if not in_slot(i) and not in_slot(i + 1):
+                _, x1, z = upper_row(i)
+                _box(bm_stairs, x1 - UPPER_DX / 2, x1, yc - AISLE_W / 2, yc + AISLE_W / 2, z, z + UPPER_DZ / 2)
+        for yr in (yc - AISLE_W / 2 - 0.03, yc + AISLE_W / 2 + 0.03):
+            for i0, i1 in ((0, slot[0] - 1), (slot[1], UPPER_ROWS - 1)):
+                (xa, _, za), (xe, _, ze) = upper_row(i0), upper_row(i1)
+                _rail(bm_yellow, (xa + UPPER_DX / 2, yr, za), (xe + UPPER_DX / 2, yr, ze), 2.5)
+
+        # Ławki sektora górnego (malowane drewno, kość słoniowa): siedzisko 0.40 m nad stopniem, wsporniki co ~1.5 m.
+        # Przerwa w osi przęsła (przejście albo wycięcie tunelu); w rzędzie bloczków ławki tylko między nimi.
         for i in range(UPPER_ROWS):
-            xa, xbb, z = upper_row(i)
-            spans = [(y0 + 0.9, y1 - 0.1)]
-            if b in VOM_BAYS and slot[0] <= i < slot[1]:
-                spans = [(y0 + 0.9, yc - VOM_WIDTH / 2 - 0.1), (yc + VOM_WIDTH / 2 + 0.1, y1 - 0.1)]
+            xa, _, z = upper_row(i)
+            half = VOM_WIDTH / 2 + 0.1 if in_slot(i) else AISLE_W / 2 + 0.05
+            edge = BLOCK_W / 2 + 0.1 if i == BLOCK_ROW else 0.1
+            spans = [(y0 + (edge if b > 0 else 0.1), yc - half), (yc + half, y1 - (edge if b < NUM_BAYS - 1 else 0.1))]
             for ya, yb in spans:
                 bx = xa + UPPER_DX * 0.35
                 _box(bm_benches, bx - 0.16, bx + 0.16, ya, yb, z + 0.37, z + 0.42)
@@ -483,6 +567,16 @@ def build_grandstand(col, mats):
         POLE_H = 3.2
         _box(bm_lights, UPPER_X1 + 0.12, UPPER_X1 + 0.24, yc - 0.06, yc + 0.06, UPPER_Z1 + 1.0, UPPER_Z1 + 1.0 + POLE_H)
         _box(bm_lights, UPPER_X1 + 0.05, UPPER_X1 + 0.35, yc - 0.65, yc + 0.65, UPPER_Z1 + 1.0 + POLE_H - 0.1, UPPER_Z1 + 1.0 + POLE_H)
+
+    # Żółte barierki wzdłuż trybuny: na balustradzie czołowej sektora górnego i na koronie
+    _rail(bm_yellow, (LIP_X + 0.05, 0.3, LIP_TOP - 0.45), (LIP_X + 0.05, TOTAL_LENGTH_Y - 0.3, LIP_TOP - 0.45), 1.55)
+    _rail(bm_yellow, (REAR_X - 0.08, 0.3, UPPER_Z1 + 0.6), (REAR_X - 0.08, TOTAL_LENGTH_Y - 0.3, UPPER_Z1 + 0.6), 1.55)
+
+    # Bloczki z Przeplatanką w osiach wewnętrznych dźwigarów (lico z herbem buduje build_przeplatanka_blocks)
+    bx0, _, bz = upper_row(BLOCK_ROW)
+    for k in range(1, NUM_BAYS):
+        yk = k * BAY_WIDTH_Y
+        _box(bm_upper, bx0, bx0 + BLOCK_D, yk - BLOCK_W / 2, yk + BLOCK_W / 2, bz - 0.05, bz + BLOCK_H)
 
     # Dźwigary (15 osi): belka pod płytą, słup czołowy, ukośny odciąg do terenu za trybuną
     for b in range(NUM_BAYS + 1):
@@ -502,6 +596,7 @@ def build_grandstand(col, mats):
     _finish(col, bm_stairs, "Schody_Tunele_i_Promenada", mats['concrete_dark'])
     _finish(col, bm_benches, "Lawki_Sektor_Gorny", mats['wood'])
     _finish(col, bm_lights, "Latarnie_Korona", mats['metal'])
+    _finish(col, bm_yellow, "Barierki_Zolte_Trybuna", mats['yellow'])
 
     # Podwieszony budynek z tyłu (biura/loże wg przekroju): X 32.5–41.5, Z 3.5–7.1, wstęga okien od zachodu
     bm_rear = bmesh.new()
@@ -530,35 +625,78 @@ def build_grandstand(col, mats):
     _box(bm_f, 0.5, 0.6, 4.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, 4.3, 4.65)
     _finish(col, bm_f, "Blenda_Fasada_Biala", mats['roof_white'])
 
-    # Biały murek z Przeplatanką ŁKS: lico balustrady czołowej sektora górnego, NAD daszkiem sektora dolnego
-    # (tylna krawędź daszku na Z 5.4; widok_z_galery.jpg). Tekstura 4:1 z trybem EXTEND: u poza [0, 1]
-    # przedłuża białe tło, więc herb zachowuje proporcje na szerokim, niskim panelu.
-    bm_przp = bmesh.new()
-    uv_przp = bm_przp.loops.layers.uv.verify()
-    z_bot, z_top = CANOPY_BACK_Z + 0.06, LIP_TOP
-    for k in range(NUM_BAYS):
-        ya, yb = k * BAY_WIDTH_Y + 0.4, (k + 1) * BAY_WIDTH_Y - 0.4
-        half_u = (yb - ya) / (z_top - z_bot) / PRZEPLATANKA_ASPECT / 2
-        face = bm_przp.faces.new([bm_przp.verts.new(p) for p in [(LIP_X - 0.02, ya, z_bot), (LIP_X - 0.02, ya, z_top),
-                                                               (LIP_X - 0.02, yb, z_top), (LIP_X - 0.02, yb, z_bot)]])
-        for loop in face.loops:
-            t = (yb - loop.vert.co.y) / (yb - ya)
-            loop[uv_przp].uv = (0.5 + (t - 0.5) * 2 * half_u, (loop.vert.co.z - z_bot) / (z_top - z_bot))
-    mesh_przp = bpy.data.meshes.new("Murki_Przeplatanka_Mesh")
-    bm_przp.normal_update()
-    bm_przp.to_mesh(mesh_przp)
-    bm_przp.free()
-    obj_przp = bpy.data.objects.new("Murki_Przeplatanka", mesh_przp)
-    obj_przp.data.materials.append(mats['przeplatanka'])
-    col.objects.link(obj_przp)
+    build_przeplatanka_blocks(col, mats)
+    build_dugouts(col, mats)
 
-    print("Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, 4 tunele).")
+    print(f"Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, {NUM_BAYS} tuneli).")
     return obj_lower, obj_upper
+
+
+def build_przeplatanka_blocks(col, mats):
+    """
+    Lica bloczków z Przeplatanką ŁKS (skierowane ku boisku). Tekstura 4:1 z trybem EXTEND: u poza [0, 1]
+    przedłuża białe tło, więc herb zachowuje proporcje na bloczku o innych proporcjach.
+    """
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.verify()
+    bx0, _, bz = upper_row(BLOCK_ROW)
+    x, z_bot, z_top = bx0 - 0.02, bz, bz + BLOCK_H
+    half_u = BLOCK_W / BLOCK_H / PRZEPLATANKA_ASPECT / 2
+    for k in range(1, NUM_BAYS):
+        ya, yb = k * BAY_WIDTH_Y - BLOCK_W / 2, k * BAY_WIDTH_Y + BLOCK_W / 2
+        face = bm.faces.new([bm.verts.new(p) for p in [(x, ya, z_bot), (x, ya, z_top), (x, yb, z_top), (x, yb, z_bot)]])
+        for loop in face.loops:
+            t = (yb - loop.vert.co.y) / BLOCK_W
+            loop[uv].uv = (0.5 + (t - 0.5) * 2 * half_u, (loop.vert.co.z - z_bot) / BLOCK_H)
+    mesh = bpy.data.meshes.new("Murki_Przeplatanka_Mesh")
+    bm.normal_update()
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new("Murki_Przeplatanka", mesh)
+    obj.data.materials.append(mats['przeplatanka'])
+    col.objects.link(obj)
+
+
+def build_dugouts(col, mats):
+    """
+    Ławki rezerwowych we wnękach sektora dolnego: powłoka z mlecznej pleksi (ćwiartka walca od dachu przy
+    pionowym licu do posadzki z tyłu), boczne ścianki z pleksi, białe żebra i słupki, czerwona belka czołowa,
+    czerwone krzesełka. Lokalnie -X to kierunek boiska.
+    """
+    bm_shell, bm_white, bm_red, bm_floor = bmesh.new(), bmesh.new(), bmesh.new(), bmesh.new()
+    arc = lambda r: [(DUG_X0 + r * math.sin(math.radians(t)), r * math.cos(math.radians(t))) for t in range(0, 91, 10)]
+    seats = []
+    for ya, yb in DUGOUTS:
+        _extrude_profile(bm_shell, arc(DUG_R + 0.02) + arc(DUG_R)[::-1], ya, yb)
+        for y in (ya, yb - 0.02):
+            _extrude_profile(bm_shell, [(DUG_X0, 0.0)] + arc(DUG_R), y, y + 0.02)
+        n = round((yb - ya) / 1.75)
+        for k in range(n + 1):
+            y = ya + 0.04 + k * (yb - ya - 0.08) / n
+            ribs = arc(DUG_R + 0.06)
+            for (xa, za), (xe, ze) in zip(ribs, ribs[1:]):
+                _beam(bm_white, (xa, y, za), (xe, y, ze), 0.06, 0.06)
+            _beam(bm_white, (DUG_X0 - 0.03, y, 0.0), (DUG_X0 - 0.03, y, DUG_R), 0.07, 0.07)
+        _beam(bm_red, (DUG_X0 - 0.03, ya, DUG_R + 0.08), (DUG_X0 - 0.03, yb, DUG_R + 0.08), 0.12, 0.16)
+        _beam(bm_red, (DUG_X0 + DUG_R, ya, 0.06), (DUG_X0 + DUG_R, yb, 0.06), 0.1, 0.12)
+        _box(bm_floor, 0.0, LOWER_X0 + DUG_ROWS * LOWER_DX, ya, yb, -0.05, 0.02)
+        n_seat = int((yb - ya - 0.8) / 0.55)
+        seats += [(1.55, ya + 0.4 + (k + 0.5) * (yb - ya - 0.8) / n_seat, 0.02) for k in range(n_seat)]
+    _finish(col, bm_shell, "Lawki_Rezerwowych_Pleksi", mats['plexi'])
+    _finish(col, bm_white, "Lawki_Rezerwowych_Stelaz_Bialy", mats['goal_white'])
+    _finish(col, bm_red, "Lawki_Rezerwowych_Stelaz_Czerwony", mats['lks_red'])
+    _finish(col, bm_floor, "Lawki_Rezerwowych_Posadzka", mats['concrete_dark'])
+    place_seats(col, "Krzeselka_Lawki_Rezerwowych", seat_material("Mat_Krzeselka_Rezerwowych", (0.62, 0.07, 0.09)), seats)
 
 
 def lower_seat_rows():
     """Rzędy krzesełek sektora dolnego: (x, z) siedziska w układzie lokalnym trybuny."""
     return [(LOWER_X0 + (i + 0.55) * LOWER_DX, LOWER_Z0 + i * LOWER_DZ) for i in range(LOWER_ROWS)]
+
+
+def in_dugout(y, row):
+    """Czy krzesełko rzędu row na pozycji y wypada we wnęce ławki rezerwowych."""
+    return row < DUG_ROWS and any(a - 0.3 < y < b + 0.3 for a, b in DUGOUTS)
 
 
 if __name__ == "__main__":

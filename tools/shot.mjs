@@ -29,7 +29,7 @@ page.on('console', (m) => console.log(`[console.${m.type()}] ${m.text()}`));
 page.on('pageerror', (e) => console.error(`[pageerror] ${e.stack ?? e.message}`));
 
 console.log(`Nawigacja do ${url}...`);
-await page.goto(url, { waitUntil: 'networkidle0' });
+await page.goto(url, { waitUntil: 'networkidle0', timeout: 180000 });
 
 await new Promise((r) => setTimeout(r, Number(waitMs)));
 

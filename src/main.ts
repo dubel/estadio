@@ -44,8 +44,8 @@ const viewpoints: Viewpoint[] = [
   },
   {
     name: "Korona Trybuny Głównej (Rząd 33)",
-    pos: new THREE.Vector3(-81, 20.3, 0),
-    target: new THREE.Vector3(0, 4, 0)
+    pos: new THREE.Vector3(-81, 20.3, 1.64), // przejście w osi przęsła 7 (nad tunelem)
+    target: new THREE.Vector3(0, 4, 1.64)
   },
   {
     name: "Trybuna Główna — Sektor VIP & Daszek",

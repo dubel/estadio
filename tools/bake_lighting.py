@@ -24,6 +24,7 @@ BAKE_TARGETS = [
     ("Schody_Tunele_i_Promenada", 1024),
     ("Pawilon_Zachodni", 1024),
     ("Trybuna_Podkowa", 2048),
+    ("Galera_Tunele", 1024),
     ("Plac_Wokol_Stadionu", 2048),
 ]
 AO_DISTANCE = 8.0      # zasięg promieni AO [m]: hala pod trybuną ma 5–12 m wysokości

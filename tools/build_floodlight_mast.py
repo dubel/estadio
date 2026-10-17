@@ -1,6 +1,7 @@
 """
 Historyczny maszt oświetleniowy (Jupiter) stadionu ŁKS:
-- Konstrukcja trójnożna (3 stalowe nogi kratownicowe) o przekroju trójkątnym zbieżnym ku górze.
+- Trzon kratownicowy o przekroju trójkątnym; poniżej 15 m trzy osobne nogi rozchodzące się do betonowych bloków.
+- Dodatkowy pomost z reflektorami w połowie wysokości.
 - Głowica w kształcie ODWRÓCONEGO TRAPEZU (krótszy bok na dole, dłuższy na górze).
 - Reflektory pochylone w dół w stronę murawy.
 """
@@ -20,59 +21,61 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
     Głowica pochylona o 28° w dół w stronę murawy.
     """
     bm = bmesh.new()
-    
-    HEIGHT = 46.0
-    BASE_W = 5.2    # szerokość podstawy trójkąta (front)
-    BASE_D = 4.5    # głębokość podstawy (odciąg tylny)
-    TOP_W = 1.4
-    TOP_D = 1.2
-    NUM_TIERS = 12  # 12 poziomów stężeń
-    TIER_H = HEIGHT / NUM_TIERS
-    
-    tier_verts = []
-    
-    for i in range(NUM_TIERS + 1):
-        z = i * TIER_H
-        t = i / NUM_TIERS
-        w = (1.0 - t) * BASE_W + t * TOP_W
-        d = (1.0 - t) * BASE_D + t * TOP_D
-        
-        # 3 narożniki przekroju trójkątnego z czołem w kierunku -X:
-        # v0: przód lewo (-d/3, -w/2)
-        # v1: przód prawo (-d/3, +w/2)
-        # v2: tył odciąg (+2d/3, 0)
-        v0 = bm.verts.new((-d / 3.0, -w / 2.0, z))
-        v1 = bm.verts.new((-d / 3.0,  w / 2.0, z))
-        v2 = bm.verts.new(( 2.0 * d / 3.0, 0.0, z))
-        tier_verts.append([v0, v1, v2])
-        
-        # Tworzenie ścian trójkątnych na każdym poziomie
-        if i > 0:
-            prev = tier_verts[i - 1]
-            curr = tier_verts[i]
-            
-            # 3 boki trójkąta:
-            # Bok 0: v0-v1 (front)
-            # Bok 1: v1-v2 (bok prawy)
-            # Bok 2: v2-v0 (bok lewy)
-            for side in range(3):
-                next_side = (side + 1) % 3
-                pA = prev[side]
-                pB = prev[next_side]
-                cA = curr[side]
-                cB = curr[next_side]
-                
-                # Przekątna naprzemienna dla kratownicy
-                if (i + side) % 2 == 0:
-                    bm.faces.new([pA, pB, cB])
-                    bm.faces.new([pA, cB, cA])
-                else:
-                    bm.faces.new([pA, pB, cA])
-                    bm.faces.new([pB, cB, cA])
 
-    # Pomosty poziome co 3 poziomy
-    for i in [3, 6, 9, 12]:
-        bm.faces.new(tier_verts[i])
+    # Trzon: kratownica o przekroju trójkątnym od SPLIT_Z do szczytu. Poniżej trzy osobne nogi
+    # (każda też kratownicowa) rozchodzą się do betonowych bloków fundamentowych
+    # (punkt_swietlny_jupiter.png, widok_na_trybune_z_sektora_gosci.png).
+    HEIGHT = 46.0
+    SPLIT_Z = 15.0
+    SHAFT_W, SHAFT_D = 2.2, 1.9     # przekrój trzonu w miejscu rozejścia nóg
+    TOP_W, TOP_D = 1.4, 1.2
+    BASE_W, BASE_D = 8.0, 7.0       # rozstaw stóp nóg
+    FOOT_Z = 0.9                    # wierzch bloku fundamentowego
+    SHAFT_TIERS, LEG_TIERS = 10, 5
+
+    def corners(w, d, z):
+        """Narożniki przekroju z czołem w kierunku -X: przód lewo, przód prawo, tył (odciąg)."""
+        return [mathutils.Vector((-d / 3.0, -w / 2.0, z)), mathutils.Vector((-d / 3.0, w / 2.0, z)),
+                mathutils.Vector((2.0 * d / 3.0, 0.0, z))]
+
+    def lattice(tiers, decks=()):
+        """Kratownica z kolejnych trójkątów przekroju: ściany z naprzemiennymi przekątnymi (Wireframe → pręty)."""
+        rows = [[bm.verts.new(p) for p in tri] for tri in tiers]
+        for i in range(1, len(rows)):
+            prev, curr = rows[i - 1], rows[i]
+            for side in range(3):
+                nxt = (side + 1) % 3
+                if (i + side) % 2 == 0:
+                    bm.faces.new([prev[side], prev[nxt], curr[nxt]])
+                    bm.faces.new([prev[side], curr[nxt], curr[side]])
+                else:
+                    bm.faces.new([prev[side], prev[nxt], curr[side]])
+                    bm.faces.new([prev[nxt], curr[nxt], curr[side]])
+        for i in decks:
+            bm.faces.new(rows[i])
+
+    def shaft_size(z):
+        t = (z - SPLIT_Z) / (HEIGHT - SPLIT_Z)
+        return (1.0 - t) * SHAFT_W + t * TOP_W, (1.0 - t) * SHAFT_D + t * TOP_D
+
+    shaft = [corners(*shaft_size(SPLIT_Z + i * (HEIGHT - SPLIT_Z) / SHAFT_TIERS), SPLIT_Z + i * (HEIGHT - SPLIT_Z) / SHAFT_TIERS)
+             for i in range(SHAFT_TIERS + 1)]
+    lattice(shaft, decks=(0, 4, 7, SHAFT_TIERS))
+
+    feet = corners(BASE_W, BASE_D, FOOT_Z)
+    tops = shaft[0]
+    for foot, top in zip(feet, tops):
+        tiers = []
+        for i in range(LEG_TIERS + 1):
+            t = i / LEG_TIERS
+            c = foot.lerp(top, t)
+            r = (1.0 - t) * 0.45 + t * 0.12
+            tiers.append([c + mathutils.Vector((r * math.cos(a), r * math.sin(a), 0.0))
+                          for a in (0.0, 2.0 * math.pi / 3.0, 4.0 * math.pi / 3.0)])
+        lattice(tiers)
+    # Poziome stężenia między nogami
+    for t in (0.35, 0.7):
+        bm.faces.new([bm.verts.new(f.lerp(tp, t)) for f, tp in zip(feet, tops)])
 
     # Kąt obrotu masztu w stronę pitch_target
     dir_x = pitch_target[0] - mast_pos[0]
@@ -98,6 +101,58 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
 
     if mats and 'metal' in mats:
         obj_tower.data.materials.append(mats['metal'])
+
+    # Betonowe bloki fundamentowe pod stopami nóg (do 0.3 m w gruncie)
+    bm_f = bmesh.new()
+    for foot in feet:
+        c = bmesh.ops.create_cube(bm_f, size=1.0)
+        bmesh.ops.scale(bm_f, vec=(1.6, 1.6, FOOT_Z + 0.3), verts=c['verts'])
+        bmesh.ops.translate(bm_f, vec=(foot.x, foot.y, (FOOT_Z - 0.3) / 2.0), verts=c['verts'])
+    bmesh.ops.rotate(bm_f, cent=(0, 0, 0), matrix=rot_matrix, verts=bm_f.verts)
+    mesh_f = bpy.data.meshes.new(f"{name}_Fundamenty_Mesh")
+    bm_f.normal_update()
+    bm_f.to_mesh(mesh_f)
+    bm_f.free()
+    obj_f = bpy.data.objects.new(f"{name}_Fundamenty", mesh_f)
+    if mats and 'concrete' in mats:
+        obj_f.data.materials.append(mats['concrete'])
+    col.objects.link(obj_f)
+    obj_f.parent = obj_tower
+
+    # Dodatkowe reflektory w połowie wysokości (punkt_swietlny_jupiter.png): pomost na czole trzonu,
+    # 2 × 3 lampy pochylone ku murawie
+    MID_Z = 25.0
+    bm_m = bmesh.new()
+    w_mid, d_mid = shaft_size(MID_Z)
+    front_x = -d_mid / 3.0
+    for (sx, sy, sz), (cx, cy, cz) in [((1.1, w_mid + 0.6, 0.08), (front_x - 0.55, 0.0, MID_Z - 0.45)),
+                                       ((0.05, w_mid + 0.6, 0.9), (front_x - 1.08, 0.0, MID_Z + 0.0))]:
+        c = bmesh.ops.create_cube(bm_m, size=1.0)
+        bmesh.ops.scale(bm_m, vec=(sx, sy, sz), verts=c['verts'])
+        bmesh.ops.translate(bm_m, vec=(cx, cy, cz), verts=c['verts'])
+    lamp_rot = mathutils.Matrix.Rotation(math.radians(-20), 3, 'Y')
+    for row, lz in enumerate((MID_Z + 0.65, MID_Z + 1.3)):
+        for k in range(3):
+            ly = (k - 1) * 0.72
+            lamp = bmesh.ops.create_cube(bm_m, size=1.0)
+            bmesh.ops.scale(bm_m, vec=(0.32, 0.64, 0.58), verts=lamp['verts'])
+            bmesh.ops.rotate(bm_m, cent=(0, 0, 0), matrix=lamp_rot, verts=lamp['verts'])
+            bmesh.ops.translate(bm_m, vec=(front_x - 0.5, ly, lz), verts=lamp['verts'])
+            for f in {f for v in lamp['verts'] for f in v.link_faces}:
+                f.normal_update()
+                f.material_index = 1 if f.normal.x < -0.8 else 0
+    bmesh.ops.rotate(bm_m, cent=(0, 0, 0), matrix=rot_matrix, verts=bm_m.verts)
+    mesh_m = bpy.data.meshes.new(f"{name}_Reflektory_Srodek_Mesh")
+    bm_m.normal_update()
+    bm_m.to_mesh(mesh_m)
+    bm_m.free()
+    obj_m = bpy.data.objects.new(f"{name}_Reflektory_Srodek", mesh_m)
+    if mats and 'metal' in mats:
+        obj_m.data.materials.append(mats['metal'])
+    if mats and 'lamp_glow' in mats:
+        obj_m.data.materials.append(mats['lamp_glow'])
+    col.objects.link(obj_m)
+    obj_m.parent = obj_tower
 
     # -------------------------------------------------------------------------
     # 2. GŁOWICA W KSZTAŁCIE ODWRÓCONEGO TRAPEZU (6 POZIOMÓW ZGODNIE ZE ZDJĘCIEM)

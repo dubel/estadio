@@ -31,7 +31,11 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Trybuna główna: położenie | ortofotomapa (nakładka) | czoło daszku X ≈ −44,7 m; środek ~3 m na N od osi boiska | czoło −45 m, środek Y = +3 m | średnia |
 | Trybuna główna: głębokość | przekrój Wyżnikiewicza + ortofotomapa | 41,7 m (przekrój), 39–44 m (orto) | 41,55 m (z budynkiem tylnym) | wysoka |
 | Trybuna główna: przekrój | przekrój Wyżnikiewicza (skala 0–10 m) | patrz niżej | 10 + 33 rzędy, korona 18,4 m (stałe w `build_grandstand.py`) | wysoka |
-| Tunele (vomitoria) | brak źródła — rozwiązanie projektowe | — | 4 tunele (przęsła 2, 5, 8, 11), wyjście na rząd 7 sektora górnego | **założenie** |
+| Tunele (vomitoria) | widok_na_trybune_z_sektora_gosci.png, detale_trybuny_zachodniej.png | tunel w każdym przęśle, żółte obrzeża ścian | 14 tuneli w osiach przęseł, wyjście na rząd 7 sektora górnego; przebieg schodów w hali to założenie | średnia |
+| Bloczki z Przeplatanką | bloczki_na_trybunie.png, widok_na_trybune_z_sektora_gosci.png, uwaga użytkownika | 4–5 rzędów nad daszkiem, poniżej wyjść z tuneli, przerwy pod tunelami | 13 bloków 3,6 × 1,5 m na rzędzie 5, w osiach dźwigarów | średnia |
+| Żółte barierki trybuny głównej | detale_trybuny_zachodniej.png | wzdłuż przejść, na balustradzie czołowej i na koronie | przejście w osi każdego przęsła z poręczami po obu stronach | średnia |
+| Ławki rezerwowych | lawka_rezerwowych.png, uwaga użytkownika | ćwiartki walca z mlecznej pleksi, stelaż biało-czerwony, wpuszczone w sektor VIP | 2 × 7 m, ±12 m od linii środkowej, wnęka zamiast 3 pierwszych rzędów | średnia (wymiary) |
+| Tunele Galery | tunel_galera.png, uwaga użytkownika | dwa duże tunele przy styku z łukami, symetryczne | Y 33–39 m i −39…−33 m, prześwit 5,4 × 2,8 m, podest na wysokości rzędu 7 | średnia (wymiary) |
 | Krzesełka | widok_z_galery.jpg, 516e09e1189ce, lks05 | czerwone na Galerze, czerwone/białe w sektorze dolnym | instancje GPU | średnia (rozmieszczenie kolorów) |
 | Ławki sektora górnego | widok_z_galery.jpg, uwaga użytkownika | jasne, kość słoniowa | malowane drewno (0,80; 0,76; 0,64) | średnia |
 | Panorama bloków | lks07, lks08 (kompozycja) | kierunek: za Galerą i łukiem południowym | 12 bloków, 480–900 m (`SKYLINE` w `build_surroundings.py`) | **orientacyjna** |
@@ -39,6 +43,7 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Czoło podkowy | zdjęcia widok_z_galery, 516e09e41f411, 516e09e800a6f, lks02 + przekrój | mur ok. 1,5 m + stalowe ogrodzenie; **brak fosy** | mur 1,5 m, ogrodzenie 2 m | wysoka (mur), średnia (wysokość) |
 | Maszt NE / SE | cienie na ortofotomapie | (≈68, +64) / (≈68, −59) | (68, ±61,5) | średnia |
 | Maszt NW / SW | brak (w cieniu trybuny) | — | (−68, ±82), bez zmian | **niezweryfikowane** |
+| Konstrukcja masztów | punkt_swietlny_jupiter.png, widok_na_trybune_z_sektora_gosci.png | trzon kratownicowy, u dołu trzy rozchodzące się nogi na betonowych blokach; dodatkowe reflektory w połowie wysokości | rozejście nóg na 15 m, rozstaw stóp 8 × 7 m, pomost z 6 lampami na 25 m | średnia |
 | Tablica wyników | ortofotomapa (cień), zdjęcia lks22, 19-37-09 | łuk południowy, oś boiska | (0, −110,5) | wysoka |
 | Atlas Arena | ortofotomapa | środek (−174, +10), promień ok. 68 m | uproszczona bryła | średnia |
 | Al. Unii Lubelskiej | ortofotomapa | pas X ≈ 78–94 m | pas asfaltu | wysoka |
@@ -72,7 +77,7 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `widok_na_zegar_u2.png` | łuk południowy nocą, ok. 2010–2012 (fotopolska) | czerwone krzesełka w sektorach łuku, ławki z żółtymi barierkami bliżej Galery; **niskie** ogrodzenie (~1,2 m, biało-czerwone słupki) na łuku; ciemny ślad bieżni w trawie; bandy reklamowe na słupach na koronie; maszt SW za łukiem |
 | `bloczki_na_trybunie.png` | z trybuny głównej na łuk południowy i Galerę | balustrada czołowa sektora górnego: betonowe bloki z graffiti i żółtą poręczą nad daszkiem; **wiata nad dolnymi rzędami Galery** (zielone słupy, ciemny dach); bandy na koronie łuku i Galery |
 | `detale_trybuny_zachodniej.png` | sektor górny trybuny głównej z bliska | żółte poręcze wzdłuż przejść i rzędów, graffiti na murkach, **reflektory na słupach na koronie**, platforma kamery, anteny GSM |
-| `widok_na_trybune_z_sektora_gosci.png` | z sektora gości (NE) na trybunę główną | Atlas Arena tuż za trybuną; w północnej części długi biały pawilon (loże/VIP) przed sektorem dolnym; **pełne ogrodzenie z blachy** przy łuku północnym |
+| `widok_na_trybune_z_sektora_gosci.png` | z sektora gości (NE) na trybunę główną | tunel w każdym przęśle (żółte obrzeża), bloczki z Przeplatanką poniżej wyjść z tuneli, przejścia z żółtymi poręczami; Atlas Arena tuż za trybuną; w północnej części długi biały pawilon (loże/VIP) przed sektorem dolnym; **pełne ogrodzenie z blachy** przy łuku północnym |
 | `516e09e41f411…`, `516e09e800a6f…`, `516e09e9f3933…`, `516e09e31b4d3…` | łuki i Galera z ogrodzeniem | mur czołowy, ogrodzenie, wyjścia ewakuacyjne |
 | `516e09e1189ce…`, `516e09e210a69…`, `lks05.jpg`, `lks04.jpg` | sektor dolny pod daszkiem | krzesełka, konstrukcja daszku, fasada lóż |
 | `4ff5cb…` (3 pliki, cz-b) | trybuna główna i bieżnia z torami | bieżnia lekkoatletyczna z liniami torów (okres wcześniejszy) |
@@ -82,20 +87,24 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `34dec5jwrh…jpeg` | schody wejściowe z bramą „ŁKS WITA” | wejścia (tunele) |
 | `DSC01675.jpg`, `DSC01677.jpg` | brama z herbem, mur oporowy od zewnątrz | ogrodzenie zewnętrzne, bramy |
 | `lks07`–`lks18`, `07lks3_*`, `20100421csmt8013.jpg` | mecze, kibice, noc | oprawy, banery, oświetlenie nocne (Faza 4) |
+| `punkt_swietlny_jupiter.png` | maszt od strony trybuny, kadr z transmisji | nogi rozchodzące się u dołu, reflektory w połowie wysokości |
+| `lawka_rezerwowych.png` | kadr z transmisji (ŁKS – Pogoń) | ławka rezerwowych: pleksi na biało-czerwonym stelażu |
+| `tunel_galera.png` | kadr z transmisji, Galera przy łuku północnym | duży tunel wejściowy z podestem i żółtymi poręczami |
+| `pod_zegarem.png` | kadr z transmisji, łuk południowy | sektory krzesełek i ławek łuku, bandy na koronie, tablica wyników |
 | `grafy_na_trybunie.png`, `screenshot-…19-36-47.png` | graffiti na murkach | tekstury murków |
 
 Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba ustalić licencje albo usunąć zdjęcia z repozytorium.
 
 ## Otwarte pytania
 
-1. **Tunele**: położenie i liczba to założenie projektowe. Jeśli znajdzie się zdjęcie wejść od strony hali, warto je zweryfikować.
+1. **Tunele**: liczba (w każdym przęśle) i wyjścia na widownię są ze zdjęć; przebieg schodów w hali pod trybuną to założenie. Jeśli znajdzie się zdjęcie wejść od strony hali, warto je zweryfikować.
 2. **Maszty zachodnie**: `widok_z_galery.jpg` pokazuje maszt SW tuż za południowym końcem trybuny głównej. Model ma (−68, −82), czyli ok. 10–15 m dalej na południe. Potrzebny drugi kąt, żeby to ustalić.
 3. **Łuk północny**: na ortofotomapie zewnętrzną część zasłaniają drzewa; model zakłada tę samą głębokość co Galera.
 4. **Okres**: model pokazuje stan z lat 2010–2012 (decyzja z 17.10.2026), stąd trawa zamiast bieżni i plastikowe krzesełka.
 6. **Panorama bloków**: pozycje i wysokości to kompozycja ze zdjęć lks07/lks08, bez pomiaru. Do zweryfikowania na mapie (rejon Karolewa / za stacją Łódź Kaliska).
 7. **Łuk północny**: model ma tam gołe stopnie (krzesełek, ławek i band brak). Nie ma zdjęcia, które by to pokazywało.
 9. **Granica ogrodzeń**: wysokie ogrodzenie stoi tylko na prostej Galery, niskie na obu łukach. Dokładnego miejsca przejścia nie ma na zdjęciach.
-11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, reflektory na słupach i platforma kamery na koronie trybuny głównej, żółte poręcze w sektorze górnym, graffiti na balustradzie czołowej (część przęseł), pawilon VIP w północnej części sektora dolnego, ogrodzenie z blachy przy łuku północnym.
+11. **Do dodania ze zdjęć z 2012 r.**: wiata nad dolnymi rzędami Galery, platforma kamery na koronie trybuny głównej, graffiti na balustradzie czołowej (część przęseł), pawilon VIP w północnej części sektora dolnego, ogrodzenie z blachy przy łuku północnym.
 10. **Bandy na koronie**: 4 tablice z napisami odczytanymi z `widok_na_zegar_u2.png`; pozycje orientacyjne, łuk północny bez band.
 8. **Barierki**: żółte poręcze przy przejściach Galery i barierka poprzeczna w sekcji ławek łuku są w modelu; ich dokładny przebieg to przybliżenie ze zdjęć.
 5. **Wysokość muru czołowego**: 1,5 m oszacowane z lks02. Brak wymiaru.

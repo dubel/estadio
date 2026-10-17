@@ -45,8 +45,8 @@ try {
     for (let i = 0; i < 90; i++) { W.__simulateWalk(1 / 60, false); yMax = Math.max(yMax, y()); }
     out.jump = yMax - y0;
 
-    // korona trybuny głównej, w dół przejściem przy dźwigarze (oś 7: lokalnie Y = 7 * 130/14 + 0.4 m)
-    W.__setCam(-81, 20.3, -2.57, 0, 4, -2.57);
+    // korona trybuny głównej, w dół przejściem w osi przęsła 7 (lokalnie Y = 7.5 * 130/14 m) do balustrady nad tunelem
+    W.__setCam(-81, 20.3, 1.64, 0, 4, 1.64);
     W.__simulateWalk(0.5, false);
     out.mainStandTop = y();
     W.__simulateWalk(6, true);
@@ -76,6 +76,22 @@ try {
     out.fenceX = x();
     out.fenceY = y();
 
+    // tunel wejściowy Galery (północny, Y 33–39 m): z bieżni pod wałem na plac za stadionem
+    W.__setCam(40, 1.65, -36, 100, 1.65, -36);
+    W.__simulateWalk(8, true);
+    out.galeraTunnelX = x();
+    out.galeraTunnelY = y();
+
+    // schody tunelu trybuny głównej poza osią (kontroler kapsuły nie może zacinać się na podstopniach)
+    out.tunnelOffAxis = [];
+    for (const z of [-16.6, -17.2, 10.93, 38.79]) {
+      W.__setCam(-74.5, 1.7, z, -55, 6, z);
+      W.__simulateWalk(0.5, false);
+      let m = 0;
+      for (let i = 0; i < 70; i++) { W.__simulateWalk(0.1, true); m = Math.max(m, y()); }
+      out.tunnelOffAxis.push(m);
+    }
+
     W.__setCam(64, 8.5, 1.3, 200, 8.5, 1.3); // przez koronę Galery na teren za stadionem
     W.__simulateWalk(6, true);
     out.outsideX = x();
@@ -95,6 +111,8 @@ try {
   check('zejście po stopniach Galery', r.galeraTop > 7 && r.galeraBottom < r.galeraTop - 3, `y ${f(r.galeraTop)} → ${f(r.galeraBottom)} (x=${f(r.galeraX)})`);
   check('wejście po stopniach Galery', r.galeraClimb > r.galeraMid + 1.5, `y ${f(r.galeraMid)} → ${f(r.galeraClimb)}`);
   check('tunel: schody na sektor górny', r.tunnelStart < 2 && r.tunnelEnd > 8.5, `y ${f(r.tunnelStart)} → ${f(r.tunnelEnd)}`);
+  check('tunel: schody poza osią', r.tunnelOffAxis.every((m) => m > 8.5), r.tunnelOffAxis.map(f).join(', '));
+  check('tunel Galery: przejście pod wałem', r.galeraTunnelX > 75 && r.galeraTunnelY < 2, `x=${f(r.galeraTunnelX)} y=${f(r.galeraTunnelY)}`);
   check('mur z ogrodzeniem zatrzymuje na bieżni', r.fenceX < 45 && r.fenceY < 2, `x=${f(r.fenceX)} y=${f(r.fenceY)}`);
   check('teren za Galerą (bez spadania)', r.outsideX > 75 && Math.abs(r.outsideY - 1.40) < 0.1, `x=${f(r.outsideX)} y=${f(r.outsideY)}`);
 } finally {

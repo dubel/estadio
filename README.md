@@ -12,11 +12,12 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
    - Konstrukcja żelbetowa późnego modernizmu/brutalizmu PRL (proj. J. Wyżnikiewicz, 1969): 14 przęseł po ~9,3 m (ok. 130 m długości) i zewnętrzne ukośne odciągi.
    - Przekrój wg rysunku projektowego: sektor górny 33 rzędy ławek (malowane drewno w kolorze kości słoniowej), korona ok. 18,4 m nad terenem, bez dachu; biała balustrada czołowa z Przeplatanką ŁKS.
    - Sektor dolny: 10 rzędów plastikowych krzesełek pod daszkiem (biały–czerwony–biały), za nim promenada na wysokości 3,2 m.
-   - 4 tunele: schody z hali pod trybuną wyprowadzają w połowę sektora górnego.
+   - Tunel w każdym z 14 przęseł: schody z hali pod trybuną wyprowadzają na 7. rząd sektora górnego. Poniżej wyjść, 4–5 rzędów nad daszkiem, stoją bloczki z Przeplatanką. Przejścia mają żółte poręcze.
+   - Ławki rezerwowych z mlecznej pleksi wpuszczone w sektor dolny.
    - Z tyłu (od zachodu, strona Atlas Areny) podwieszony budynek ze wstęgą okien.
 
 2. **Maszty Oświetleniowe (Jupitery z 1970 r.)**:
-   - 4 maszty kratownicowe o wysokości 46 m, każdy oparty na 3 rozszerzających się ku dołowi nogach.
+   - 4 maszty kratownicowe o wysokości 46 m. Poniżej 15 m trzon rozchodzi się na 3 nogi zakotwione w betonowych blokach. W połowie wysokości jest pomost z dodatkowymi reflektorami.
    - Głowica w kształcie odwróconego krótszym bokiem trapezu (szerokość od 3.8 m do 7.4 m).
    - 45 reflektorów na każdym maszcie, pochylonych pod kątem $28^\circ$ w dół bezpośrednio w płytę boiska.
 
@@ -25,6 +26,7 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
    - Podkowa trybun oparta na wałach ziemnych z 20 betonowymi stopniami.
    - Mur oporowy (ok. 1,5 m) ze stalowym ogrodzeniem (pełne panele u dołu, siatka wyżej) na czole podkowy.
    - Czerwone plastikowe krzesełka na prostej Galery.
+   - Dwa duże tunele wejściowe Galery przy styku z łukami: przelot pod wałem z podestem nad wylotem.
 
 4. **Tablica Wyników i Zegar Omega (Południe)**:
    - Zlokalizowana na koronie krótkiej trybuny od południa, skierowana frontem na północ ku murawie.
@@ -33,7 +35,7 @@ Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu 
 5. **Płyta Boiska**:
    - Pełnowymiarowe boisko piłkarskie $105\text{ m} \times 68\text{ m}$ z fotorealistyczną murawą PBR (CC0 ambientCG) i 20 naprzemiennymi pasami koszenia.
    - Oficjalne kredowe oznaczenia PZPN / FIFA (linie, koło środkowe $R=9.15\text{ m}$, pola karne, łuki).
-   - Bramki z siatkami i ławki rezerwowych.
+   - Bramki z siatkami.
    - Pas dawnej bieżni (8 m) porośnięty trawą aż do ogrodzenia: model pokazuje stan z lat 2010–2012.
 
 6. **Otoczenie (stan z ortofotomapy 2013)**: teren i plac wokół stadionu, al. Unii Lubelskiej, tory przy Łodzi Kaliskiej, Atlas Arena, drzewa oraz panorama bloków za torami, widoczna z trybuny głównej nad Galerą.
@@ -75,7 +77,7 @@ Aplikacja uruchomi się pod adresem: `http://localhost:3000/`.
 npm run test:physics
 ```
 
-Uruchamia Vite i headless Chrome, sprawdza grawitację, wysokość skoku, schodzenie i wchodzenie po stopniach trybuny głównej i Galery, schody tunelu, ogrodzenie oraz teren za stadionem.
+Uruchamia Vite i headless Chrome, sprawdza grawitację, wysokość skoku, schodzenie i wchodzenie po stopniach trybuny głównej i Galery, schody tunelu (także poza osią), przejście tunelem Galery, ogrodzenie oraz teren za stadionem.
 
 ---
 

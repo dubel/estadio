@@ -33,7 +33,7 @@ if TOOLS_DIR not in sys.path:
     sys.path.append(TOOLS_DIR)
 
 from build_grandstand import (
-    create_materials, build_grandstand, lower_seat_rows,
+    create_materials, build_grandstand, lower_seat_rows, in_dugout,
     TOTAL_LENGTH_Y as GRANDSTAND_LENGTH, NUM_BAYS, BAY_WIDTH_Y
 )
 from build_seats import place_seats, seat_material, seats_in_row
@@ -103,8 +103,8 @@ def add_cylinder(bm, p1, p2, radius=0.06, segments=12):
     bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=rot_quat.to_matrix(), verts=res['verts'])
     bmesh.ops.translate(bm, vec=center, verts=res['verts'])
 
-def build_goals_and_benches(col, mats):
-    """Bramki piłkarskie (białe ramy, siatki w pasy biało-czerwono-białe) i ławki rezerwowych."""
+def build_goals(col, mats):
+    """Bramki piłkarskie (białe ramy, siatki w pasy biało-czerwono-białe). Ławki rezerwowych: build_grandstand.py."""
     POST_R = 0.06
     PIPE_R = 0.035
     mat_frame = mats.get('goal_white', mats.get('fascia'))
@@ -258,41 +258,6 @@ def build_goals_and_benches(col, mats):
         col.objects.link(obj_net)
         obj_net.parent = obj_frame
 
-    # Dwie ławki rezerwowych przy linii zachodniej (otwarte w stronę boiska +X)
-    for sign_y in [-1, 1]:
-        bm_b = bmesh.new()
-        bx = -36.5
-        by = sign_y * 14.0
-        
-        # Wiata (tył i dach)
-        p_shelter = [
-            (bx - 0.7, by - 3.5, 0.0),
-            (bx - 0.7, by + 3.5, 0.0),
-            (bx - 0.7, by + 3.5, 1.9),
-            (bx - 0.7, by - 3.5, 1.9),
-            (bx + 0.7, by - 3.5, 2.05),
-            (bx + 0.7, by + 3.5, 2.05)
-        ]
-        vs = [bm_b.verts.new(p) for p in p_shelter]
-        bm_b.faces.new([vs[0], vs[1], vs[2], vs[3]]) # ściana tylna
-        bm_b.faces.new([vs[3], vs[2], vs[5], vs[4]]) # dach daszek
-        
-        # Siedziska wewnątrz wiaty
-        for s in range(8):
-            sy = by - 2.8 + s * 0.8
-            seat = bmesh.ops.create_cube(bm_b, size=1.0)
-            bmesh.ops.scale(bm_b, vec=(0.45, 0.45, 0.45), verts=seat['verts'])
-            bmesh.ops.translate(bm_b, vec=(bx - 0.2, sy, 0.45), verts=seat['verts'])
-            
-        mesh_b = bpy.data.meshes.new(f"Lawka_Rezerwowych_{'N' if sign_y > 0 else 'S'}_Mesh")
-        bm_b.normal_update()
-        bm_b.to_mesh(mesh_b)
-        bm_b.free()
-        obj_b = bpy.data.objects.new(f"Lawka_Rezerwowych_{'N' if sign_y > 0 else 'S'}", mesh_b)
-        if mats and 'roof_tin' in mats:
-            obj_b.data.materials.append(mats['roof_tin'])
-        col.objects.link(obj_b)
-
 
 def assemble_full_stadium():
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -314,7 +279,7 @@ def assemble_full_stadium():
     print("--- 1. Generowanie Murawy, Linii Boiska, Bieżni i Bramek ---")
     build_pitch_and_track(col_pitch, mats)
     build_pitch_lines(col_pitch, mats)
-    build_goals_and_benches(col_pitch, mats)
+    build_goals(col_pitch, mats)
     
     print("--- 2. Generowanie Korony (Wały, Mur z Ogrodzeniem, Banery Kibicowskie, Zegar od Południa) ---")
     build_bowl(col_bowl, mats)
@@ -343,9 +308,9 @@ def assemble_full_stadium():
     # Krzesełka sektora dolnego: czerwone pod czerwonym daszkiem (przęsła 6..10), białe w pozostałych
     red, white = [], []
     for b in range(NUM_BAYS):
-        for x, z in lower_seat_rows():
+        for i, (x, z) in enumerate(lower_seat_rows()):
             row = seats_in_row(x, z, b * BAY_WIDTH_Y + 0.9, (b + 1) * BAY_WIDTH_Y - 0.1)
-            (red if 6 <= b < 11 else white).extend(row)
+            (red if 6 <= b < 11 else white).extend(s for s in row if not in_dugout(s[1], i))
     place_seats(col_grandstand, "Krzeselka_Trybuna_Czerwone", seat_material("Mat_Krzeselka_Czerwone", (0.62, 0.07, 0.09)), red, empty_grandstand)
     place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86)), white, empty_grandstand)
 
