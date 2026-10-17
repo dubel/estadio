@@ -97,58 +97,104 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
         obj_tower.data.materials.append(mats['metal'])
 
     # -------------------------------------------------------------------------
-    # 2. GŁOWICA W KSZTAŁCIE ODWRÓCONEGO TRAPEZU (KRÓTSZY BOK NA DOLE)
+    # 2. GŁOWICA W KSZTAŁCIE ODWRÓCONEGO TRAPEZU (6 POZIOMÓW ZGODNIE ZE ZDJĘCIEM)
     # -------------------------------------------------------------------------
     bm_head = bmesh.new()
     
-    W_BOT = 3.8   # krótsza podstawa trapezu na dole
-    W_TOP = 7.4   # dłuższa podstawa trapezu na górze
-    HEAD_H = 4.6  # wysokość platformy
-    HEAD_D = 0.7  # grubość konstrukcji pomostu
+    W_BOT = 3.6   # podstawa na dole (dla 3 lamp)
+    W_TOP = 8.2   # podstawa na górze (dla 7 lamp)
+    HEAD_H = 5.4  # wysokość rusztu
+    HEAD_D = 0.85 # głębokość pomostów technicznych
     
-    # Płyta czołowa odwróconego trapezu (w płaszczyźnie YZ, normalna w -X):
+    # 1. Płyta nośna / krata tylna trapezu
     front_pts = [
-        (-HEAD_D / 2.0, -W_BOT / 2.0, -HEAD_H / 2.0),
-        (-HEAD_D / 2.0,  W_BOT / 2.0, -HEAD_H / 2.0),
-        (-HEAD_D / 2.0,  W_TOP / 2.0,  HEAD_H / 2.0),
-        (-HEAD_D / 2.0, -W_TOP / 2.0,  HEAD_H / 2.0)
+        (0.0, -W_BOT / 2.0, -HEAD_H / 2.0),
+        (0.0,  W_BOT / 2.0, -HEAD_H / 2.0),
+        (0.0,  W_TOP / 2.0,  HEAD_H / 2.0),
+        (0.0, -W_TOP / 2.0,  HEAD_H / 2.0)
     ]
     f_verts = [bm_head.verts.new(p) for p in front_pts]
     bm_head.faces.new(f_verts)
     
-    # Ekstruzja wzdłuż osi X o HEAD_D (w tył, tworząc bryłę platformy)
     ext = bmesh.ops.extrude_face_region(bm_head, geom=bm_head.faces[:])
     evs = [v for v in ext['geom'] if isinstance(v, bmesh.types.BMVert)]
     bmesh.ops.translate(bm_head, vec=(HEAD_D, 0.0, 0.0), verts=evs)
 
-    # Matryca reflektorów ułożona w trapez:
-    # 6 rzędów reflektorów od dołu do góry, liczba reflektorów rośnie z szerokością trapezu
-    row_counts = [5, 6, 7, 8, 9, 10] # od 5 lamp na dole do 10 lamp na górze
-    lamp_r = 0.22
+    # 2. 6 rzędów reflektorów w układzie ze zdjęcia (3, 4, 4, 5, 6, 7)
+    row_counts = [3, 4, 4, 5, 6, 7]
+    LAMP_W = 0.64
+    LAMP_H = 0.58
+    LAMP_D = 0.32
     
     for r_idx, count in enumerate(row_counts):
-        t_row = (r_idx + 0.5) / len(row_counts)
-        z_pos = -HEAD_H / 2.0 + t_row * HEAD_H
-        row_w = (1.0 - t_row) * W_BOT + t_row * W_TOP - 0.6
-        dy = row_w / count
+        t_row = r_idx / (len(row_counts) - 1)
+        z_pos = -HEAD_H / 2.0 + (r_idx + 0.5) * (HEAD_H / len(row_counts))
+        cur_w = (1.0 - t_row) * W_BOT + t_row * W_TOP
         
-        for c in range(count):
-            y_pos = -row_w / 2.0 + (c + 0.5) * dy
-            x_pos = -HEAD_D / 2.0 - 0.15 # wystaje przed platformę
+        # Pomost roboczy (barierka boczna i tylna)
+        plat = bmesh.ops.create_cube(bm_head, size=1.0)
+        bmesh.ops.scale(bm_head, vec=(HEAD_D, cur_w + 0.4, 0.08), verts=plat['verts'])
+        bmesh.ops.translate(bm_head, vec=(HEAD_D / 2.0, 0.0, z_pos - LAMP_H / 2.0 - 0.05), verts=plat['verts'])
+        
+        # Barierki ochronne po bokach pomostu
+        for side_sign in [-1, 1]:
+            rail = bmesh.ops.create_cube(bm_head, size=1.0)
+            bmesh.ops.scale(bm_head, vec=(HEAD_D + 0.3, 0.05, 0.75), verts=rail['verts'])
+            bmesh.ops.translate(bm_head, vec=(HEAD_D / 2.0 - 0.1, side_sign * (cur_w / 2.0 + 0.15), z_pos), verts=rail['verts'])
             
-            cone = bmesh.ops.create_cone(
-                bm_head,
-                cap_ends=True,
-                segments=8,
-                radius1=lamp_r,
-                radius2=lamp_r * 0.75,
-                depth=0.28
-            )
-            # obrót w stronę -X (kierunek świecenia)
-            bmesh.ops.rotate(bm_head, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'Y'), verts=cone['verts'])
-            bmesh.ops.translate(bm_head, vec=(x_pos, y_pos, z_pos), verts=cone['verts'])
+        dy = (cur_w - 0.4) / count
+        for c in range(count):
+            y_pos = -(cur_w - 0.4) / 2.0 + (c + 0.5) * dy
+            x_pos = -0.22 # przed ruszą
+            
+            # Skrzynka lampy
+            lamp_box = bmesh.ops.create_cube(bm_head, size=1.0)
+            bmesh.ops.scale(bm_head, vec=(LAMP_D, LAMP_W, LAMP_H), verts=lamp_box['verts'])
+            bmesh.ops.translate(bm_head, vec=(x_pos, y_pos, z_pos), verts=lamp_box['verts'])
+            
+            # Czołowa szyba reflektora (oznaczona jako materiał index 1 - świecący)
+            lamp_faces = {f for v in lamp_box['verts'] for f in v.link_faces}
+            for f in lamp_faces:
+                if f.normal.x < -0.8: # lico lampy skierowane w -X
+                    f.material_index = 1
+                else:
+                    f.material_index = 0
 
-    # Pochylenie głowicy w dół (reflektory w -X pochylają się w stronę gruntu o -28°)
+    # 3. Czerwona lampa ostrzegawcza (przeszkodowa) na szczycie w osi
+    z_top = HEAD_H / 2.0
+    beacon = bmesh.ops.create_cone(
+        bm_head,
+        cap_ends=True,
+        segments=12,
+        radius1=0.18,
+        radius2=0.16,
+        depth=0.36
+    )
+    bmesh.ops.translate(bm_head, vec=(HEAD_D / 2.0, 0.0, z_top + 0.18), verts=beacon['verts'])
+    for f in {f for v in beacon['verts'] for f in v.link_faces}:
+        f.material_index = 2 # czerwone światło przeszkodowe
+
+    # 4. Iglica odgromowa (odgromnik)
+    needle = bmesh.ops.create_cone(
+        bm_head,
+        cap_ends=True,
+        segments=8,
+        radius1=0.03,
+        radius2=0.005,
+        depth=2.2
+    )
+    bmesh.ops.translate(bm_head, vec=(HEAD_D / 2.0, 0.0, z_top + 1.25), verts=needle['verts'])
+    for f in {f for v in needle['verts'] for f in v.link_faces}:
+        f.material_index = 0
+
+    # 5. Ukośny wspornik kratownicowy łączący głowicę z masztem (pod spodem)
+    bracket = bmesh.ops.create_cube(bm_head, size=1.0)
+    bmesh.ops.scale(bm_head, vec=(HEAD_D * 1.1, W_BOT * 0.8, 1.2), verts=bracket['verts'])
+    bmesh.ops.translate(bm_head, vec=(HEAD_D / 2.0, 0.0, -HEAD_H / 2.0 - 0.6), verts=bracket['verts'])
+    for f in {f for v in bracket['verts'] for f in v.link_faces}:
+        f.material_index = 0
+
+    # Pochylenie głowicy w dół (reflektory w -X pochylają się ku murawie o -28°)
     bmesh.ops.rotate(bm_head, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(-28), 3, 'Y'), verts=bm_head.verts)
     
     # Obrót głowicy w poziomie tak, by wektor -X był skierowany na (dir_x, dir_y)
@@ -164,9 +210,13 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
     
     obj_head = bpy.data.objects.new(f"{name}_Glowica", mesh_head)
     if mats and 'metal' in mats:
-        obj_head.data.materials.append(mats['metal'])
+        obj_head.data.materials.append(mats['metal'])        # index 0
+    if mats and 'lamp_glow' in mats:
+        obj_head.data.materials.append(mats['lamp_glow'])    # index 1
+    if mats and 'lamp_beacon' in mats:
+        obj_head.data.materials.append(mats['lamp_beacon'])  # index 2
+        
     col.objects.link(obj_head)
-    
     obj_head.parent = obj_tower
     return obj_tower
 

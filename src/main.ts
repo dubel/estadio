@@ -47,25 +47,47 @@ sunLight.shadow.camera.bottom = -100;
 scene.add(sunLight);
 
 // Jupitery (oświetlenie nocne - 4 potężne reflektory na szczycie masztów)
+// Jupitery (oświetlenie nocne - 4 potężne reflektory na szczycie masztów)
 const jupitersLights: THREE.SpotLight[] = [];
 const jupiterPositions = [
-  new THREE.Vector3(-68.0, 48.0, -82.0), // SW
-  new THREE.Vector3(-68.0, 48.0,  82.0), // NW
-  new THREE.Vector3( 68.0, 48.0, -82.0), // SE
-  new THREE.Vector3( 68.0, 48.0,  82.0)  // NE
+  new THREE.Vector3(-68.0, 48.2,  82.0), // SW (południowo-zachodni)
+  new THREE.Vector3(-68.0, 48.2, -82.0), // NW (północno-zachodni)
+  new THREE.Vector3( 68.0, 48.2,  82.0), // SE (południowo-wschodni)
+  new THREE.Vector3( 68.0, 48.2, -82.0)  // NE (północno-wschodni)
 ];
 
 jupiterPositions.forEach((pos, idx) => {
   const spot = new THREE.SpotLight(0xfffae8, 0.0); // początkowo wyłączone w dzień
   spot.position.copy(pos);
   spot.target.position.set(0, 0, 0); // celują w środek murawy
-  spot.angle = Math.PI / 4;
-  spot.penumbra = 0.5;
-  spot.distance = 250;
-  spot.castShadow = (idx === 0); // cień tylko z 1 masztu dla zachowania wydajności WebGL
+  spot.angle = Math.PI / 3.8;
+  spot.penumbra = 0.55;
+  spot.distance = 260;
+  spot.castShadow = (idx === 0); // cień z 1 masztu dla zachowania wysokiej płynności WebGL
   scene.add(spot);
   scene.add(spot.target);
   jupitersLights.push(spot);
+});
+
+// Świecące kule blasku (flesze optyczne) na szczycie jupiterów w nocy
+const texLoader = new THREE.TextureLoader();
+const glowTexture = texLoader.load('/assets/textures/floodlight_glow.png');
+const glowSprites: THREE.Sprite[] = [];
+
+jupiterPositions.forEach((pos) => {
+  const spriteMat = new THREE.SpriteMaterial({
+    map: glowTexture,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.position.copy(pos);
+  sprite.scale.set(34, 34, 1);
+  scene.add(sprite);
+  glowSprites.push(sprite);
 });
 
 // --- PUNKTY WIDOKOWE (TELEPORTACJA) ---
@@ -87,19 +109,24 @@ const viewpoints: Viewpoint[] = [
     target: new THREE.Vector3(0, 4, 0)
   },
   {
-    name: "Trybuna Główna — Sektor VIP",
+    name: "Trybuna Główna — Sektor VIP & Daszek",
     pos: new THREE.Vector3(-49, 2.5, -12),
     target: new THREE.Vector3(0, 2, 0)
   },
   {
-    name: "Łuk Południowy — Pod Zegarem",
-    pos: new THREE.Vector3(0, 9.2, 104),
-    target: new THREE.Vector3(0, 4, 0)
+    name: "Łuk Południowy — Historyczny Zegar",
+    pos: new THREE.Vector3(0, 2.2, 40),
+    target: new THREE.Vector3(0, 10.5, 110.5)
   },
   {
     name: "Galera (Al. Unii Lubelskiej)",
     pos: new THREE.Vector3(64, 8.5, 0),
     target: new THREE.Vector3(-55, 7, 0)
+  },
+  {
+    name: "Jupiter NW — Szczyt Masztu Oświetleniowego",
+    pos: new THREE.Vector3(-45, 26, -55),
+    target: new THREE.Vector3(-68, 48.2, -82)
   }
 ];
 
@@ -161,6 +188,7 @@ window.addEventListener('keydown', (e) => {
     case 'Digit3': setViewpoint(2); break;
     case 'Digit4': setViewpoint(3); break;
     case 'Digit5': setViewpoint(4); break;
+    case 'Digit6': setViewpoint(5); break;
   }
 });
 
@@ -177,19 +205,33 @@ window.addEventListener('keyup', (e) => {
   }
 });
 
+interface TrackedEmissive {
+  mat: THREE.MeshStandardMaterial;
+  dayColor: THREE.Color;
+  nightColor: THREE.Color;
+  dayIntensity: number;
+  nightIntensity: number;
+}
+const trackedEmissives: TrackedEmissive[] = [];
+
 function toggleLighting() {
   isNight = !isNight;
   const icon = document.getElementById('light-icon');
   const label = document.getElementById('light-label');
   
   if (isNight) {
-    scene.background = new THREE.Color(0x0a0e17);
-    scene.fog = new THREE.FogExp2(0x0a0e17, 0.005);
-    ambientLight.color.setHex(0x1a243a);
-    ambientLight.groundColor.setHex(0x0a0e14);
-    ambientLight.intensity = 0.25;
-    sunLight.intensity = 0.05;
-    jupitersLights.forEach(l => l.intensity = 6000.0);
+    scene.background = new THREE.Color(0x070b12);
+    scene.fog = new THREE.FogExp2(0x070b12, 0.005);
+    ambientLight.color.setHex(0x182438);
+    ambientLight.groundColor.setHex(0x06090e);
+    ambientLight.intensity = 0.35;
+    sunLight.intensity = 0.02;
+    jupitersLights.forEach(l => l.intensity = 8000.0);
+    glowSprites.forEach(s => s.material.opacity = 0.95);
+    trackedEmissives.forEach(e => {
+      e.mat.emissive.copy(e.nightColor);
+      e.mat.emissiveIntensity = e.nightIntensity;
+    });
     if (icon) icon.textContent = '🌙';
     if (label) label.textContent = 'Noc (Jupitery)';
   } else {
@@ -200,6 +242,11 @@ function toggleLighting() {
     ambientLight.intensity = 0.6;
     sunLight.intensity = 2.5;
     jupitersLights.forEach(l => l.intensity = 0.0);
+    glowSprites.forEach(s => s.material.opacity = 0.0);
+    trackedEmissives.forEach(e => {
+      e.mat.emissive.copy(e.dayColor);
+      e.mat.emissiveIntensity = e.dayIntensity;
+    });
     if (icon) icon.textContent = '☀️';
     if (label) label.textContent = 'Dzień';
   }
@@ -216,6 +263,11 @@ function toggleMode() {
 (window as any).__toggleLighting = toggleLighting;
 (window as any).__setViewpoint = setViewpoint;
 (window as any).__toggleMode = toggleMode;
+(window as any).__setCam = (x: number, y: number, z: number, tx: number, ty: number, tz: number) => {
+  camera.position.set(x, y, z);
+  controls.object.position.set(x, y, z);
+  camera.lookAt(tx, ty, tz);
+};
 
 // Podpięcie przycisków HUD
 document.getElementById('btn-light')?.addEventListener('click', toggleLighting);
@@ -241,8 +293,47 @@ loader.load(
     const model = gltf.scene;
     model.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
+        const mesh = child as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mats.forEach((m) => {
+          if (m && (m as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+            const std = m as THREE.MeshStandardMaterial;
+            if (std.name.includes('Lamp_Glow')) {
+              trackedEmissives.push({
+                mat: std,
+                dayColor: new THREE.Color(0x222222),
+                nightColor: new THREE.Color(0xffffff),
+                dayIntensity: 0.0,
+                nightIntensity: 25.0
+              });
+              std.emissive = new THREE.Color(0x000000);
+              std.emissiveIntensity = 0.0;
+            } else if (std.name.includes('Beacon')) {
+              trackedEmissives.push({
+                mat: std,
+                dayColor: new THREE.Color(0x220000),
+                nightColor: new THREE.Color(0xff1111),
+                dayIntensity: 0.2,
+                nightIntensity: 8.0
+              });
+              std.emissive = new THREE.Color(0x220000);
+              std.emissiveIntensity = 0.2;
+            } else if (std.name.includes('Board_Historic')) {
+              trackedEmissives.push({
+                mat: std,
+                dayColor: new THREE.Color(0x000000),
+                nightColor: new THREE.Color(0xffffff),
+                dayIntensity: 0.0,
+                nightIntensity: 2.2
+              });
+              std.emissive = new THREE.Color(0x000000);
+              std.emissiveIntensity = 0.0;
+            }
+          }
+        });
       }
     });
     scene.add(model);
@@ -311,6 +402,16 @@ function animate() {
         currentPos.y = 1.8;
       }
     }
+  }
+
+  if (isNight && trackedEmissives.length > 0) {
+    const time = clock.getElapsedTime();
+    const pulse = 0.75 + 0.25 * Math.sin(time * 4.0);
+    trackedEmissives.forEach((e) => {
+      if (e.mat.name.includes('Beacon')) {
+        e.mat.emissiveIntensity = e.nightIntensity * pulse;
+      }
+    });
   }
 
   renderer.render(scene, camera);

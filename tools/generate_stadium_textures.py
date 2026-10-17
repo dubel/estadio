@@ -210,9 +210,189 @@ def generate_fan_graffiti_banners():
     img.save(save_path)
     print(f"Zapisano banery kibicowskie: {save_path}")
 
+def generate_scoreboard_textures():
+    """Generuje autentyczną teksturę tablicy wyników i zegara z archiwalnego zdjęcia."""
+    src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "zdjecia", "screenshot-2026-10-16_19-37-09.png")
+    if not os.path.exists(src_path):
+        print(f"Brak pliku źródłowego: {src_path}")
+        return
+        
+    im = Image.open(src_path)
+    # Wycięcie prostokąta tablicy (wymiary i proporcje 1:1)
+    crop = im.crop((54, 66, 1726, 672))
+    
+    save_path = os.path.join(TEXTURES_DIR, "scoreboard_historic.png")
+    crop.save(save_path)
+    
+    # Mapa emisji dla trybu nocnego
+    import numpy as np
+    arr = np.array(crop.convert('RGB'), dtype=np.float32)
+    emission = np.zeros_like(arr)
+    
+    # 1. Świecące białe wskazówki i indeksy zegara (lewa strona tablicy)
+    clock_area = arr[:480, :420]
+    bright_mask = (clock_area[:, :, 0] > 140) & (clock_area[:, :, 1] > 140) & (clock_area[:, :, 2] > 140)
+    emission[:480, :420][bright_mask] = clock_area[bright_mask] * 1.8
+    
+    # 2. Świecący żółto-zielony napis 'ŁÓDZKI KLUB SPORTOWY' na górnej matrycy
+    text_area = arr[:90, 400:1600]
+    green_mask = (text_area[:, :, 1] > 100) & (text_area[:, :, 0] > 70) & (text_area[:, :, 2] < 120)
+    emission[:90, 400:1600][green_mask] = text_area[green_mask] * 2.2
+    
+    emission = np.clip(emission, 0, 255).astype(np.uint8)
+    em_img = Image.fromarray(emission)
+    save_em_path = os.path.join(TEXTURES_DIR, "scoreboard_emission.png")
+    em_img.save(save_em_path)
+    print(f"Zapisano tablicę wyników i mapę emisji: {save_path}, {save_em_path}")
+
+def generate_przeplatanka_texture():
+    """
+    Generuje autentyczny biały murek z czerwoną Przeplatanką (historyczny herb ŁKS Łódź)
+    na podstawie oficjalnej grafiki nadesłanej przez użytkownika.
+    """
+    w, h = 2048, 512
+    # Drobne ziarno malowanego betonu
+    np.random.seed(42)
+    noise = np.random.normal(0, 3, (h, w)).astype(np.float32)
+    base_r = np.clip(244.0 + noise, 0, 255).astype(np.uint8)
+    base_g = np.clip(244.0 + noise, 0, 255).astype(np.uint8)
+    base_b = np.clip(242.0 + noise, 0, 255).astype(np.uint8)
+
+    wall = np.stack([base_r, base_g, base_b], axis=-1)
+    wall_img = Image.fromarray(wall, 'RGB').convert('RGBA')
+
+    # Wczytanie wypreparowanej Przeplatanki
+    przep_path = os.path.join(TEXTURES_DIR, "przeplatanka_clean.png")
+    if not os.path.exists(przep_path):
+        brain_path = "/home/mike/.gemini/antigravity/brain/82c65cda-bf05-435a-8352-5d980746f828/.user_uploaded/media_1792191650618.png"
+        if os.path.exists(brain_path):
+            im = Image.open(brain_path).convert('RGB')
+            arr = np.array(im, dtype=np.float32)
+            bg = np.array([247, 247, 247], dtype=np.float32)
+            dist = np.sqrt(np.sum((arr - bg)**2, axis=2))
+            alpha = np.clip((dist - 15.0) / 30.0, 0.0, 1.0) * 255.0
+            out = np.zeros((arr.shape[0], arr.shape[1], 4), dtype=np.uint8)
+            out[:,:,:3] = np.array(im)
+            out[:,:,3] = alpha.astype(np.uint8)
+            out_img = Image.fromarray(out, 'RGBA')
+            przep = out_img.crop(out_img.getbbox())
+            przep.save(przep_path)
+        else:
+            return
+    else:
+        przep = Image.open(przep_path).convert('RGBA')
+
+    # Skalowanie herbu do wysokości murka z zachowaniem proporcji
+    target_h = 410
+    target_w = int(przep.width * (target_h / przep.height))
+    przep_scaled = przep.resize((target_w, target_h), Image.Resampling.LANCZOS)
+
+    pos_x = (w - target_w) // 2
+    pos_y = (h - target_h) // 2
+    wall_img.alpha_composite(przep_scaled, (pos_x, pos_y))
+
+    save_path = os.path.join(TEXTURES_DIR, "przeplatanka_wall.png")
+    wall_img.save(save_path)
+    # Kopia do public dla Three.js
+    pub_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "assets", "textures", "przeplatanka_wall.png")
+    wall_img.save(pub_path)
+    print(f"Zapisano teksturę murka z autentyczną Przeplatanką: {save_path}")
+
+def generate_canopy_graffiti_texture():
+    """Generuje autentyczne kibicowskie graffiti na murek północny pod Trybuną Główną."""
+    src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "zdjecia", "grafy_na_trybunie.png")
+    w, h = 1024, 256
+    
+    if os.path.exists(src_path):
+        im = Image.open(src_path)
+        # Wycinamy fragment z autentycznym graffiti osiedlowym ŁKS
+        crop = im.crop((120, 200, 2200, 440)).resize((w, h), Image.Resampling.LANCZOS)
+        save_path = os.path.join(TEXTURES_DIR, "murek_graffiti_north.png")
+        crop.save(save_path)
+        print(f"Zapisano teksturę graffiti północnego murka: {save_path}")
+    else:
+        img = Image.new("RGBA", (w, h), (230, 230, 225, 255))
+        draw = ImageDraw.Draw(img)
+        font = get_font(52)
+        draw.text((w // 2, h // 2), "ŁKS LIMANKA • TEOFILÓW • ŻUBARDŹ", fill=(195, 25, 30, 255), font=font, anchor="mm")
+        save_path = os.path.join(TEXTURES_DIR, "murek_graffiti_north.png")
+        img.save(save_path)
+
+def generate_corrugated_roof_textures():
+    """Generuje tekstury blachy trapezowej / falistej w kolorze białym i czerwonym ŁKS."""
+    w, h = 512, 512
+    # 1. Biała blacha
+    img_white = Image.new("RGB", (w, h))
+    # 2. Czerwona blacha ŁKS
+    img_red = Image.new("RGB", (w, h))
+    
+    draw_w = ImageDraw.Draw(img_white)
+    draw_r = ImageDraw.Draw(img_red)
+    
+    # Fale trapezowe wzdłuż osi Y (rozstaw przetłoczenia co 16 px)
+    wave_period = 16.0
+    for x in range(w):
+        # Kąt przetłoczenia
+        ang = (x % wave_period) / wave_period * 2.0 * math.pi
+        shade = 0.5 + 0.5 * math.sin(ang)
+        
+        # Kolor biały (210 - 250)
+        bw = int(210 + 40 * shade)
+        draw_w.line([(x, 0), (x, h)], fill=(bw, bw, bw - 2))
+        
+        # Kolor czerwony (R: 160-220, G: 15-30, B: 20-35)
+        br = int(160 + 55 * shade)
+        draw_r.line([(x, 0), (x, h)], fill=(br, 22, 28))
+        
+    path_w = os.path.join(TEXTURES_DIR, "roof_corrugated_white.jpg")
+    path_r = os.path.join(TEXTURES_DIR, "roof_corrugated_red.jpg")
+    img_white.save(path_w, quality=92)
+    img_red.save(path_r, quality=92)
+    print(f"Zapisano tekstury blachy falistej: {path_w}, {path_r}")
+
+def generate_floodlight_glow_sprite():
+    """Generuje radialny rozbłysk światła (glow flare) dla nocnych jupiterów w Three.js."""
+    size = 512
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    
+    cx, cy = size // 2, size // 2
+    r_max = size // 2
+    
+    for r in range(r_max, 0, -1):
+        dist = r / r_max
+        # Profil wykładniczy rozbłysku (oślepiające białe centrum)
+        alpha = int(255 * math.exp(-dist * 4.5))
+        # Delikatny błękitno-krystaliczny odcień na obrzeżach reflektora
+        color = (255, 255, int(240 + 15 * (1.0 - dist)), alpha)
+        draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=color)
+        
+    save_path = os.path.join(TEXTURES_DIR, "floodlight_glow.png")
+    img.save(save_path)
+    print(f"Zapisano sprite rozbłysku jupitera: {save_path}")
+
+def sync_to_public():
+    """Kopiuje wszystkie tekstury z assets/textures do public/assets/textures dla Three.js."""
+    import shutil
+    pub_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "public", "assets", "textures")
+    os.makedirs(pub_dir, exist_ok=True)
+    for root, dirs, files in os.walk(TEXTURES_DIR):
+        rel = os.path.relpath(root, TEXTURES_DIR)
+        target_dir = os.path.join(pub_dir, rel)
+        os.makedirs(target_dir, exist_ok=True)
+        for f in files:
+            shutil.copy2(os.path.join(root, f), os.path.join(target_dir, f))
+    print(f"Zsynchronizowano tekstury do: {pub_dir}")
+
 if __name__ == "__main__":
     generate_pitch_texture()
     generate_fascia_banner()
     generate_clock_face()
     generate_fan_graffiti_banners()
-    print("Wszystkie tekstury wygenerowane pomyślnie!")
+    generate_scoreboard_textures()
+    generate_przeplatanka_texture()
+    generate_canopy_graffiti_texture()
+    generate_corrugated_roof_textures()
+    generate_floodlight_glow_sprite()
+    sync_to_public()
+    print("Wszystkie tekstury wygenerowane i zsynchronizowane pomyślnie!")

@@ -16,6 +16,7 @@ scratch/
 # Blender backup files
 *.blend1
 *.blend@
+*_test.blend
 
 # OS & Editor files
 .DS_Store

@@ -352,14 +352,16 @@ def build_scoreboard(col, mats):
     """
     Historyczna tablica wyników z zegarem stojąca na KORONIE KRÓTKIEJ TRYBUNY OD POŁUDNIA.
     Skierowana na północ (+Y), twarzą do murawy i Trybuny Głównej.
+    Czoło tablicy posiada autentyczną teksturę ze zdjęcia archiwalnego (z zegarem, matrycą i napisem).
     """
     BOARD_W = 20.0
     BOARD_H = 7.5
     BOARD_D = 1.2
-    CLEARANCE = 4.2 # słupy nad wałem
+    CLEARANCE = 4.2 # słupy nośne nad wałem
     
-    # 1. Konstrukcja i skrzynia tablicy (ciemna stal)
+    # 1. Konstrukcja i skrzynia tablicy
     bm_board = bmesh.new()
+    uv_layer = bm_board.loops.layers.uv.verify()
     
     # 2 słupy nośne
     COL_R = 0.50
@@ -379,6 +381,20 @@ def build_scoreboard(col, mats):
     bmesh.ops.scale(bm_board, vec=(BOARD_D, BOARD_W, BOARD_H), verts=box['verts'])
     bmesh.ops.translate(bm_board, vec=(0.0, 0.0, CLEARANCE + BOARD_H/2.0), verts=box['verts'])
 
+    # Mapowanie UV i indeksy materiałów dla skrzyni tablicy i słupów
+    for f in bm_board.faces:
+        # Płyta czołowa skrzyni skierowana w stronę murawy (-X)
+        if f.normal.x < -0.8 and f.calc_center_median().z > CLEARANCE:
+            f.material_index = 1 # Mat_Board_Historic
+            for loop in f.loops:
+                u = (BOARD_W / 2.0 - loop.vert.co.y) / BOARD_W
+                v = (loop.vert.co.z - CLEARANCE) / BOARD_H
+                loop[uv_layer].uv = (u, v)
+        else:
+            f.material_index = 0 # Mat_Board_Dark (stalowa obudowa i słupy)
+            for loop in f.loops:
+                loop[uv_layer].uv = (0.1, 0.1)
+
     mesh_board = bpy.data.meshes.new("Tablica_Wynikow_Mesh")
     bm_board.normal_update()
     bm_board.to_mesh(mesh_board)
@@ -389,47 +405,13 @@ def build_scoreboard(col, mats):
     obj_board.location = (0.0, -110.5, 6.8)
     # Obrót o -90° wokół Z (normalna czoła z -X obraca się w stronę +Y ku murawie)
     obj_board.rotation_euler = (0.0, 0.0, math.radians(-90))
+    
     if mats and 'board_dark' in mats:
-        obj_board.data.materials.append(mats['board_dark'])
+        obj_board.data.materials.append(mats['board_dark'])       # Index 0
+    if mats and 'board_historic' in mats:
+        obj_board.data.materials.append(mats['board_historic'])   # Index 1
+        
     col.objects.link(obj_board)
-
-    # 2. Tarcza zegara z historyczną teksturą OMEGA / ŁKS
-    bm_clock = bmesh.new()
-    CLOCK_R = 2.4
-    clock = bmesh.ops.create_cone(
-        bm_clock,
-        cap_ends=True,
-        segments=32,
-        radius1=CLOCK_R,
-        radius2=CLOCK_R,
-        depth=0.15
-    )
-    bmesh.ops.rotate(bm_clock, cent=(0,0,0), matrix=mathutils.Matrix.Rotation(math.radians(90), 3, 'Y'), verts=clock['verts'])
-    bmesh.ops.translate(bm_clock, vec=(-BOARD_D/2.0 - 0.10, BOARD_W/2.0 - CLOCK_R - 1.0, CLEARANCE + BOARD_H/2.0), verts=clock['verts'])
-
-    # Mapowanie UV tarczy zegara (nieodwrócone, widok od strony murawy)
-    uv_layer_clk = bm_clock.loops.layers.uv.verify()
-    clk_center_y = BOARD_W/2.0 - CLOCK_R - 1.0
-    clk_center_z = CLEARANCE + BOARD_H/2.0
-    for f in bm_clock.faces:
-        for loop in f.loops:
-            # Obrót / odbicie w osi U tak, aby napis OMEGA i cyfry rzymskie były czytelne od frontu
-            u = 0.5 - ((loop.vert.co.y - clk_center_y) / (2.0 * CLOCK_R))
-            v = 0.5 + ((loop.vert.co.z - clk_center_z) / (2.0 * CLOCK_R))
-            loop[uv_layer_clk].uv = (u, v)
-
-    mesh_clock = bpy.data.meshes.new("Tarcza_Zegara_Mesh")
-    bm_clock.normal_update()
-    bm_clock.to_mesh(mesh_clock)
-    bm_clock.free()
-
-    obj_clock = bpy.data.objects.new("Tarcza_Zegara", mesh_clock)
-    obj_clock.location = (0.0, 0.0, 0.0) # Względnie do rodzica obj_board
-    if mats and 'clock_white' in mats:
-        obj_clock.data.materials.append(mats['clock_white'])
-    col.objects.link(obj_clock)
-    obj_clock.parent = obj_board
-
     return obj_board
 
 if __name__ == "__main__":

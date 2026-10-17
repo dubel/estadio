@@ -136,17 +136,31 @@ def create_materials():
         bsdf.inputs['Roughness'].default_value = 0.35
     mats['metal'] = mat_metal
 
-    # 8. Blacha trapezowa daszku dolnego sektora
-    mat_tin = bpy.data.materials.new("Mat_Roof_Tin")
-    mat_tin.use_nodes = True
-    bsdf = mat_tin.node_tree.nodes.get("Principled BSDF")
+    # 8. Biała blacha trapezowa daszku dolnego sektora
+    mat_rw = bpy.data.materials.new("Mat_Roof_Corrugated_White")
+    mat_rw.use_nodes = True
+    bsdf = mat_rw.node_tree.nodes.get("Principled BSDF")
     if bsdf:
-        bsdf.inputs['Base Color'].default_value = (0.82, 0.83, 0.84, 1.0)
-        bsdf.inputs['Metallic'].default_value = 0.35
+        bsdf.inputs['Base Color'].default_value = (0.92, 0.92, 0.92, 1.0)
+        bsdf.inputs['Metallic'].default_value = 0.20
         bsdf.inputs['Roughness'].default_value = 0.45
-    mats['roof_tin'] = mat_tin
+    rw_col = os.path.join(TEXTURES_DIR, "roof_corrugated_white.jpg")
+    setup_pbr_nodes(mat_rw, rw_col, scale=(4.0, 4.0))
+    mats['roof_white'] = mat_rw
 
-    # 9. Czerwień klubowa ŁKS (sektory, akcenty)
+    # 9. Czerwona blacha trapezowa daszku dolnego sektora (ŁKS Red)
+    mat_rr = bpy.data.materials.new("Mat_Roof_Corrugated_Red")
+    mat_rr.use_nodes = True
+    bsdf = mat_rr.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.76, 0.10, 0.12, 1.0)
+        bsdf.inputs['Metallic'].default_value = 0.20
+        bsdf.inputs['Roughness'].default_value = 0.45
+    rr_col = os.path.join(TEXTURES_DIR, "roof_corrugated_red.jpg")
+    setup_pbr_nodes(mat_rr, rr_col, scale=(4.0, 4.0))
+    mats['roof_red'] = mat_rr
+
+    # Czerwień klubowa ŁKS (ogólna)
     mat_red = bpy.data.materials.new("Mat_LKS_Red")
     mat_red.use_nodes = True
     bsdf = mat_red.node_tree.nodes.get("Principled BSDF")
@@ -155,29 +169,50 @@ def create_materials():
         bsdf.inputs['Roughness'].default_value = 0.60
     mats['lks_red'] = mat_red
 
-    # 10. Biała fasada pod hasło klubowe z teksturą banera
+    # 10. Biała fasada obróbki blacharskiej daszku
     mat_fascia = bpy.data.materials.new("Mat_Fascia_White")
     mat_fascia.use_nodes = True
     bsdf = mat_fascia.node_tree.nodes.get("Principled BSDF")
     if bsdf:
-        bsdf.inputs['Base Color'].default_value = (0.92, 0.92, 0.90, 1.0)
-        bsdf.inputs['Roughness'].default_value = 0.50
-    banner_col = os.path.join(TEXTURES_DIR, "banner_tutaj_wychowani.png")
-    setup_pbr_nodes(mat_fascia, banner_col, scale=(1.0, 1.0))
+        bsdf.inputs['Base Color'].default_value = (0.94, 0.94, 0.92, 1.0)
+        bsdf.inputs['Roughness'].default_value = 0.40
+        bsdf.inputs['Metallic'].default_value = 0.15
     mats['fascia'] = mat_fascia
 
-    # 11. Świecące reflektory
+    # 11. Biały murek z czerwoną Przeplatanką ŁKS na wyższej trybunie (z oficjalnej grafiki)
+    mat_przp = bpy.data.materials.new("Mat_Przeplatanka_Wall")
+    mat_przp.use_nodes = True
+    bsdf = mat_przp.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (0.96, 0.96, 0.94, 1.0)
+        bsdf.inputs['Roughness'].default_value = 0.70
+    przp_col = os.path.join(TEXTURES_DIR, "przeplatanka_wall.png")
+    setup_pbr_nodes(mat_przp, przp_col, scale=(1.0, 1.0))
+    mats['przeplatanka'] = mat_przp
+
+    # 14. Świecące reflektory jupiterów (oślepiający biały blask w nocy)
     mat_lamp = bpy.data.materials.new("Mat_Lamp_Glow")
     mat_lamp.use_nodes = True
     bsdf = mat_lamp.node_tree.nodes.get("Principled BSDF")
     if bsdf:
-        bsdf.inputs['Base Color'].default_value = (0.98, 0.98, 0.92, 1.0)
+        bsdf.inputs['Base Color'].default_value = (1.0, 1.0, 1.0, 1.0)
         if 'Emission Color' in bsdf.inputs:
-            bsdf.inputs['Emission Color'].default_value = (1.0, 0.98, 0.92, 1.0)
-            bsdf.inputs['Emission Strength'].default_value = 2.0
+            bsdf.inputs['Emission Color'].default_value = (1.0, 1.0, 1.0, 1.0)
+            bsdf.inputs['Emission Strength'].default_value = 50.0
     mats['lamp_glow'] = mat_lamp
 
-    # 12. Ciemna tablica wyników
+    # 15. Czerwone światło ostrzegawcze na szczycie jupitera
+    mat_beacon = bpy.data.materials.new("Mat_Beacon_Red")
+    mat_beacon.use_nodes = True
+    bsdf = mat_beacon.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs['Base Color'].default_value = (1.0, 0.05, 0.05, 1.0)
+        if 'Emission Color' in bsdf.inputs:
+            bsdf.inputs['Emission Color'].default_value = (1.0, 0.05, 0.05, 1.0)
+            bsdf.inputs['Emission Strength'].default_value = 10.0
+    mats['lamp_beacon'] = mat_beacon
+
+    # 16. Ciemna tablica wyników i konstrukcja
     mat_board = bpy.data.materials.new("Mat_Board_Dark")
     mat_board.use_nodes = True
     bsdf = mat_board.node_tree.nodes.get("Principled BSDF")
@@ -186,20 +221,29 @@ def create_materials():
         bsdf.inputs['Roughness'].default_value = 0.7
     mats['board_dark'] = mat_board
 
-    # 13. Tarcza zegara z teksturą historyczną
-    mat_clock = bpy.data.materials.new("Mat_Clock_White")
-    mat_clock.use_nodes = True
-    bsdf = mat_clock.node_tree.nodes.get("Principled BSDF")
+    # 17. Autentyczna historyczna tablica wyników z zegarem (z archiwalnego zdjęcia)
+    mat_bh = bpy.data.materials.new("Mat_Board_Historic")
+    mat_bh.use_nodes = True
+    bsdf = mat_bh.node_tree.nodes.get("Principled BSDF")
     if bsdf:
-        bsdf.inputs['Base Color'].default_value = (0.95, 0.95, 0.93, 1.0)
+        bsdf.inputs['Base Color'].default_value = (0.95, 0.95, 0.95, 1.0)
+        bsdf.inputs['Roughness'].default_value = 0.65
+    bh_col = os.path.join(TEXTURES_DIR, "scoreboard_historic.png")
+    bh_em = os.path.join(TEXTURES_DIR, "scoreboard_emission.png")
+    setup_pbr_nodes(mat_bh, bh_col, scale=(1.0, 1.0))
+    if os.path.exists(bh_em):
+        img_em = bpy.data.images.load(bh_em)
+        node_em = mat_bh.node_tree.nodes.new('ShaderNodeTexImage')
+        node_em.image = img_em
+        tc = mat_bh.node_tree.nodes.get('ShaderNodeTexCoord')
+        if tc:
+            mat_bh.node_tree.links.new(tc.outputs['UV'], node_em.inputs['Vector'])
         if 'Emission Color' in bsdf.inputs:
-            bsdf.inputs['Emission Color'].default_value = (0.95, 0.95, 0.93, 1.0)
-            bsdf.inputs['Emission Strength'].default_value = 0.3
-    clock_col = os.path.join(TEXTURES_DIR, "clock_face.png")
-    setup_pbr_nodes(mat_clock, clock_col, scale=(1.0, 1.0))
-    mats['clock_white'] = mat_clock
+            mat_bh.node_tree.links.new(node_em.outputs['Color'], bsdf.inputs['Emission Color'])
+            bsdf.inputs['Emission Strength'].default_value = 1.8
+    mats['board_historic'] = mat_bh
 
-    # 14. Kibicowskie banery wzdłuż boiska
+    # 18. Kibicowskie banery wzdłuż boiska
     mat_fan = bpy.data.materials.new("Mat_Fan_Banners")
     mat_fan.use_nodes = True
     bsdf = mat_fan.node_tree.nodes.get("Principled BSDF")
@@ -348,77 +392,124 @@ def build_grandstand(col, mats):
     col.objects.link(obj_lower)
 
     # -------------------------------------------------------------------------
-    # 4. NISKIE ZADASZENIE BLASZANE SEKTORA DOLNEGO (TRYBUNA KRYTA / VIP)
+    # 4. NISKIE ZADASZENIE BLASZANE (BIAŁO-CZERWONO-BIAŁE) OD POŁUDNIOWEGO KRAŃCA
     # -------------------------------------------------------------------------
-    # Charakterystyczny niski daszek z blachy trapezowej nad ławkami dolnymi:
-    # W rzucie X: od X=1.0m do X=7.0m, wysokość Z od 3.4m (przód) do 4.2m (tył)
-    # Z pionową białą blendą / fasadą
-    canopy_mesh = bpy.data.meshes.new("Daszek_Blaszany_VIP_Mesh")
-    bm_c = bmesh.new()
+    # W rzucie stadionu Trybuna Główna biegnie od Y = -54.0m (Południe) do Y = +54.0m (Północ).
+    # Ze względu na obrót o 180° w build_full_stadium (Y_global = 54.0 - Y_local):
+    # - Krańcowe południe to Y_local = 14.0 * BAY_WIDTH_Y (108.0m)
+    # - Krańcowa północ to Y_local = 0.0m
+    # Zgodnie z archiwalnym zdjęciem (media_1792191531931.png):
+    # Daszek biało-czerwono-biały ZACZYNA SIĘ OD POŁUDNIOWEGO KRAŃCA (Y_local = 108.0m):
+    # 1. Biały daszek południowy: przęsła 11..13 (od 11*BAY_W do 14*BAY_W, ~23.1m)
+    # 2. Czerwony daszek środkowy: przęsła 6..10 (od 6*BAY_W do 11*BAY_W, ~38.6m)
+    # 3. Biały daszek północny zadaszonego sektora: przęsła 4..5 (od 4*BAY_W do 6*BAY_W, ~15.4m)
+    # Na północ od przęsła 4 (Y_local < 4*BAY_W, na północ od środka murawy):
+    # Daszek się urywa! Mamy otwarty sektor z betonowymi stopniami oraz niski pawilon.
+    # Wszelkie sztuczne tekstury graffiti pod trybuną zostały całkowicie usunięte.
     
-    pts_canopy = [
-        (1.0, 0.0, 3.4),
-        (7.0, 0.0, 4.3),
-        (7.0, 0.0, 4.15),
-        (1.0, 0.0, 3.25)
-    ]
-    v_c = [bm_c.verts.new(p) for p in pts_canopy]
-    bm_c.faces.new(v_c)
-    res_c = bmesh.ops.extrude_face_region(bm_c, geom=bm_c.faces[:])
-    ev_c = [v for v in res_c['geom'] if isinstance(v, bmesh.types.BMVert)]
-    bmesh.ops.translate(bm_c, vec=(0.0, BAY_WIDTH_Y, 0.0), verts=ev_c)
-    
-    bm_c.normal_update()
-    bm_c.to_mesh(canopy_mesh)
-    bm_c.free()
-    
-    obj_canopy = bpy.data.objects.new("Daszek_Blaszany_VIP_Modul", canopy_mesh)
-    obj_canopy.data.materials.append(mats['roof_tin'])
-    col.objects.link(obj_canopy)
+    def make_canopy_section(name, y_start, y_end, mat):
+        bm = bmesh.new()
+        pts = [
+            (1.0, y_start, 3.4),
+            (7.0, y_start, 4.3),
+            (7.0, y_start, 4.15),
+            (1.0, y_start, 3.25)
+        ]
+        f = bm.faces.new([bm.verts.new(p) for p in pts])
+        res = bmesh.ops.extrude_face_region(bm, geom=[f])
+        ev = [v for v in res['geom'] if isinstance(v, bmesh.types.BMVert)]
+        bmesh.ops.translate(bm, vec=(0.0, y_end - y_start, 0.0), verts=ev)
+        
+        uv_l = bm.loops.layers.uv.verify()
+        for face in bm.faces:
+            for loop in face.loops:
+                loop[uv_l].uv = (loop.vert.co.y / 4.0, loop.vert.co.x / 4.0)
+                
+        mesh = bpy.data.meshes.new(f"{name}_Mesh")
+        bm.normal_update()
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = bpy.data.objects.new(name, mesh)
+        obj.data.materials.append(mat)
+        col.objects.link(obj)
+        return obj
 
-    # Biała blenda fasadowa z historycznym hasłem ŁKS na czele zadaszenia (widoczna z murawy)
+    # 1. Biały daszek od krańca południowego (przęsła 11..13: od 11*BAY_W do 14*BAY_W)
+    obj_canopy_s = make_canopy_section("Daszek_Bialy_Poludnie", 11.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, mats['roof_white'])
+    # 2. Czerwony daszek środkowy (przęsła 6..10: od 6*BAY_W do 11*BAY_W)
+    obj_canopy_c = make_canopy_section("Daszek_Czerwony_Srodek", 6.0 * BAY_WIDTH_Y, 11.0 * BAY_WIDTH_Y, mats['roof_red'])
+    # 3. Biały daszek północny zadaszonego sektora (przęsła 4..5: od 4*BAY_W do 6*BAY_W)
+    obj_canopy_n = make_canopy_section("Daszek_Bialy_Polnoc", 4.0 * BAY_WIDTH_Y, 6.0 * BAY_WIDTH_Y, mats['roof_white'])
+
+    # 4. Czysta, biała blenda / obróbka blacharska czoła daszku (na długości zadaszenia)
+    CANOPY_FRONT_Y_START = 4.0 * BAY_WIDTH_Y
+    CANOPY_FRONT_Y_END = 14.0 * BAY_WIDTH_Y
     fascia_mesh = bpy.data.meshes.new("Blenda_Fasada_Biala_Mesh")
     bm_f = bmesh.new()
-    
-    FX = 0.92 # lico frontowe blendy przed krawędzią daszka
-    FZ_BOT = 2.7
-    FZ_TOP = 4.1
-    
-    # Czoło skierowane ku murawie (normalna w osi -X w lokalnym układzie trybuny)
+    FX = 0.95
+    FZ_BOT = 3.20
+    FZ_TOP = 3.48
     f_pts_front = [
-        (FX, 0.0, FZ_BOT),
-        (FX, 0.0, FZ_TOP),
-        (FX, TOTAL_LENGTH_Y, FZ_TOP),
-        (FX, TOTAL_LENGTH_Y, FZ_BOT)
+        (FX, CANOPY_FRONT_Y_START, FZ_BOT),
+        (FX, CANOPY_FRONT_Y_START, FZ_TOP),
+        (FX, CANOPY_FRONT_Y_END, FZ_TOP),
+        (FX, CANOPY_FRONT_Y_END, FZ_BOT)
     ]
-    f_face_front = bm_f.faces.new([bm_f.verts.new(p) for p in f_pts_front])
-    uv_layer = bm_f.loops.layers.uv.verify()
-    for loop in f_face_front.loops:
-        # Tekst czytelny od lewej do prawej z perspektywy widza na murawie
-        u = (TOTAL_LENGTH_Y - loop.vert.co.y) / TOTAL_LENGTH_Y
-        v = (loop.vert.co.z - FZ_BOT) / (FZ_TOP - FZ_BOT)
-        loop[uv_layer].uv = (u, v)
-
-    # Grubość blendy (tył blendy)
-    f_pts_back = [
-        (FX + 0.06, TOTAL_LENGTH_Y, FZ_BOT),
-        (FX + 0.06, TOTAL_LENGTH_Y, FZ_TOP),
-        (FX + 0.06, 0.0, FZ_TOP),
-        (FX + 0.06, 0.0, FZ_BOT)
-    ]
-    f_face_back = bm_f.faces.new([bm_f.verts.new(p) for p in f_pts_back])
-    for loop in f_face_back.loops:
-        u = loop.vert.co.y / TOTAL_LENGTH_Y
-        v = (loop.vert.co.z - FZ_BOT) / (FZ_TOP - FZ_BOT)
-        loop[uv_layer].uv = (u, v)
-        
+    bm_f.faces.new([bm_f.verts.new(p) for p in f_pts_front])
     bm_f.normal_update()
     bm_f.to_mesh(fascia_mesh)
     bm_f.free()
-    
-    obj_fascia = bpy.data.objects.new("Blenda_Fasada_Biala_Pelna", fascia_mesh)
-    obj_fascia.data.materials.append(mats['fascia'])
+    obj_fascia = bpy.data.objects.new("Blenda_Fasada_Biala", fascia_mesh)
+    obj_fascia.data.materials.append(mats['roof_white'])
     col.objects.link(obj_fascia)
+
+    # -------------------------------------------------------------------------
+    # 5. BIAŁE MURKI Z AUTENTYCZNĄ PRZEPLATANKĄ ŁKS NA WYŻSZEJ TRYBUNIE
+    # -------------------------------------------------------------------------
+    # Na wyższej trybunie, 4-5 rzędów od dołu (X = 9.85m, Z od 5.05m do 6.20m),
+    # w każdym przęśle stoi przerywany biały murek z czerwoną Przeplatanką
+    bm_przp = bmesh.new()
+    WALL_X = 9.85
+    WALL_H = 1.15
+    WALL_Z_BOT = 5.05
+    WALL_Z_TOP = WALL_Z_BOT + WALL_H
+    uv_przp = bm_przp.loops.layers.uv.verify()
+    
+    for k in range(NUM_BAYS):
+        y0 = k * BAY_WIDTH_Y + 1.2
+        y1 = (k + 1) * BAY_WIDTH_Y - 0.2
+        
+        # Przednia ściana murka z Przeplatanką (skierowana ku murawie w -X)
+        p_front = [
+            (WALL_X, y0, WALL_Z_BOT),
+            (WALL_X, y0, WALL_Z_TOP),
+            (WALL_X, y1, WALL_Z_TOP),
+            (WALL_X, y1, WALL_Z_BOT)
+        ]
+        face_f = bm_przp.faces.new([bm_przp.verts.new(p) for p in p_front])
+        for loop in face_f.loops:
+            u = (y1 - loop.vert.co.y) / (y1 - y0)
+            v = (loop.vert.co.z - WALL_Z_BOT) / WALL_H
+            loop[uv_przp].uv = (u, v)
+            
+        # Grubość murka (wierzch)
+        p_top = [
+            (WALL_X, y0, WALL_Z_TOP),
+            (WALL_X + 0.18, y0, WALL_Z_TOP),
+            (WALL_X + 0.18, y1, WALL_Z_TOP),
+            (WALL_X, y1, WALL_Z_TOP)
+        ]
+        f_top = bm_przp.faces.new([bm_przp.verts.new(p) for p in p_top])
+        for loop in f_top.loops:
+            loop[uv_przp].uv = (0.05, 0.05)
+
+    mesh_przp = bpy.data.meshes.new("Murki_Przeplatanka_Upper_Mesh")
+    bm_przp.normal_update()
+    bm_przp.to_mesh(mesh_przp)
+    bm_przp.free()
+    obj_przp = bpy.data.objects.new("Murki_Przeplatanka_Upper", mesh_przp)
+    obj_przp.data.materials.append(mats['przeplatanka'])
+    col.objects.link(obj_przp)
 
     # -------------------------------------------------------------------------
     # 5. PAWILON ZAPLECZA I OKNA OD STRONY AL. UNII
@@ -540,7 +631,7 @@ def build_grandstand(col, mats):
     # -------------------------------------------------------------------------
     # 8. MODYFIKATOR ARRAY DLA PRZĘSEŁ (14 POWTÓRZEŃ W OSI Y)
     # -------------------------------------------------------------------------
-    modular_objs = [obj_girder, obj_upper, obj_lower, obj_canopy, obj_pav, obj_win, obj_roof_lights, obj_benches]
+    modular_objs = [obj_girder, obj_upper, obj_lower, obj_pav, obj_win, obj_roof_lights, obj_benches]
     for o in modular_objs:
         arr = o.modifiers.new("Array_14_Przensel", 'ARRAY')
         arr.count = NUM_BAYS
