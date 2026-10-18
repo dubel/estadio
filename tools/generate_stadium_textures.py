@@ -375,11 +375,36 @@ ENTRANCE_GRAPHICS = [
 ]
 
 
+def _clean_dugout_board(img):
+    """
+    Tablica sponsorska ławki (2048 x 384): bez krzesełek zasłaniających dół i bez słupka daszku.
+    Słupek (kolumny 928–955) zamalowany: poza środkowym logo Ekstraklasy tłem przesuniętym o jeden rozstaw
+    logo ZINA (143 px), w obrębie logo (wiersze 88–190) tym samym miejscem lewego logo (567 px w lewo,
+    10 px wyżej). Dół od rzędu zasłoniętego krzesełkami zastąpiony dwiema kopiami czystego rzędu 224–276
+    (rozstaw rzędów 52 px).
+    """
+    img = img.copy()
+    x0, x1, box = 928, 956, (88, 190)
+    img.paste(img.crop((x0 - 143, 0, x1 - 143, box[0])), (x0, 0))
+    img.paste(img.crop((x0 - 143, box[1], x1 - 143, 384)), (x0, box[1]))
+    img.paste(img.crop((x0 - 567, box[0] - 10, x1 - 567, box[1] - 10)), (x0, box[0]))
+    out = Image.new("RGB", img.size)
+    out.paste(img.crop((0, 0, 2048, 276)), (0, 0))
+    row = img.crop((0, 224, 2048, 276))
+    out.paste(row, (0, 276))
+    out.paste(row, (0, 328))
+    out.paste(img.crop((0, 0, 2048, 4)).transpose(Image.Transpose.FLIP_TOP_BOTTOM), (0, 380))
+    return out
+
+
 def generate_entrance_textures():
     """Grafiki wejść, szczytów trybuny i ławek rezerwowych, wyprostowane ze zdjęć (ENTRANCE_GRAPHICS)."""
     for photo, quad, size, out in ENTRANCE_GRAPHICS:
         im = Image.open(os.path.join(PHOTOS_DIR, photo)).convert("RGB")
-        _rectify(im, quad, size).save(os.path.join(TEXTURES_DIR, out))
+        img = _rectify(im, quad, size)
+        if out == "lawka_tablica_sponsorska.png":
+            img = _clean_dugout_board(img)
+        img.save(os.path.join(TEXTURES_DIR, out))
     print("Zapisano grafiki wejść i szczytów trybuny")
 
 
