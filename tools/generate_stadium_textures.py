@@ -617,16 +617,28 @@ def generate_facade_texture():
     print(f"Zapisano teksturę elewacji bloku: {save_path}")
 
 
+# Bandy na koronie łuku południowego ze zdjęć 2012 r. (sloty 4–8 atlasu, kolejność jak SOUTH_ADS
+# w build_horseshoe_bowl.py). Narożniki (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny) w pikselach.
+CROWN_AD_PHOTOS = [
+    ("il20250305_898037763_xlarge.jpg", [(101, 167), (239, 170), (239, 195), (101, 192)]),       # ATLAS ARENA
+    ("il20250305_898037763_xlarge.jpg", [(793, 161), (949, 151), (949, 185), (793, 191)]),       # zardzewiała
+    ("il20250305_898037763_xlarge.jpg", [(991, 146), (1177, 128), (1177, 168), (991, 181)]),     # Aquapark FALA
+    ("bannery_reklamowe.jpg", [(205, 1260), (648, 1279), (648, 1354), (205, 1347)]),            # MPK-Łódź
+    ("bannery_reklamowe.jpg", [(780, 1299), (1198, 1298), (1198, 1366), (780, 1366)]),          # COLORIT
+]
+CROWN_ADS_GRID = (2, 5)                 # kolumny, wiersze slotów 1024 x 256
+
+
 def generate_crown_ads_texture():
     """
-    Atlas band reklamowych z korony łuku południowego (widok_na_zegar_u2.png, ok. 2010–2012):
-    4 wiersze 1024 x 256 (proporcje 4:1 jak tablica 3.6 x 0.9 m), biały margines 8 px — tył i boki
-    tablic próbkują lewy dolny róg wiersza.
+    Atlas band reklamowych z korony łuku południowego (ads_crown.png, 2048 x 1280, sloty 1024 x 256 z białym
+    marginesem 8 px — tył i boki tablic próbkują lewy dolny róg slotu). Sloty 0–3: napisy odczytane
+    z widok_na_zegar_u2.png (nocne zdjęcie, odtworzone czcionką); 4–8: zdjęcia (CROWN_AD_PHOTOS), każde
+    rozciągnięte na cały slot — proporcje przywraca wymiar tablicy w modelu.
     """
-    W, H = 1024, 1024
-    img = Image.new("RGB", (W, H), (255, 255, 255))
-    d = ImageDraw.Draw(img)
-    M = 8
+    cols, rows_n = CROWN_ADS_GRID
+    S, M = (1024, 256), 8
+    img = Image.new("RGB", (cols * S[0], rows_n * S[1]), (255, 255, 255))
     rows = [
         ((250, 250, 250), [((60, 55), "KORPORACJA UBEZPIECZENIOWA", 50, (20, 30, 90)), ((300, 140), "FILAR SA", 72, (15, 15, 15))]),
         ((246, 246, 242), [((150, 60), "Nasze okna", 64, (200, 25, 30)), ((300, 140), "na Twój świat", 64, (40, 40, 40))]),
@@ -634,13 +646,20 @@ def generate_crown_ads_texture():
                         ((40, 150), "TEL. 650 50 50", 56, (255, 255, 255))]),
         ((250, 250, 250), [((260, 30), "OPOCZNO", 110, (200, 20, 30)), ((230, 160), "naturalna woda mineralna", 44, (60, 60, 60))]),
     ]
+    slots = []
     for r, (bg, texts) in enumerate(rows):
-        y0 = r * 256
-        d.rectangle([M, y0 + M, W - M - 1, y0 + 256 - M - 1], fill=bg)
+        slot = Image.new("RGB", (S[0] - 2 * M, S[1] - 2 * M), bg)
+        d = ImageDraw.Draw(slot)
         if r == 1:
-            d.ellipse([40, y0 + 70, 130, y0 + 160], fill=(30, 140, 60))
+            d.ellipse([32, 62, 122, 152], fill=(30, 140, 60))
         for (x, y), text, size, color in texts:
-            d.text((x, y0 + y), text, font=get_font(size), fill=color)
+            d.text((x - M, y - M), text, font=get_font(size), fill=color)
+        slots.append(slot)
+    for photo, quad in CROWN_AD_PHOTOS:
+        im = Image.open(os.path.join(PHOTOS_DIR, photo)).convert("RGB")
+        slots.append(_rectify(im, quad, (S[0] - 2 * M, S[1] - 2 * M)))
+    for i, slot in enumerate(slots):
+        img.paste(slot, ((i // rows_n) * S[0] + M, (i % rows_n) * S[1] + M))
     save_path = os.path.join(TEXTURES_DIR, "ads_crown.png")
     img.save(save_path)
     print(f"Zapisano atlas band reklamowych: {save_path}")

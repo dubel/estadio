@@ -319,7 +319,15 @@ TEMP_ROOF_Z = (4.3, 4.0)                   # spód dachu: przód, tył (spadek d
 TEMP_ROOF_POST_EVERY = 5.0
 BALL_NET_X, BALL_NET_Y, BALL_NET_H = (-16.0, 16.0), -58.5, 6.0
 BALL_NET_POST_EVERY, BALL_NET_SAG = 4.0, 0.3   # luźna siatka: lina między słupami ugina się o BALL_NET_SAG
-SOUTH_ADS = [(-38.0, 0), (-51.0, 1), (-64.0, 2), (-77.0, 3)]   # bandy na koronie nad krzesełkami: (kąt, wiersz atlasu), od wschodu
+# Bandy reklamowe na słupach na koronie łuku południowego: (kąt, slot atlasu ads_crown.png, szerokość,
+# wysokość), od wschodu. Na wschód od zegara 4 bandy z widok_na_zegar_u2.png i ATLAS ARENA, na zachód
+# (beton bez krzesełek) zardzewiała, Aquapark FALA, MPK-Łódź, COLORIT (il20250305_898037763,
+# bannery_reklamowe.jpg). Zegar (20 m) zajmuje kąty ok. -98…-82°.
+SOUTH_ADS = [(-28.0, 0, 6.0, 1.5), (-39.0, 1, 6.0, 1.5), (-50.0, 2, 6.0, 1.5), (-61.0, 3, 6.0, 1.5),
+             (-73.0, 4, 6.5, 1.25), (-105.0, 5, 6.0, 1.5), (-115.0, 6, 6.5, 1.6), (-127.0, 7, 7.0, 1.6),
+             (-139.0, 8, 7.0, 1.3)]
+CROWN_ADS_GRID = (2, 5)                    # jak w generate_stadium_textures.py
+CROWN_AD_BOTTOM = 2.4                      # dolna krawędź tablicy nad koroną
 
 
 def _obox(bm, center, size, yaw=0.0, pitch=0.0):
@@ -750,29 +758,33 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
         bm_t.faces.new([vi[j], vo[j], vo[(j + 1) % len(vo)], vi[(j + 1) % len(vi)]])
     _finish_mesh(col, bm_t, "Slad_Biezni", [trace])
 
-    # Bandy reklamowe na słupach na koronie łuku południowego (atlas ads_crown.png: 4 wiersze 4:1)
+    # Bandy reklamowe na słupach na koronie łuku południowego (atlas ads_crown.png, SOUTH_ADS)
     bm_ad = bmesh.new()
     uv = bm_ad.loops.layers.uv.verify()
     r = STAND_BACK - 0.4
-    for ang, row in SOUTH_ADS:
+    cols, rows_n = CROWN_ADS_GRID
+    mu, mv = 8 / (1024 * cols), 8 / (256 * rows_n)          # biały margines slotu w UV
+    for ang, slot, w, h in SOUTH_ADS:
         (x, y), a = _arc_point(r, ang)
-        board = _obox(bm_ad, (x, y, STAND_H + 3.05), (0.08, 3.6, 0.9), yaw=a)
-        v0, v1 = 1.0 - (row + 1) / 4.0, 1.0 - row / 4.0
+        zc = STAND_H + CROWN_AD_BOTTOM + h / 2
+        board = _obox(bm_ad, (x, y, zc), (0.08, w, h), yaw=a)
+        u0, v1 = (slot // rows_n) / cols, 1.0 - (slot % rows_n) / rows_n
+        u1, v0 = u0 + 1.0 / cols, v1 - 1.0 / rows_n
         tangent = mathutils.Vector((-math.sin(a), math.cos(a), 0.0))
         radial = mathutils.Vector((math.cos(a), math.sin(a), 0.0))
         for f in {f for v in board['verts'] for f in v.link_faces}:
             front = f.normal.dot(radial) < -0.9                     # lico skierowane do boiska
             for loop in f.loops:
-                p = loop.vert.co - mathutils.Vector((x, y, STAND_H + 3.05))
+                p = loop.vert.co - mathutils.Vector((x, y, zc))
                 if front:
-                    u = 0.5 - p.dot(tangent) / 3.6                  # od lewej patrząc z boiska
-                    v = v0 + (p.z / 0.9 + 0.5) * (v1 - v0)
-                    loop[uv].uv = (u, v)
+                    t = 0.5 - p.dot(tangent) / w                    # od lewej patrząc z boiska
+                    loop[uv].uv = (u0 + mu + t * (u1 - u0 - 2 * mu), v0 + mv + (p.z / h + 0.5) * (v1 - v0 - 2 * mv))
                 else:
-                    loop[uv].uv = (0.004, v0 + 0.004)               # biały margines atlasu
-        for side in (-1.3, 1.3):
+                    loop[uv].uv = (u0 + mu / 2, v0 + mv / 2)        # biały margines slotu
+        for side in (-(w / 2 - 0.5), w / 2 - 0.5):
             sx, sy = x + side * tangent.x, y + side * tangent.y
-            _obox(bm_ad, (sx, sy, STAND_H + 1.3), (0.1, 0.1, 2.6), yaw=a)
+            top = CROWN_AD_BOTTOM + h * 0.7
+            _obox(bm_ad, (sx, sy, STAND_H + top / 2), (0.1, 0.1, top), yaw=a)
     _finish_mesh(col, bm_ad, "Bandy_Korona_Luk", [mats['ads_crown']])
 
 

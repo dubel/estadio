@@ -133,6 +133,6 @@ Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba 
 9. **Granica ogrodzeń**: wysokie ogrodzenie stoi tylko na prostej Galery, niskie na łuku południowym i na łuku północnym za blachą. Dokładnego miejsca przejścia nie ma na zdjęciach.
 11. **Do dodania ze zdjęć z 2012 r.**: biały daszek nad pawilonem VIP (na `grafy_na_trybunie.png`; model w przęsłach 0–3 go nie ma).
 12. **Mural i platforma kamery**: długość muralu (ok. 35 m, przęsła 0,5–4,3) oszacowana z podziału na przęsła na zdjęciu; platforma kamery postawiona w osi linii środkowej (typowe miejsce), na zdjęciu jej położenie wzdłuż trybuny jest niepewne.
-10. **Bandy na koronie**: 4 tablice z napisami odczytanymi z `widok_na_zegar_u2.png`; pozycje orientacyjne, łuk północny bez band.
+10. **Bandy na koronie łuku południowego**: 9 tablic (`SOUTH_ADS`). Na wschód od zegara 4 z napisami odczytanymi z `widok_na_zegar_u2.png` (odtworzone czcionką) i ATLAS ARENA; na zachód (beton) zardzewiała, Aquapark FALA, MPK-Łódź „Robimy to dla sportu”, COLORIT — wycięte ze zdjęć `il20250305_898037763`, `bannery_reklamowe.jpg`. Kolejność ze zdjęć, kąty i wymiary (6–7 × 1,25–1,6 m) przybliżone; łuk północny bez band.
 8. **Barierki**: żółte poręcze przy przejściach Galery, krótkie barierki w blokach krzesełek łuku południowego i poprzeczne na jego betonowej połowie są w modelu; ich dokładny przebieg to przybliżenie ze zdjęć.
 5. **Chodnik przed pierwszym rzędem**: 1,5 m i pierwszy stopień 0,45 m oszacowane ze zdjęć. Brak wymiaru.
