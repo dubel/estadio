@@ -287,12 +287,6 @@ GRAFFITI_PHOTO = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", 
 
 # Narożniki (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny) w pikselach grafy_na_trybunie.png (2858 x 1454)
 MURAL_QUAD = [(186, 636), (2803, 806), (2803, 895), (186, 745)]          # „Tutaj wychowani … wierni i oddani”
-BLOCK_QUADS = [                                                          # bloczki od południa (lewo na zdjęciu)
-    [(0, 458), (585, 488), (585, 590), (0, 560)],          # …DZIANE
-    [(700, 510), (1300, 540), (1300, 650), (700, 600)],    # STARE ŁK
-    [(1430, 582), (1950, 607), (1950, 700), (1430, 690)],  # POLESIE
-    [(2010, 625), (2470, 655), (2470, 750), (2010, 720)],  # TOLECHÓW
-]
 
 
 def _rectify(im, quad, size):
@@ -307,21 +301,12 @@ def _rectify(im, quad, size):
     return im.transform(size, Image.Transform.PERSPECTIVE, tuple(coeffs), Image.Resampling.BICUBIC)
 
 
-def generate_tribune_graffiti_textures():
-    """
-    Mural na licu balustrady czołowej sektora górnego i graffiti dzielnic na bloczkach (północna część
-    trybuny głównej), wyprostowane z grafy_na_trybunie.png:
-    - mural_tutaj_wychowani.png (2048 x 128),
-    - graffiti_bloczki.png: atlas 4 wierszy 512 x 256 (od góry …DZIANE, STARE, POLESIE, TOLECHÓW).
-    """
+def generate_mural_texture():
+    """Mural na licu balustrady czołowej sektora górnego, wyprostowany z grafy_na_trybunie.png (2048 x 128)."""
     im = Image.open(GRAFFITI_PHOTO).convert("RGB")
     mural = _rectify(im, MURAL_QUAD, (2048, 128))
     mural.save(os.path.join(TEXTURES_DIR, "mural_tutaj_wychowani.png"))
-    atlas = Image.new("RGB", (512, 1024))
-    for k, quad in enumerate(BLOCK_QUADS):
-        atlas.paste(_rectify(im, quad, (512, 256)), (0, k * 256))
-    atlas.save(os.path.join(TEXTURES_DIR, "graffiti_bloczki.png"))
-    print("Zapisano mural i graffiti bloczków (grafy_na_trybunie.png)")
+    print("Zapisano mural (grafy_na_trybunie.png)")
 
 
 def generate_corrugated_roof_textures():
@@ -551,7 +536,7 @@ if __name__ == "__main__":
     generate_fan_graffiti_banners()
     generate_scoreboard_textures()
     generate_przeplatanka_texture()
-    generate_tribune_graffiti_textures()
+    generate_mural_texture()
     generate_corrugated_roof_textures()
     generate_floodlight_glow_sprite()
     generate_goal_net_texture()

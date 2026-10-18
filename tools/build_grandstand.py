@@ -329,15 +329,13 @@ def create_materials():
     mat_sheet.use_backface_culling = False
     mats['sheet_steel'] = mat_sheet
 
-    # Mural „Tutaj wychowani … wierni i oddani” i graffiti dzielnic na bloczkach (grafy_na_trybunie.png,
-    # tools/generate_stadium_textures.py: generate_tribune_graffiti_textures)
-    for key, name, tex in (('mural', "Mat_Mural_Tutaj_Wychowani", "mural_tutaj_wychowani.png"),
-                           ('graffiti_blocks', "Mat_Graffiti_Bloczki", "graffiti_bloczki.png")):
-        m = bpy.data.materials.new(name)
-        m.use_nodes = True
-        m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.85
-        setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, tex))
-        mats[key] = m
+    # Mural „Tutaj wychowani … wierni i oddani” (grafy_na_trybunie.png,
+    # tools/generate_stadium_textures.py: generate_mural_texture)
+    m = bpy.data.materials.new("Mat_Mural_Tutaj_Wychowani")
+    m.use_nodes = True
+    m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.85
+    setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, "mural_tutaj_wychowani.png"))
+    mats['mural'] = m
 
     # Żółta farba: barierki i obrzeża tuneli (detale_trybuny_zachodniej.png, widok_z_galery.jpg)
     mats['yellow'] = seat_material("Mat_Barierki_Zolte", (0.85, 0.66, 0.08))
@@ -406,9 +404,6 @@ AISLE_W = 1.4                           # przejście w osi przęsła: od korony 
 # nad daszkiem sektora dolnego i poniżej wyjść z tuneli. Stoją w osiach dźwigarów, więc przerwy między
 # nimi wypadają pod tunelami — schodzący z tunelu nie trafia na bloczek.
 BLOCK_ROW, BLOCK_W, BLOCK_H, BLOCK_D = 4, 3.6, 1.5, 0.4
-# Na 4 najbardziej północnych bloczkach zamiast Przeplatanki graffiti dzielnic (grafy_na_trybunie.png):
-# numer osi dźwigara -> wiersz atlasu graffiti_bloczki.png (…DZIANE, STARE, POLESIE, TOLECHÓW od południa)
-GRAFFITI_BLOCKS = {4: 0, 3: 1, 2: 2, 1: 3}
 # Mural na licu balustrady czołowej nad północną częścią sektora dolnego (grafy_na_trybunie.png):
 # od MURAL_Y[0] (lewy koniec patrząc z boiska, południe) do MURAL_Y[1]; ok. 35 m według podziału na przęsła
 MURAL_Y = (4.3 * TOTAL_LENGTH_Y / NUM_BAYS, 0.5 * TOTAL_LENGTH_Y / NUM_BAYS)
@@ -435,6 +430,17 @@ TUNNEL_ROWS = 7                         # usunięte rzędy: stopień 7. rzędu n
 TUNNEL_HALF_W, TUNNEL_WALL_H = 1.1, 1.3 # połowa szerokości, ściana boczna pod półkolistym dachem
 TUNNEL_FOLD, TUNNEL_PLEAT = 0.4, 0.12   # rozstaw łuków złożonego tunelu, wypchnięcie fałdy obicia
 TUNNEL_FRONT_X = -0.3                   # wylot tunelu przed czołem trybuny
+
+# Pawilon (loże/VIP) na tylnych rzędach sektora dolnego pod muralem (grafy_na_trybunie.png,
+# widok_na_trybune_z_sektora_gosci.png): przed nim 3 rzędy krzesełek, ściany z blachy ocynkowanej, wstęga okien
+# na całej długości. Od schodów na promenadę przy północnym krańcu do białego daszku (przęsło 4); z tyłu kończy
+# się na ostatnim rzędzie, promenada za nim zostaje przejściem. Biały daszek nad pawilonem — jeszcze nie.
+PAVILION_Y = (5.0, 4.0 * BAY_WIDTH_Y)
+PAVILION_ROW = 3                        # pierwszy rząd pod pawilonem
+PAVILION_TOP = 4.4
+PAVILION_WIN = (2.4, 3.6)               # dół i góra wstęgi okien
+PAVILION_MULLION = 1.6                  # rozstaw słupków okiennych
+SHEET_TILE = 1.4                        # kafel tekstury blachy jak w ogrodzeniu (SHEET_TILE_M, build_horseshoe_bowl.py)
 
 # Wycięcia w sektorze dolnym: (y0, y1, liczba usuniętych pierwszych rzędów)
 LOWER_CUTS = sorted([(a, b, DUG_ROWS) for a, b in DUGOUTS] + [(*TUNNEL_Y, TUNNEL_ROWS)])
@@ -676,6 +682,7 @@ def build_grandstand(col, mats):
     build_camera_platform(col, mats)
     build_dugouts(col, mats)
     build_players_tunnel(col, mats)
+    build_vip_pavilion(col, mats)
 
     print(f"Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, {NUM_BAYS} tuneli).")
     return obj_lower, obj_upper
@@ -703,24 +710,16 @@ def _wall_decal(col, name, mat, quads):
 def build_tribune_paintings(col, mats):
     """
     Malowidła na sektorze górnym:
-    - Przeplatanka ŁKS na licach bloczków; tekstura 4:1 z trybem EXTEND: u poza [0, 1] przedłuża białe tło,
-      więc herb zachowuje proporcje na bloczku o innych proporcjach;
-    - graffiti dzielnic na bloczkach GRAFFITI_BLOCKS (atlas graffiti_bloczki.png, 4 wiersze);
+    - Przeplatanka ŁKS na licach wszystkich bloczków; tekstura 4:1 z trybem EXTEND: u poza [0, 1] przedłuża
+      białe tło, więc herb zachowuje proporcje na bloczku o innych proporcjach;
     - mural „Tutaj wychowani … wierni i oddani” na licu balustrady czołowej (MURAL_Y).
     """
     bx0, _, bz = upper_row(BLOCK_ROW)
     x, z_bot, z_top = bx0 - 0.02, bz, bz + BLOCK_H
     half_u = BLOCK_W / BLOCK_H / PRZEPLATANKA_ASPECT / 2
-    przp, graf = [], []
-    for k in range(1, NUM_BAYS):
-        y_left, y_right = k * BAY_WIDTH_Y + BLOCK_W / 2, k * BAY_WIDTH_Y - BLOCK_W / 2
-        if k in GRAFFITI_BLOCKS:
-            row = GRAFFITI_BLOCKS[k]
-            graf.append((x, y_left, y_right, z_bot, z_top, (0.0, 1.0), (1.0 - (row + 1) / 4, 1.0 - row / 4)))
-        else:
-            przp.append((x, y_left, y_right, z_bot, z_top, (0.5 - half_u, 0.5 + half_u), (0.0, 1.0)))
+    przp = [(x, k * BAY_WIDTH_Y + BLOCK_W / 2, k * BAY_WIDTH_Y - BLOCK_W / 2, z_bot, z_top, (0.5 - half_u, 0.5 + half_u), (0.0, 1.0))
+            for k in range(1, NUM_BAYS)]
     _wall_decal(col, "Murki_Przeplatanka", mats['przeplatanka'], przp)
-    _wall_decal(col, "Bloczki_Graffiti", mats['graffiti_blocks'], graf)
     _wall_decal(col, "Mural_Tutaj_Wychowani", mats['mural'],
                 [(LIP_X - 0.02, MURAL_Y[0], MURAL_Y[1], CANOPY_BACK_Z + 0.06, LIP_TOP, (0.0, 1.0), (0.0, 1.0))])
 
@@ -836,13 +835,45 @@ def build_players_tunnel(col, mats):
     _finish(col, bm_door, "Tunel_Harmonijkowy_Drzwi", mats['board_dark'])
 
 
+def build_vip_pavilion(col, mats):
+    """Pawilon VIP: bryła z blachy (UV wg kierunku ściany, przetłoczenia pionowe), wstęga okien od boiska ze słupkami."""
+    ya, yb = PAVILION_Y
+    x_f, x_b = LOWER_X0 + PAVILION_ROW * LOWER_DX, LOWER_X0 + LOWER_ROWS * LOWER_DX
+    bm = bmesh.new()
+    _box(bm, x_f, x_b, ya, yb, 0.0, PAVILION_TOP)
+    uv = bm.loops.layers.uv.verify()
+    for face in bm.faces:
+        n = face.normal
+        for loop in face.loops:
+            co = loop.vert.co
+            if abs(n.z) > 0.5:
+                loop[uv].uv = (co.y / SHEET_TILE, co.x / SHEET_TILE)
+            else:
+                loop[uv].uv = ((co.y if abs(n.x) > 0.5 else co.x) / SHEET_TILE, co.z / SHEET_TILE)
+    _finish(col, bm, "Pawilon_VIP", mats['sheet_steel'])
+
+    z0, z1 = PAVILION_WIN
+    bm_glass, bm_frame = bmesh.new(), bmesh.new()
+    _box(bm_glass, x_f - 0.03, x_f, ya + 0.3, yb - 0.3, z0, z1)
+    _box(bm_frame, x_f - 0.08, x_f, ya + 0.25, yb - 0.25, z0 - 0.08, z0)        # parapet
+    _box(bm_frame, x_f - 0.06, x_f, ya + 0.25, yb - 0.25, z1, z1 + 0.06)         # nadproże
+    n = round((yb - ya - 0.6) / PAVILION_MULLION)
+    for k in range(n + 1):
+        y = ya + 0.3 + k * (yb - ya - 0.6) / n
+        _box(bm_frame, x_f - 0.06, x_f, y - 0.04, y + 0.04, z0, z1)
+    _finish(col, bm_glass, "Pawilon_VIP_Okna", mats['glass'])
+    _finish(col, bm_frame, "Pawilon_VIP_Ramy", mats['metal'])
+
+
 def lower_seat_rows():
     """Rzędy krzesełek sektora dolnego: (x, z) siedziska w układzie lokalnym trybuny."""
     return [(LOWER_X0 + (i + 1) * LOWER_DX - SEAT_BACK_GAP, LOWER_Z0 + i * LOWER_DZ) for i in range(LOWER_ROWS)]
 
 
-def in_lower_cut(y, row):
-    """Czy krzesełko rzędu row na pozycji y wypada w wycięciu sektora dolnego (ławka rezerwowych, tunel)."""
+def lower_seat_removed(y, row):
+    """Czy krzesełka rzędu row na pozycji y nie ma: wycięcie sektora dolnego (ławka rezerwowych, tunel) albo pawilon VIP."""
+    if row >= PAVILION_ROW and PAVILION_Y[0] - 0.3 < y < PAVILION_Y[1] + 0.3:
+        return True
     return any(row < rows and a - 0.3 < y < b + 0.3 for a, b, rows in LOWER_CUTS)
 
 
