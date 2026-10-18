@@ -356,13 +356,15 @@ def create_materials():
     mat_sheet.use_backface_culling = False
     mats['sheet_steel'] = mat_sheet
 
-    # Mural „Tutaj wychowani … wierni i oddani” (grafy_na_trybunie.png,
-    # tools/generate_stadium_textures.py: generate_mural_texture)
-    m = bpy.data.materials.new("Mat_Mural_Tutaj_Wychowani")
-    m.use_nodes = True
-    m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.85
-    setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, "mural_tutaj_wychowani.png"))
-    mats['mural'] = m
+    # Mural „Tutaj wychowani … wierni i oddani” i graffiti dzielnic na bloczkach
+    # (tools/generate_stadium_textures.py: generate_mural_texture, generate_block_graffiti_atlas)
+    for key, name, tex in (('mural', "Mat_Mural_Tutaj_Wychowani", "mural_tutaj_wychowani.png"),
+                           ('graffiti_blocks', "Mat_Graffiti_Bloczki", "graffiti_bloczki.png")):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.85
+        setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, tex))
+        mats[key] = m
 
     # Żółta farba: barierki i obrzeża tuneli (detale_trybuny_zachodniej.png, widok_z_galery.jpg)
     mats['yellow'] = seat_material("Mat_Barierki_Zolte", (0.85, 0.66, 0.08))
@@ -430,7 +432,11 @@ AISLE_W = 1.4                           # przejście w osi przęsła: od korony 
 # Bloczki z Przeplatanką (bloczki_na_trybunie.png): rząd betonowych bloków na stopniu BLOCK_ROW, 4–5 rzędów
 # nad daszkiem sektora dolnego i poniżej wyjść z tuneli. Stoją w osiach dźwigarów, więc przerwy między
 # nimi wypadają pod tunelami — schodzący z tunelu nie trafia na bloczek.
-BLOCK_ROW, BLOCK_W, BLOCK_H, BLOCK_D = 4, 3.6, 1.5, 0.4
+# Graffiti dzielnic na licach (il20250305_898037523/543/559, lawka_rezerwowych.jpg, trybuna_vip.jpg): mury ciągną
+# się od wyjścia z tunelu do następnego, przerwa w osi przęsła na przejście ze schodów tunelu w dół.
+BLOCK_ROW, BLOCK_H, BLOCK_D = 4, 1.25, 0.4
+BLOCK_W = BAY_WIDTH_Y - AISLE_W - 0.3
+GRAFFITI_ATLAS = (2, 12, 1024 / 2048, 168 / 2048)  # kolumny, wiersze, szerokość i wysokość slotu w UV
 # Mural na licu balustrady czołowej nad północną częścią sektora dolnego (grafy_na_trybunie.png):
 # od MURAL_Y[0] (lewy koniec patrząc z boiska, południe) do MURAL_Y[1]; ok. 35 m według podziału na przęsła
 MURAL_Y = (4.3 * TOTAL_LENGTH_Y / NUM_BAYS, 0.5 * TOTAL_LENGTH_Y / NUM_BAYS)
@@ -732,16 +738,21 @@ def _wall_decal(col, name, mat, quads):
 def build_tribune_paintings(col, mats):
     """
     Malowidła na sektorze górnym:
-    - Przeplatanka ŁKS na licach wszystkich bloczków; tekstura 4:1 z trybem EXTEND: u poza [0, 1] przedłuża
-      białe tło, więc herb zachowuje proporcje na bloczku o innych proporcjach;
+    - graffiti dzielnic na licach bloczków w osiach dźwigarów k = 1..13 (od północy), slot k - 1 atlasu
+      graffiti_bloczki.png (GRAFFITI_ATLAS, kolejność w generate_stadium_textures.BLOCK_GRAFFITI);
     - mural „Tutaj wychowani … wierni i oddani” na licu balustrady czołowej (MURAL_Y).
     """
     bx0, _, bz = upper_row(BLOCK_ROW)
     x, z_bot, z_top = bx0 - 0.02, bz, bz + BLOCK_H
-    half_u = BLOCK_W / BLOCK_H / PRZEPLATANKA_ASPECT / 2
-    przp = [(x, k * BAY_WIDTH_Y + BLOCK_W / 2, k * BAY_WIDTH_Y - BLOCK_W / 2, z_bot, z_top, (0.5 - half_u, 0.5 + half_u), (0.0, 1.0))
-            for k in range(1, NUM_BAYS)]
-    _wall_decal(col, "Murki_Przeplatanka", mats['przeplatanka'], przp)
+    cols, rows, du, dv = GRAFFITI_ATLAS
+    inset = 0.002
+    graf = []
+    for k in range(1, NUM_BAYS):
+        i = k - 1
+        u0, v1 = (i // rows) * du, 1.0 - (i % rows) * dv
+        graf.append((x, k * BAY_WIDTH_Y + BLOCK_W / 2, k * BAY_WIDTH_Y - BLOCK_W / 2, z_bot, z_top,
+                     (u0 + inset, u0 + du - inset), (v1 - dv + inset, v1 - inset)))
+    _wall_decal(col, "Bloczki_Graffiti", mats['graffiti_blocks'], graf)
     _wall_decal(col, "Mural_Tutaj_Wychowani", mats['mural'],
                 [(LIP_X - 0.02, MURAL_Y[0], MURAL_Y[1], CANOPY_BACK_Z + 0.06, LIP_TOP, (0.0, 1.0), (0.0, 1.0))])
 

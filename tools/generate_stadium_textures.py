@@ -301,6 +301,50 @@ def _rectify(im, quad, size):
     return im.transform(size, Image.Transform.PERSPECTIVE, tuple(coeffs), Image.Resampling.BICUBIC)
 
 
+# Graffiti dzielnic na bloczkach sektora górnego, od północy (oś dźwigara k = 1..13; build_grandstand.GRAFFITI_ATLAS).
+# Narożniki (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny) w pikselach zdjęć z zdjecia/.
+BLOCK_GRAFFITI = [
+    ("trybuna_vip.jpg", [(1069, 193), (1232, 193), (1232, 228), (1069, 229)]),                          # WRWG
+    ("il20250305_898037543_xlarge.jpg", [(572, 640), (1002, 655), (1002, 722), (572, 712)]),            # OS. KOPERNIKA
+    ("il20250305_898037543_xlarge.jpg", [(35, 623), (502, 637), (502, 712), (35, 700)]),                # TOLECHÓW
+    ("grafy_na_trybunie.png", [(1430, 582), (1950, 607), (1950, 700), (1430, 690)]),                     # POLESIE
+    ("grafy_na_trybunie.png", [(700, 510), (1300, 540), (1300, 650), (700, 600)]),                       # STARE ŁK
+    ("lawka_rezerwowych.jpg", [(862, 215), (1170, 218), (1170, 270), (862, 268)]),                      # ŁODZIANIE
+    ("lawka_rezerwowych.jpg", [(490, 203), (815, 203), (815, 256), (490, 254)]),                        # RODOWICI
+    ("il20250305_898037523_xlarge.jpg", [(663, 563), (1207, 573), (1207, 648), (663, 640)]),            # DĄBROWA
+    ("il20250305_898037523_xlarge.jpg", [(52, 550), (580, 557), (580, 635), (52, 628)]),                # LEGION z czaszką
+    ("il20250305_898037559_xlarge.jpg", [(930, 462), (1258, 462), (1258, 517), (930, 517)]),            # SOJTA / ELKSA
+    ("il20250305_898037559_xlarge.jpg", [(567, 463), (876, 463), (876, 516), (567, 516)]),              # JULIANÓW
+    ("il20250305_898037559_xlarge.jpg", [(238, 466), (523, 466), (523, 516), (238, 516)]),              # RADOGOSZCZ
+    ("il20250305_898037559_xlarge.jpg", [(37, 467), (197, 467), (197, 514), (37, 514)]),                # MARYSIN
+]
+GRAFFITI_SLOT = (1024, 168)             # proporcje lica bloczka (7.6 x 1.25 m); atlas 2048 x 2048, 2 kolumny po 12
+
+
+def generate_block_graffiti_atlas():
+    """
+    Atlas graffiti bloczków (graffiti_bloczki.png): każde wyprostowane do swoich proporcji; węższe od lica
+    bloczka dociągnięte do szerokości slotu powieleniem skrajnych kolumn (tło muru), zamiast rozciągać litery.
+    """
+    W, H = GRAFFITI_SLOT
+    atlas = Image.new("RGB", (2048, 2048), (235, 235, 230))
+    for i, (photo, quad) in enumerate(BLOCK_GRAFFITI):
+        im = Image.open(os.path.join(PHOTOS_DIR, photo)).convert("RGB")
+        w_px = (math.dist(quad[0], quad[1]) + math.dist(quad[3], quad[2])) / 2
+        h_px = (math.dist(quad[0], quad[3]) + math.dist(quad[1], quad[2])) / 2
+        w = min(W, round(H * w_px / h_px))
+        art = _rectify(im, quad, (w, H))
+        slot = Image.new("RGB", (W, H))
+        x0 = (W - w) // 2
+        slot.paste(art, (x0, 0))
+        if x0 > 0:
+            slot.paste(art.crop((0, 0, 1, H)).resize((x0, H)), (0, 0))
+            slot.paste(art.crop((w - 1, 0, w, H)).resize((W - x0 - w, H)), (x0 + w, 0))
+        atlas.paste(slot, ((i // 12) * W, (i % 12) * H))
+    atlas.save(os.path.join(TEXTURES_DIR, "graffiti_bloczki.png"))
+    print("Zapisano atlas graffiti bloczków")
+
+
 def generate_mural_texture():
     """Mural na licu balustrady czołowej sektora górnego, wyprostowany z grafy_na_trybunie.png (2048 x 128)."""
     im = Image.open(GRAFFITI_PHOTO).convert("RGB")
@@ -594,6 +638,7 @@ if __name__ == "__main__":
     generate_scoreboard_textures()
     generate_przeplatanka_texture()
     generate_mural_texture()
+    generate_block_graffiti_atlas()
     generate_corrugated_roof_textures()
     generate_floodlight_glow_sprite()
     generate_goal_net_texture()
