@@ -328,7 +328,9 @@ def create_materials():
     for key, name, tex in (('mosir', "Mat_Baner_MOSiR", "baner_mosir.png"),
                            ('plan', "Mat_Tablica_MOSiR_Plan", "tablica_mosir_plan.png"),
                            ('restauracja', "Mat_Napis_Restauracja", "napis_restauracja.png"),
-                           ('plaque', "Mat_Tablica_Pamiatkowa", "tablica_pamiatkowa.png")):
+                           ('plaque', "Mat_Tablica_Pamiatkowa", "tablica_pamiatkowa.png"),
+                           ('dugout_board', "Mat_Lawka_Tablica_Sponsorska", "lawka_tablica_sponsorska.png"),
+                           ('ref_sign', "Mat_Kartka_Sedzia_Techniczny", "kartka_sedzia_techniczny.png")):
         m = bpy.data.materials.new(name)
         m.use_nodes = True
         m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.7
@@ -380,6 +382,22 @@ def create_materials():
         mat_plexi.surface_render_method = 'BLENDED'
     mat_plexi.use_backface_culling = False
     mats['plexi'] = mat_plexi
+    # Dymiona (brązowa) pleksi daszków ławek rezerwowych (lawka_rezerwowych_closeup.jpg)
+    m = bpy.data.materials.new("Mat_Pleksi_Dymiona")
+    m.use_nodes = True
+    bsdf = m.node_tree.nodes.get("Principled BSDF")
+    bsdf.inputs['Base Color'].default_value = (0.22, 0.16, 0.11, 1.0)
+    bsdf.inputs['Roughness'].default_value = 0.2
+    bsdf.inputs['Alpha'].default_value = 0.75
+    if hasattr(m, 'surface_render_method'):
+        m.surface_render_method = 'BLENDED'
+    m.use_backface_culling = False
+    mats['plexi_smoke'] = m
+    m = bpy.data.materials.new("Mat_Sztuczna_Trawa")
+    m.use_nodes = True
+    m.node_tree.nodes.get("Principled BSDF").inputs['Base Color'].default_value = (0.035, 0.11, 0.045, 1.0)
+    m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.9
+    mats['turf'] = m
 
     return mats
 
@@ -444,13 +462,18 @@ MURAL_Y = (4.3 * TOTAL_LENGTH_Y / NUM_BAYS, 0.5 * TOTAL_LENGTH_Y / NUM_BAYS)
 # detale_trybuny_zachodniej.png): kabina na słupkach, otwarta ku boisku
 CAMERA_Y = 68.0
 
-# Ławki rezerwowych wpuszczone w sektor VIP (lawka_rezerwowych.png): ćwiartki walca z mlecznej pleksi
-# na stelażu z białych i czerwonych profili. Linia środkowa boiska leży na Y lokalnym 68 (środek trybuny
-# 3 m na północ od niej, build_full_stadium.py), ławki po ±12 m od niej. Zakresy Y w układzie lokalnym.
+# Ławki rezerwowych wpuszczone w sektor VIP (lawka_rezerwowych.jpg, lawka_rezerwowych_closeup.jpg):
+# wnęka w miejscu 3 pierwszych rzędów, białe otynkowane boki z szybami z przodu, tylna ściana obita tablicą
+# sponsorską, daszek z dymionej pleksi wysunięty nad boisko, dwa rzędy krzesełek na czerwonym stelażu,
+# przed ławką sztuczna trawa. Linia środkowa boiska leży na Y lokalnym 68 (środek trybuny 3 m na północ
+# od niej, build_full_stadium.py), ławki po ±12 m od niej. Zakresy Y w układzie lokalnym.
 DUGOUTS = ((52.5, 59.5), (76.5, 83.5))
 DUG_ROWS = 3                            # usunięte rzędy sektora dolnego nad wnęką ławki
-DUG_X0 = 0.35                           # pionowe lico (oś walca) od czoła trybuny
-DUG_R = 2.3                             # promień ćwiartki walca: dach 2.3 m nad posadzką przy licu
+DUG_FLOOR = 0.2                         # podest ławki nad terenem
+DUG_ROOF = ((-0.9, 2.15), (0.6, 2.3))   # przednia i tylna krawędź daszku (x, z); dalej do tylnej ściany płasko
+DUG_TURF = (-4.5, -0.6)                 # sztuczna trawa przed ławką (X lokalne), szersza o 1.5 m z boków
+# Budka sędziego technicznego (il20250305_898037783_xlarge.jpg) przed trybuną, między tunelem a ławką
+REF_BOX = (-1.8, -0.6, 62.0, 64.2)
 
 # Tunel harmonijkowy wyjścia piłkarzy (tunel_harmonijkowy.png) na linii środkowej, między ławkami rezerwowych:
 # kanał wycięty w sektorze dolnym aż do rzędu, którego stopień jest wyższy niż tunel, w kanale drzwi do hali
@@ -781,34 +804,99 @@ def build_camera_platform(col, mats):
 
 def build_dugouts(col, mats):
     """
-    Ławki rezerwowych we wnękach sektora dolnego: powłoka z mlecznej pleksi (ćwiartka walca od dachu przy
-    pionowym licu do posadzki z tyłu), boczne ścianki z pleksi, białe żebra i słupki, czerwona belka czołowa,
-    czerwone krzesełka. Lokalnie -X to kierunek boiska.
+    Ławki rezerwowych we wnękach sektora dolnego i budka sędziego technicznego. Lokalnie -X to kierunek
+    boiska; tylna ściana wnęki to podstopień rzędu DUG_ROWS na X = LOWER_X0 + DUG_ROWS * LOWER_DX.
     """
-    bm_shell, bm_white, bm_red, bm_floor = bmesh.new(), bmesh.new(), bmesh.new(), bmesh.new()
-    arc = lambda r: [(DUG_X0 + r * math.sin(math.radians(t)), r * math.cos(math.radians(t))) for t in range(0, 91, 10)]
-    seats = []
+    bm_white, bm_red, bm_floor, bm_roof, bm_glass, bm_board, bm_turf = (bmesh.new() for _ in range(7))
+    uv_b = bm_board.loops.layers.uv.verify()
+    x_back = LOWER_X0 + DUG_ROWS * LOWER_DX
+    z_row = LOWER_Z0 + DUG_ROWS * LOWER_DZ                  # stopień pierwszego rzędu nad wnęką
+    (xf, zf), (xr, zr) = DUG_ROOF
+    back_red, front_red, front_white = [], [], []
     for ya, yb in DUGOUTS:
-        _extrude_profile(bm_shell, arc(DUG_R + 0.02) + arc(DUG_R)[::-1], ya, yb)
-        for y in (ya, yb - 0.02):
-            _extrude_profile(bm_shell, [(DUG_X0, 0.0)] + arc(DUG_R), y, y + 0.02)
-        n = round((yb - ya) / 1.75)
-        for k in range(n + 1):
-            y = ya + 0.04 + k * (yb - ya - 0.08) / n
-            ribs = arc(DUG_R + 0.06)
-            for (xa, za), (xe, ze) in zip(ribs, ribs[1:]):
-                _beam(bm_white, (xa, y, za), (xe, y, ze), 0.06, 0.06)
-            _beam(bm_white, (DUG_X0 - 0.03, y, 0.0), (DUG_X0 - 0.03, y, DUG_R), 0.07, 0.07)
-        _beam(bm_red, (DUG_X0 - 0.03, ya, DUG_R + 0.08), (DUG_X0 - 0.03, yb, DUG_R + 0.08), 0.12, 0.16)
-        _beam(bm_red, (DUG_X0 + DUG_R, ya, 0.06), (DUG_X0 + DUG_R, yb, 0.06), 0.1, 0.12)
-        _box(bm_floor, 0.0, LOWER_X0 + DUG_ROWS * LOWER_DX, ya, yb, -0.05, 0.02)
-        n_seat = int((yb - ya - 0.8) / 0.55)
-        seats += [(1.55, ya + 0.4 + (k + 0.5) * (yb - ya - 0.8) / n_seat, 0.02) for k in range(n_seat)]
-    _finish(col, bm_shell, "Lawki_Rezerwowych_Pleksi", mats['plexi'])
-    _finish(col, bm_white, "Lawki_Rezerwowych_Stelaz_Bialy", mats['goal_white'])
+        yc = (ya + yb) / 2
+        _box(bm_floor, -0.6, x_back, ya, yb, 0.0, DUG_FLOOR)
+        _box(bm_turf, DUG_TURF[0], DUG_TURF[1], ya - 1.5, yb + 1.5, 0.0, 0.045)   # nad śladem bieżni
+        # Białe boki: od tylnej ściany do X 0.3, wysokie do rzędu nad wnęką; z przodu szyby w białej ramie
+        for y0 in (ya, yb - 0.25):
+            _box(bm_white, 0.3, x_back, y0, y0 + 0.25, 0.0, max(z_row, zr))
+            yg = y0 + 0.125
+            _box(bm_glass, xf + 0.1, 0.3, yg - 0.01, yg + 0.01, DUG_FLOOR + 0.1, zf - 0.05)
+            for x0, x1, z0, z1 in ((xf + 0.05, xf + 0.12, DUG_FLOOR, zf), (xf + 0.05, 0.3, zf - 0.08, zf),
+                                   (xf + 0.05, 0.3, DUG_FLOOR, DUG_FLOOR + 0.1)):
+                _box(bm_white, x0, x1, yg - 0.04, yg + 0.04, z0, z1)
+        # Daszek: dymiona pleksi od tylnej ściany do przedniej krawędzi, lekko opadający ku boisku
+        prof = [(xf, zf), (xr, zr), (x_back, zr), (x_back, zr + 0.03), (xr, zr + 0.03), (xf, zf + 0.03)]
+        _extrude_profile(bm_roof, prof, ya + 0.25, yb - 0.25)
+        _beam(bm_white, (xf, ya, zf + 0.02), (xf, yb, zf + 0.02), 0.08, 0.1)     # krawędź daszku
+        _beam(bm_red, (xf - 0.045, ya, zf + 0.05), (xf - 0.045, yb, zf + 0.05), 0.01, 0.04)
+        _beam(bm_white, (xf + 0.05, yc, DUG_FLOOR), (xf + 0.05, yc, zf), 0.05, 0.05)  # słupek w osi
+        _beam(bm_red, (xf + 0.05, yc, 1.0), (xf + 0.05, yc, 1.3), 0.06, 0.06)
+        # Tablica sponsorska na tylnej ścianie (lico ku boisku, u od lewej patrząc z boiska = od większego Y)
+        bz0, bz1, by0, by1 = DUG_FLOOR + 0.55, DUG_FLOOR + 1.85, ya + 0.35, yb - 0.35
+        face = bm_board.faces.new([bm_board.verts.new(p) for p in
+                                   ((x_back - 0.01, by1, bz0), (x_back - 0.01, by0, bz0), (x_back - 0.01, by0, bz1), (x_back - 0.01, by1, bz1))])
+        for loop, uvp in zip(face.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+            loop[uv_b].uv = uvp
+        # Tylny rząd: czerwone krzesełka na niskiej belce przy ścianie
+        n = int((yb - ya - 0.8) / 0.52)
+        for k in range(n):
+            back_red.append((x_back - 0.45, ya + 0.4 + (k + 0.5) * (yb - ya - 0.8) / n, DUG_FLOOR + 0.3))
+        _beam(bm_red, (x_back - 0.4, ya + 0.35, DUG_FLOOR + 0.27), (x_back - 0.4, yb - 0.35, DUG_FLOOR + 0.27), 0.35, 0.06)
+        for y in (ya + 0.5, yc, yb - 0.5):
+            _beam(bm_red, (x_back - 0.4, y, DUG_FLOOR), (x_back - 0.4, y, DUG_FLOOR + 0.24), 0.05, 0.05)
+        # Przedni rząd wyżej na czerwonym stelażu: 6 krzesełek na przemian czerwone i białe
+        fx, fz, w = x_back - 1.15, DUG_FLOOR + 0.6, 4.2
+        for k in range(6):
+            (front_red if k % 2 == 0 else front_white).append((fx, yc + w / 2 - (k + 0.5) * w / 6, fz))
+        _beam(bm_red, (fx + 0.05, yc - w / 2, fz - 0.03), (fx + 0.05, yc + w / 2, fz - 0.03), 0.4, 0.06)
+        for y in (yc - w / 2, yc - w / 6, yc + w / 6, yc + w / 2):
+            for x in (fx - 0.15, fx + 0.25):
+                _beam(bm_red, (x, y, DUG_FLOOR), (x, y, fz - 0.06), 0.05, 0.05)
+            _beam(bm_red, (fx - 0.15, y, DUG_FLOOR + 0.1), (fx + 0.25, y, DUG_FLOOR + 0.1), 0.04, 0.04)
+
+    # Budka sędziego technicznego: czerwony stelaż, mleczna pleksi z tyłu i z boków, 3 czerwone krzesełka
+    bm_rb, bm_rp, bm_sign = bmesh.new(), bmesh.new(), bmesh.new()
+    uv_s = bm_sign.loops.layers.uv.verify()
+    x0, x1, y0, y1 = REF_BOX
+    h = 2.1
+    for x, y in ((x0, y0), (x0, y1), (x1, y0), (x1, y1)):
+        _beam(bm_rb, (x, y, 0.0), (x, y, h), 0.05, 0.05)
+    for z in (0.9, h):
+        _beam(bm_rb, (x1, y0, z), (x1, y1, z), 0.05, 0.05)
+        for y in (y0, y1):
+            _beam(bm_rb, (x0, y, z), (x1, y, z), 0.05, 0.05)
+    _box(bm_rb, x0 - 0.1, x1 + 0.1, y0 - 0.1, y1 + 0.1, h, h + 0.06)              # daszek
+    _box(bm_rp, x1 - 0.02, x1, y0, y1, 0.15, h)                                     # tył
+    for y in (y0, y1 - 0.02):
+        _box(bm_rp, x0, x1, y, y + 0.02, 0.15, h)                                   # boki
+    _beam(bm_rb, (x1 - 0.35, y0 + 0.1, 0.42), (x1 - 0.35, y1 - 0.1, 0.42), 0.35, 0.05)
+    ref_seats = [(x1 - 0.4, y0 + 0.4 + k * (y1 - y0 - 0.8) / 2, 0.45) for k in range(3)]
+    # kartka „SĘDZIA TECHNICZNY” na boku od strony tunelu (większe Y), lico na zewnątrz
+    face = bm_sign.faces.new([bm_sign.verts.new(p) for p in
+                              ((x0 + 0.65, y1 + 0.005, 1.35), (x0 + 0.15, y1 + 0.005, 1.35), (x0 + 0.15, y1 + 0.005, 1.85), (x0 + 0.65, y1 + 0.005, 1.85))])
+    for loop, uvp in zip(face.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
+        loop[uv_s].uv = uvp
+
+    _finish(col, bm_white, "Lawki_Rezerwowych_Boki_Biale", mats['goal_white'])
     _finish(col, bm_red, "Lawki_Rezerwowych_Stelaz_Czerwony", mats['lks_red'])
-    _finish(col, bm_floor, "Lawki_Rezerwowych_Posadzka", mats['concrete_dark'])
-    place_seats(col, "Krzeselka_Lawki_Rezerwowych", seat_material("Mat_Krzeselka_Rezerwowych", (0.62, 0.07, 0.09)), seats)
+    _finish(col, bm_floor, "Lawki_Rezerwowych_Posadzka", mats['concrete'])
+    _finish(col, bm_roof, "Lawki_Rezerwowych_Daszek", mats['plexi_smoke'])
+    _finish(col, bm_glass, "Lawki_Rezerwowych_Szyby", mats['plexi'])
+    _finish(col, bm_turf, "Lawki_Rezerwowych_Sztuczna_Trawa", mats['turf'])
+    _finish(col, bm_rb, "Budka_Sedziego_Stelaz", mats['lks_red'])
+    _finish(col, bm_rp, "Budka_Sedziego_Pleksi", mats['plexi'])
+    for bm, name, key in ((bm_board, "Lawki_Rezerwowych_Tablica", 'dugout_board'), (bm_sign, "Budka_Sedziego_Kartka", 'ref_sign')):
+        bm.normal_update()
+        mesh = bpy.data.meshes.new(name + "_Mesh")
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = bpy.data.objects.new(name, mesh)
+        obj.data.materials.append(mats[key])
+        col.objects.link(obj)
+    red = seat_material("Mat_Krzeselka_Rezerwowych", (0.62, 0.07, 0.09))
+    place_seats(col, "Krzeselka_Lawki_Rezerwowych", red, back_red + front_red + ref_seats)
+    place_seats(col, "Krzeselka_Lawki_Rezerwowych_Biale", seat_material("Mat_Krzeselka_Rezerwowych_Biale", (0.88, 0.88, 0.86)), front_white)
 
 
 def build_players_tunnel(col, mats):

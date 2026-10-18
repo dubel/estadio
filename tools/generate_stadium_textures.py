@@ -366,13 +366,17 @@ ENTRANCE_GRAPHICS = [
     ("wejscia_na_trybune/DSC01679.jpg", [(40, 55), (748, 50), (755, 545), (35, 548)], (1024, 724), "tablica_mosir_plan.png"),
     # napis „RESTAURACJA” na budynku północnego szczytu (1280 x 853)
     ("il20250305_898037725_xlarge.jpg", [(930, 527), (1095, 525), (1095, 583), (930, 585)], (512, 160), "napis_restauracja.png"),
+    # tablica sponsorska ZINA / T-Mobile Ekstraklasa na tylnej ścianie ławki rezerwowych (1280 x 853)
+    ("lawka_rezerwowych_closeup.jpg", [(205, 333), (1118, 333), (1118, 503), (205, 503)], (2048, 384), "lawka_tablica_sponsorska.png"),
+    # kartka „SĘDZIA TECHNICZNY” na budce sędziego technicznego (1280 x 853)
+    ("il20250305_898037783_xlarge.jpg", [(513, 201), (636, 199), (636, 324), (513, 324)], (256, 256), "kartka_sedzia_techniczny.png"),
     # tablica pamiątkowa „Działaczom i zawodnikom ŁKS” na białej ścianie z czerwonym pasem (1280 x 1920)
     ("tablica_trybuna.jpg", [(0, 790), (1280, 800), (1280, 1650), (0, 1650)], (768, 512), "tablica_pamiatkowa.png"),
 ]
 
 
 def generate_entrance_textures():
-    """Grafiki wejść i szczytów trybuny głównej, wyprostowane ze zdjęć (ENTRANCE_GRAPHICS)."""
+    """Grafiki wejść, szczytów trybuny i ławek rezerwowych, wyprostowane ze zdjęć (ENTRANCE_GRAPHICS)."""
     for photo, quad, size, out in ENTRANCE_GRAPHICS:
         im = Image.open(os.path.join(PHOTOS_DIR, photo)).convert("RGB")
         _rectify(im, quad, size).save(os.path.join(TEXTURES_DIR, out))
