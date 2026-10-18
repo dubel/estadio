@@ -426,13 +426,15 @@ DUG_R = 2.3                             # promień ćwiartki walca: dach 2.3 m n
 
 # Tunel harmonijkowy wyjścia piłkarzy (tunel_harmonijkowy.png) na linii środkowej, między ławkami rezerwowych:
 # kanał wycięty w sektorze dolnym aż do rzędu, którego stopień jest wyższy niż tunel, w kanale drzwi do hali
-# pod trybuną. Tunel złożony (wyciągany tylko na wyjście drużyn): segmenty teleskopowe wsunięte jeden w drugi,
-# największy (stały) najgłębiej. Obicie w poprzeczne pasy biało-czerwone, w ścianach bocznych stelaż nożycowy.
+# pod trybuną. Tunel złożony (wyciągany tylko na wyjście drużyn) jak harmonijka: stały przekrój, łuki stelaża
+# ściśnięte co TUNNEL_FOLD, między nimi fałdy obicia wypchnięte na zewnątrz. Złożony wypełnia kanał od drzwi
+# do wylotu, w środku da się przejść. Obicie w poprzeczne pasy biało-czerwone (fałda po fałdzie),
+# w ścianach bocznych stelaż nożycowy.
 TUNNEL_Y = (66.6, 69.4)
 TUNNEL_ROWS = 7                         # usunięte rzędy: stopień 7. rzędu na 2.6 m, tunel ma 2.4 m
-TUNNEL_SEGS, TUNNEL_SEG_L = 5, 1.2      # segmenty teleskopu i długość każdego
-TUNNEL_HALF_W, TUNNEL_WALL_H = 1.1, 1.3 # segment stały: połowa szerokości, ściana boczna pod półkolistym dachem
-TUNNEL_NEST, TUNNEL_STAGGER = 0.07, 0.15  # zwężenie kolejnego segmentu i jego wysunięcie ku boisku
+TUNNEL_HALF_W, TUNNEL_WALL_H = 1.1, 1.3 # połowa szerokości, ściana boczna pod półkolistym dachem
+TUNNEL_FOLD, TUNNEL_PLEAT = 0.4, 0.12   # rozstaw łuków złożonego tunelu, wypchnięcie fałdy obicia
+TUNNEL_FRONT_X = -0.3                   # wylot tunelu przed czołem trybuny
 
 # Wycięcia w sektorze dolnym: (y0, y1, liczba usuniętych pierwszych rzędów)
 LOWER_CUTS = sorted([(a, b, DUG_ROWS) for a, b in DUGOUTS] + [(*TUNNEL_Y, TUNNEL_ROWS)])
@@ -779,38 +781,51 @@ def build_dugouts(col, mats):
 
 def build_players_tunnel(col, mats):
     """
-    Złożony tunel harmonijkowy w kanale TUNNEL_Y. Segment k: łukowa powłoka (ściany boczne + półkolisty dach)
-    z dwóch pasów obicia, metalowy łuk na czole i nożyce w ścianach bocznych. Lokalnie -X to kierunek boiska.
+    Złożony tunel harmonijkowy w kanale TUNNEL_Y, od drzwi w tylnej ścianie kanału do TUNNEL_FRONT_X.
+    Łuki stelaża (ściana boczna + półkolisty dach) co TUNNEL_FOLD; fałda obicia między łukami to dwie
+    zamknięte powłoki: od łuku do szczytu fałdy wypchniętego o TUNNEL_PLEAT i z powrotem. Fałdy na przemian
+    białe i czerwone, nożyce stelaża w ścianach bocznych między sąsiednimi łukami. Lokalnie -X to kierunek boiska.
     """
     bm_white, bm_red, bm_frame, bm_floor = bmesh.new(), bmesh.new(), bmesh.new(), bmesh.new()
     yc = sum(TUNNEL_Y) / 2
+    w, h = TUNNEL_HALF_W, TUNNEL_WALL_H
 
-    def outline(w, h):
-        """Obrys przekroju (y, z): ściana, półkolisty dach o promieniu w, druga ściana."""
-        arc = [(yc - w * math.cos(math.radians(t)), h + w * math.sin(math.radians(t))) for t in range(0, 181, 15)]
-        return [(yc - w, 0.0)] + arc + [(yc + w, 0.0)]
+    def outline(r):
+        """Obrys przekroju (y, z) o połowie szerokości r: ściana, półkolisty dach, druga ściana."""
+        arc = [(yc - r * math.cos(math.radians(t)), h + r * math.sin(math.radians(t))) for t in range(0, 181, 15)]
+        return [(yc - r, 0.0)] + arc + [(yc + r, 0.0)]
 
-    def extrude_x(bm, pts_yz, x0, x1):
-        face = bm.faces.new([bm.verts.new((x0, y, z)) for y, z in pts_yz])
-        res = bmesh.ops.extrude_face_region(bm, geom=[face])
-        bmesh.ops.translate(bm, vec=(x1 - x0, 0.0, 0.0), verts=[v for v in res['geom'] if isinstance(v, bmesh.types.BMVert)])
+    def shell(r):
+        return outline(r) + outline(r - 0.03)[::-1]
 
-    x_back = 1.5
-    for k in range(TUNNEL_SEGS):
-        w, h = TUNNEL_HALF_W - k * TUNNEL_NEST, TUNNEL_WALL_H - k * TUNNEL_NEST
-        x1 = x_back - k * TUNNEL_STAGGER
-        x0, xm = x1 - TUNNEL_SEG_L, x1 - TUNNEL_SEG_L / 2
-        shell = outline(w, h) + outline(w - 0.03, h)[::-1]
-        extrude_x(bm_white if k % 2 else bm_red, shell, x0, xm)
-        extrude_x(bm_red if k % 2 else bm_white, shell, xm, x1)
-        ring = outline(w - 0.06, h)
-        for a, b in zip(ring, ring[1:]):
-            _beam(bm_frame, (x0 + 0.03, a[0], a[1]), (x0 + 0.03, b[0], b[1]), 0.05, 0.05)
-        for ys in (yc - w + 0.06, yc + w - 0.06):
-            _beam(bm_frame, (x0 + 0.05, ys, 0.1), (x1 - 0.05, ys, h), 0.03, 0.03)
-            _beam(bm_frame, (x0 + 0.05, ys, h), (x1 - 0.05, ys, 0.1), 0.03, 0.03)
+    def loft(bm, xa, ra, xb, rb):
+        """Zamknięta powłoka między przekrojem shell(ra) na xa i shell(rb) na xb."""
+        va = [bm.verts.new((xa, y, z)) for y, z in shell(ra)]
+        vb = [bm.verts.new((xb, y, z)) for y, z in shell(rb)]
+        n = len(va)
+        for i in range(n):
+            bm.faces.new([va[i], va[(i + 1) % n], vb[(i + 1) % n], vb[i]])
+        bm.faces.new(va[::-1])
+        bm.faces.new(vb)
 
     x_wall = LOWER_X0 + TUNNEL_ROWS * LOWER_DX
+    n = round((x_wall - TUNNEL_FRONT_X) / TUNNEL_FOLD)
+    hoops = [TUNNEL_FRONT_X + k * (x_wall - TUNNEL_FRONT_X) / n for k in range(n + 1)]
+    ring = outline(w - 0.06)
+    for k, x in enumerate(hoops):
+        for a, b in zip(ring, ring[1:]):
+            _beam(bm_frame, (x, a[0], a[1]), (x, b[0], b[1]), 0.05, 0.05)
+        if k == n:
+            break
+        xn = hoops[k + 1]
+        xm = (x + xn) / 2
+        bm = bm_white if k % 2 else bm_red
+        loft(bm, x, w, xm, w + TUNNEL_PLEAT)
+        loft(bm, xm, w + TUNNEL_PLEAT, xn, w)
+        for ys in (yc - w + 0.06, yc + w - 0.06):
+            _beam(bm_frame, (x, ys, 0.1), (xn, ys, h), 0.03, 0.03)
+            _beam(bm_frame, (x, ys, h), (xn, ys, 0.1), 0.03, 0.03)
+
     _box(bm_floor, 0.0, x_wall, TUNNEL_Y[0], TUNNEL_Y[1], -0.05, 0.02)
     _finish(col, bm_white, "Tunel_Harmonijkowy_Bialy", mats['goal_white'])
     _finish(col, bm_red, "Tunel_Harmonijkowy_Czerwony", mats['lks_red'])

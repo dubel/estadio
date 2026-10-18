@@ -92,6 +92,12 @@ try {
       out.tunnelOffAxis.push(m);
     }
 
+    // złożony tunel harmonijkowy na linii środkowej: z bieżni do drzwi w kanale (X = -51.1 m)
+    W.__setCam(-38, 1.65, 0, -60, 1.65, 0);
+    W.__simulateWalk(4, true);
+    out.playersTunnelX = x();
+    out.playersTunnelY = y();
+
     W.__setCam(10, 1.65, -50, 10, 1.65, -120); // z boiska na północ — ogrodzenie z blachy na Y = 62 m
     W.__simulateWalk(4, true);
     out.sheetZ = W.__getPlayerState().pos[2];
@@ -118,6 +124,7 @@ try {
   check('tunel: schody poza osią', r.tunnelOffAxis.every((m) => m > 8.5), r.tunnelOffAxis.map(f).join(', '));
   check('tunel Galery: przejście pod wałem', r.galeraTunnelX > 75 && r.galeraTunnelY < 2, `x=${f(r.galeraTunnelX)} y=${f(r.galeraTunnelY)}`);
   check('ogrodzenie Galery zatrzymuje na bieżni', r.fenceX < 45 && r.fenceY < 2, `x=${f(r.fenceX)} y=${f(r.fenceY)}`);
+  check('tunel harmonijkowy: przejście do drzwi', r.playersTunnelX < -50.5 && r.playersTunnelY < 1.8, `x=${f(r.playersTunnelX)} y=${f(r.playersTunnelY)}`);
   check('ogrodzenie z blachy zamyka północ', r.sheetZ > -62 && r.sheetZ < -60, `z=${f(r.sheetZ)}`);
   check('teren za Galerą (bez spadania)', r.outsideX > 75 && Math.abs(r.outsideY - 1.40) < 0.1, `x=${f(r.outsideX)} y=${f(r.outsideY)}`);
 } finally {
