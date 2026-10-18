@@ -6,6 +6,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { Lighting } from './lighting';
 import { PostFX } from './postfx';
 import { WorldCollider } from './collision';
+import { CornerFlags } from './cornerFlags';
 
 // --- STAN APLIKACJI ---
 let isFlyMode = false;
@@ -28,6 +29,7 @@ const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerH
 const lighting = new Lighting(scene, renderer);
 lighting.loadSky('/assets/env/overcast_soil_puresky_2k.hdr');
 const postfx = new PostFX(renderer, scene, camera);
+const cornerFlags = new CornerFlags(scene);
 
 // --- PUNKTY WIDOKOWE (TELEPORTACJA) ---
 interface Viewpoint {
@@ -584,6 +586,7 @@ function animate() {
   }
 
   lighting.update(clock.getElapsedTime());
+  cornerFlags.update(clock.getElapsedTime());
   postfx.render(delta);
 }
 
