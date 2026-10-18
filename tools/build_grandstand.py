@@ -463,13 +463,14 @@ MURAL_Y = (4.3 * TOTAL_LENGTH_Y / NUM_BAYS, 0.5 * TOTAL_LENGTH_Y / NUM_BAYS)
 CAMERA_Y = 68.0
 
 # Ławki rezerwowych wpuszczone w sektor VIP (lawka_rezerwowych.jpg, lawka_rezerwowych_closeup.jpg):
-# wnęka w miejscu 3 pierwszych rzędów, białe otynkowane boki z szybami z przodu, tylna ściana obita tablicą
-# sponsorską, daszek z dymionej pleksi wysunięty nad boisko, dwa rzędy krzesełek na czerwonym stelażu,
-# przed ławką sztuczna trawa. Linia środkowa boiska leży na Y lokalnym 68 (środek trybuny 3 m na północ
+# wnęka w miejscu 3 pierwszych rzędów; z przodu podest na gruncie z rzędem krzesełek na czerwonym stelażu,
+# z tyłu zagłębienie poniżej terenu (DUG_PIT) z drugim rzędem przy ścianie obitej tablicą sponsorską; boki
+# z mlecznej pleksi w kształcie ćwiartki elipsy pod daszkiem z dymionej pleksi; przed ławką sztuczna trawa. Linia środkowa boiska leży na Y lokalnym 68 (środek trybuny 3 m na północ
 # od niej, build_full_stadium.py), ławki po ±12 m od niej. Zakresy Y w układzie lokalnym.
 DUGOUTS = ((52.5, 59.5), (76.5, 83.5))
 DUG_ROWS = 3                            # usunięte rzędy sektora dolnego nad wnęką ławki
 DUG_FLOOR = 0.2                         # podest ławki nad terenem
+DUG_PIT, DUG_PIT_X = -0.5, 1.0          # dno zagłębienia pod tylnym rzędem i jego przednia krawędź (X lokalne)
 DUG_ROOF = ((-0.9, 2.15), (0.6, 2.3))   # przednia i tylna krawędź daszku (x, z); dalej do tylnej ściany płasko
 DUG_TURF = (-4.5, -0.6)                 # sztuczna trawa przed ławką (X lokalne), szersza o 1.5 m z boków
 # Budka sędziego technicznego (il20250305_898037783_xlarge.jpg) przed trybuną, między tunelem a ławką
@@ -815,16 +816,20 @@ def build_dugouts(col, mats):
     back_red, front_red, front_white = [], [], []
     for ya, yb in DUGOUTS:
         yc = (ya + yb) / 2
-        _box(bm_floor, -0.6, x_back, ya, yb, 0.0, DUG_FLOOR)
+        _box(bm_floor, -0.6, DUG_PIT_X, ya, yb, DUG_PIT, DUG_FLOOR)            # podest (pełny do dna)
+        _box(bm_floor, DUG_PIT_X, x_back + 0.3, ya, yb, DUG_PIT - 0.1, DUG_PIT)  # dno zagłębienia
+        _box(bm_floor, x_back, x_back + 0.3, ya, yb, DUG_PIT, 0.0)              # ściana pod tablicą
         _box(bm_turf, DUG_TURF[0], DUG_TURF[1], ya - 1.5, yb + 1.5, 0.0, 0.045)   # nad śladem bieżni
-        # Białe boki: od tylnej ściany do X 0.3, wysokie do rzędu nad wnęką; z przodu szyby w białej ramie
+        # Boki: biała ściana od dna zagłębienia do daszku, z przodu ćwiartka elipsy z mlecznej pleksi
+        # (prosta krawędź pod daszkiem i przy ścianie, łuk od czoła daszku do posadzki przy ścianie)
         for y0 in (ya, yb - 0.25):
-            _box(bm_white, 0.3, x_back, y0, y0 + 0.25, 0.0, max(z_row, zr))
+            _box(bm_white, 0.3, x_back + 0.3, y0, y0 + 0.25, DUG_PIT, max(z_row, zr))
             yg = y0 + 0.125
-            _box(bm_glass, xf + 0.1, 0.3, yg - 0.01, yg + 0.01, DUG_FLOOR + 0.1, zf - 0.05)
-            for x0, x1, z0, z1 in ((xf + 0.05, xf + 0.12, DUG_FLOOR, zf), (xf + 0.05, 0.3, zf - 0.08, zf),
-                                   (xf + 0.05, 0.3, DUG_FLOOR, DUG_FLOOR + 0.1)):
-                _box(bm_white, x0, x1, yg - 0.04, yg + 0.04, z0, z1)
+            arc = [(0.3 - (0.3 - xf) * math.cos(math.radians(t)), zf - (zf - DUG_FLOOR) * math.sin(math.radians(t)))
+                   for t in range(0, 91, 10)]
+            _extrude_profile(bm_glass, [(0.3, zf)] + arc, yg - 0.01, yg + 0.01)
+            for (xa, za), (xe, ze) in zip(arc, arc[1:]):
+                _beam(bm_white, (xa, yg, za), (xe, yg, ze), 0.05, 0.05)
         # Daszek: dymiona pleksi od tylnej ściany do przedniej krawędzi, lekko opadający ku boisku
         prof = [(xf, zf), (xr, zr), (x_back, zr), (x_back, zr + 0.03), (xr, zr + 0.03), (xf, zf + 0.03)]
         _extrude_profile(bm_roof, prof, ya + 0.25, yb - 0.25)
@@ -838,15 +843,15 @@ def build_dugouts(col, mats):
                                    ((x_back - 0.01, by1, bz0), (x_back - 0.01, by0, bz0), (x_back - 0.01, by0, bz1), (x_back - 0.01, by1, bz1))])
         for loop, uvp in zip(face.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
             loop[uv_b].uv = uvp
-        # Tylny rząd: czerwone krzesełka na niskiej belce przy ścianie
+        # Tylny rząd w zagłębieniu: czerwone krzesełka na niskiej belce przy ścianie
         n = int((yb - ya - 0.8) / 0.52)
         for k in range(n):
-            back_red.append((x_back - 0.45, ya + 0.4 + (k + 0.5) * (yb - ya - 0.8) / n, DUG_FLOOR + 0.3))
-        _beam(bm_red, (x_back - 0.4, ya + 0.35, DUG_FLOOR + 0.27), (x_back - 0.4, yb - 0.35, DUG_FLOOR + 0.27), 0.35, 0.06)
+            back_red.append((x_back - 0.45, ya + 0.4 + (k + 0.5) * (yb - ya - 0.8) / n, DUG_PIT + 0.3))
+        _beam(bm_red, (x_back - 0.4, ya + 0.35, DUG_PIT + 0.27), (x_back - 0.4, yb - 0.35, DUG_PIT + 0.27), 0.35, 0.06)
         for y in (ya + 0.5, yc, yb - 0.5):
-            _beam(bm_red, (x_back - 0.4, y, DUG_FLOOR), (x_back - 0.4, y, DUG_FLOOR + 0.24), 0.05, 0.05)
-        # Przedni rząd wyżej na czerwonym stelażu: 6 krzesełek na przemian czerwone i białe
-        fx, fz, w = x_back - 1.15, DUG_FLOOR + 0.6, 4.2
+            _beam(bm_red, (x_back - 0.4, y, DUG_PIT), (x_back - 0.4, y, DUG_PIT + 0.24), 0.05, 0.05)
+        # Przedni rząd na podeście, na czerwonym stelażu: 6 krzesełek na przemian czerwone i białe
+        fx, fz, w = DUG_PIT_X - 0.35, DUG_FLOOR + 0.25, 4.2
         for k in range(6):
             (front_red if k % 2 == 0 else front_white).append((fx, yc + w / 2 - (k + 0.5) * w / 6, fz))
         _beam(bm_red, (fx + 0.05, yc - w / 2, fz - 0.03), (fx + 0.05, yc + w / 2, fz - 0.03), 0.4, 0.06)
@@ -1115,6 +1120,13 @@ def build_gables(col, mats):
         obj = bpy.data.objects.new("Szczyty_" + key, mesh)
         obj.data.materials.append(mats[key])
         col.objects.link(obj)
+
+
+def dugout_pits(front_x, north_y):
+    """Prostokąty (x0, x1, y0, y1) zagłębień ławek w układzie świata (trybuna obrócona o 180°, koniec północny
+    na north_y, czoło na front_x): w terenie i placu wycina się pod nimi otwory (build_surroundings)."""
+    return [(front_x - x_back, front_x - DUG_PIT_X, north_y - yb, north_y - ya)
+            for x_back in (LOWER_X0 + DUG_ROWS * LOWER_DX + 0.3,) for ya, yb in DUGOUTS]
 
 
 def lower_seat_rows():

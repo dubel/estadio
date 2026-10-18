@@ -33,7 +33,7 @@ if TOOLS_DIR not in sys.path:
     sys.path.append(TOOLS_DIR)
 
 from build_grandstand import (
-    create_materials, build_grandstand, lower_seat_rows, lower_seat_removed,
+    create_materials, build_grandstand, lower_seat_rows, lower_seat_removed, dugout_pits,
     TOTAL_LENGTH_Y as GRANDSTAND_LENGTH, NUM_BAYS, BAY_WIDTH_Y
 )
 from build_seats import place_seats, seat_material, seats_in_row
@@ -337,7 +337,7 @@ def assemble_full_stadium():
         mast.location = loc
 
     print("--- 5. Generowanie Otoczenia (teren, al. Unii, tory, Atlas Arena, drzewa) ---")
-    build_surroundings(col_surroundings, mats)
+    build_surroundings(col_surroundings, mats, holes=dugout_pits(-45.0, GRANDSTAND_LENGTH / 2.0 + GRANDSTAND_CENTER_Y))
 
     # Zapis pliku roboczego .blend
     prepare_meshes_for_export()

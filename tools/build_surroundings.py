@@ -54,10 +54,18 @@ def _flat_material(name, color, roughness, metallic=0.0):
     return mat
 
 
-def _quad(col, name, x0, x1, y0, y1, z, mat):
+def _quad(col, name, x0, x1, y0, y1, z, mat, holes=()):
+    """Prostokąt na wysokości z; holes: prostokąty (x0, x1, y0, y1) wycięte z niego (siatka komórek bez nich)."""
     bm = bmesh.new()
-    vs = [bm.verts.new(p) for p in [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]]
-    bm.faces.new(vs)
+    xs = sorted({x0, x1, *(h[k] for h in holes for k in (0, 1))})
+    ys = sorted({y0, y1, *(h[k] for h in holes for k in (2, 3))})
+    for xa, xb in zip(xs, xs[1:]):
+        for ya, yb in zip(ys, ys[1:]):
+            cx, cy = (xa + xb) / 2, (ya + yb) / 2
+            if any(h[0] < cx < h[1] and h[2] < cy < h[3] for h in holes):
+                continue
+            bm.faces.new([bm.verts.new(p) for p in [(xa, ya, z), (xb, ya, z), (xb, yb, z), (xa, yb, z)]])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
     mesh = bpy.data.meshes.new(name + "_Mesh")
     bm.to_mesh(mesh)
     bm.free()
@@ -67,12 +75,13 @@ def _quad(col, name, x0, x1, y0, y1, z, mat):
     return obj
 
 
-def build_ground(col, mats):
-    """Teren pod całym stadionem i utwardzony plac wokół niego (ortofotomapa: jasna kostka/beton)."""
+def build_ground(col, mats, holes=()):
+    """Teren pod całym stadionem i utwardzony plac wokół niego (ortofotomapa: jasna kostka/beton);
+    holes: otwory na zagłębienia poniżej terenu (ławki rezerwowych)."""
     # Poziomy rozsunięte o centymetry migotały (z-fighting przy zasięgu kamery 2 km): plac 5 cm pod murawą,
     # teren 25 cm pod placem — krawędź placu to niski, przechodni stopień.
-    _quad(col, "Teren_Trawa", -TERRAIN_HALF, TERRAIN_HALF, -TERRAIN_HALF, TERRAIN_HALF, -0.25, mats['ground_grass'])
-    _quad(col, "Plac_Wokol_Stadionu", -110.0, 76.0, -125.0, 125.0, -0.05, mats['concrete_dark'])
+    _quad(col, "Teren_Trawa", -TERRAIN_HALF, TERRAIN_HALF, -TERRAIN_HALF, TERRAIN_HALF, -0.25, mats['ground_grass'], holes)
+    _quad(col, "Plac_Wokol_Stadionu", -110.0, 76.0, -125.0, 125.0, -0.05, mats['concrete_dark'], holes)
 
 
 def build_streets(col, mats):
@@ -167,8 +176,8 @@ def build_skyline(col, mats):
         col.objects.link(obj)
 
 
-def build_surroundings(col, mats):
-    build_ground(col, mats)
+def build_surroundings(col, mats, holes=()):
+    build_ground(col, mats, holes)
     build_streets(col, mats)
     build_atlas_arena(col, mats)
     build_trees(col, mats)
