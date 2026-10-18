@@ -309,6 +309,42 @@ def generate_mural_texture():
     print("Zapisano mural (grafy_na_trybunie.png)")
 
 
+ENTRANCE_PHOTOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "zdjecia", "wejscia_na_trybune")
+# Narożniki (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny) w pikselach zdjęć
+ENTRANCE_GRAPHICS = [
+    # baner nad bramą wejścia północnego „ŁÓDZKI KLUB SPORTOWY WITA!” (740 x 416)
+    ("34dec5jwrhekegfii2gbtewomd2jvtzt.jpeg", [(217, 42), (490, 43), (490, 83), (217, 83)], (1024, 152), "baner_lks_wita.png"),
+    # baner „MOSiR Łódź” na południowym końcu trybuny (1024 x 511); lewy dolny róg zasłania budynek
+    ("lks19 (1).jpg", [(652, 234), (845, 236), (845, 334), (652, 334)], (1024, 512), "baner_mosir.png"),
+    # tablica MOSiR z planem sektorów (800 x 600)
+    ("DSC01679.jpg", [(40, 55), (748, 50), (755, 545), (35, 548)], (1024, 724), "tablica_mosir_plan.png"),
+]
+
+
+def generate_entrance_textures():
+    """Grafiki wejść na styku łuków z trybuną główną, wyprostowane ze zdjęć zdjecia/wejscia_na_trybune."""
+    for photo, quad, size, out in ENTRANCE_GRAPHICS:
+        im = Image.open(os.path.join(ENTRANCE_PHOTOS, photo)).convert("RGB")
+        _rectify(im, quad, size).save(os.path.join(TEXTURES_DIR, out))
+    print("Zapisano grafiki wejść (baner WITA, baner MOSiR, plan sektorów)")
+
+
+def generate_gate_mesh_texture():
+    """Siatka bram wejściowych (34dec5jwrhekegfii2gbtewomd2jvtzt.jpeg): ocynkowane pręty, oczka 5 x 20 cm, kafel 1 m."""
+    W = H = 256
+    wire = (170, 172, 168, 255)
+    img = Image.new("RGBA", (W, H), wire[:3] + (0,))   # tło w kolorze pręta: mipmapy nie przyciemniają siatki
+    draw = ImageDraw.Draw(img)
+    for i in range(20):
+        x = min(int(i * W / 20), W - 1)
+        draw.line([(x, 0), (x, H)], fill=wire, width=2)
+    for j in range(5):
+        y = min(int(j * H / 5), H - 1)
+        draw.line([(0, y), (W, y)], fill=wire, width=3)
+    img.save(os.path.join(TEXTURES_DIR, "brama_siatka.png"))
+    print("Zapisano teksturę siatki bram")
+
+
 def generate_corrugated_roof_textures():
     """Generuje tekstury blachy trapezowej / falistej w kolorze białym i czerwonym ŁKS."""
     w, h = 512, 512
@@ -556,6 +592,8 @@ if __name__ == "__main__":
     generate_floodlight_glow_sprite()
     generate_goal_net_texture()
     generate_ball_net_texture()
+    generate_gate_mesh_texture()
+    generate_entrance_textures()
     generate_fence_texture()
     generate_facade_texture()
     generate_crown_ads_texture()

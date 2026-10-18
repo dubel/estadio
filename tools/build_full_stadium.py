@@ -40,6 +40,7 @@ from build_seats import place_seats, seat_material, seats_in_row
 from build_floodlight_mast import build_floodlight_mast
 from build_surroundings import build_surroundings
 from bake_lighting import bake_ambient_occlusion
+from build_entrances import build_entrances
 from build_horseshoe_bowl import (
     build_pitch_and_track,
     build_pitch_lines,
@@ -306,6 +307,11 @@ def assemble_full_stadium():
     # (ortofotomapa: czoło daszku sektora dolnego -44.7 m). Środek trybuny ~3 m na północ od osi
     # poprzecznej boiska (nakładka modelu na ortofotomapę, tools/add_ortho_reference.py).
     empty_grandstand.location = (-45.0, GRANDSTAND_LENGTH / 2.0 + GRANDSTAND_CENTER_Y, 0.0)
+
+    # Wejścia na styku łuków z trybuną: czopy, schody na promenadę, bramy, banery (po ustawieniu trybuny:
+    # obiekty w układzie świata, bez rodzica)
+    north_y = GRANDSTAND_LENGTH / 2.0 + GRANDSTAND_CENTER_Y
+    build_entrances(col_grandstand, mats, front_x=-45.0, north_y=north_y, south_y=north_y - GRANDSTAND_LENGTH)
 
     # Krzesełka sektora dolnego: czerwone pod czerwonym daszkiem (przęsła 6..10), białe w pozostałych
     red, white = [], []

@@ -556,13 +556,7 @@ def build_grandstand(col, mats):
         y = yb
     _extrude_profile(bm_lower, _lower_profile(), y, TOTAL_LENGTH_Y)
 
-    # Schody z terenu na promenadę na obu krańcach trybuny
-    n_end = math.ceil(CONCOURSE_Z / 0.3)
-    for sign, y_edge in ((-1, 0.0), (1, TOTAL_LENGTH_Y)):
-        for k in range(n_end):
-            ya = y_edge + sign * (n_end - k - 1) * 0.42
-            yb = ya + sign * 0.42
-            _box(bm_stairs, LOWER_X0 + (LOWER_ROWS - 1) * LOWER_DX, CONCOURSE_X1, min(ya, yb), max(ya, yb), 0.0, (k + 1) * CONCOURSE_Z / n_end)
+    # Wejścia z placu na promenadę na obu krańcach trybuny: build_entrances.py (schody między czopem łuku a trybuną)
 
     exit_x0, _, exit_z = upper_row(VOM_EXIT_ROW)
     n_steps = math.ceil(exit_z / VOM_RISE)
