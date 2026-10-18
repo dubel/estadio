@@ -393,6 +393,10 @@ def create_materials():
         m.surface_render_method = 'BLENDED'
     m.use_backface_culling = False
     mats['plexi_smoke'] = m
+    m = mat_plexi.copy()
+    m.name = "Mat_Pleksi_Mleczna_Gesta"
+    m.node_tree.nodes.get("Principled BSDF").inputs['Alpha'].default_value = 0.92
+    mats['plexi_dense'] = m
     m = bpy.data.materials.new("Mat_Sztuczna_Trawa")
     m.use_nodes = True
     m.node_tree.nodes.get("Principled BSDF").inputs['Base Color'].default_value = (0.035, 0.11, 0.045, 1.0)
@@ -471,6 +475,7 @@ DUGOUTS = ((52.5, 59.5), (76.5, 83.5))
 DUG_ROWS = 3                            # usunięte rzędy sektora dolnego nad wnęką ławki
 DUG_FLOOR = 0.2                         # podest ławki nad terenem
 DUG_PIT, DUG_PIT_X = -0.5, 1.0          # dno zagłębienia pod tylnym rzędem i jego przednia krawędź (X lokalne)
+DUG_SIDE_X, DUG_SIDE_H = -0.5, 1.1      # czoło i wysokość poziomego ramienia betonowej podstawy boku
 DUG_ROOF = ((-0.9, 2.15), (0.6, 2.3))   # przednia i tylna krawędź daszku (x, z); dalej do tylnej ściany płasko
 DUG_TURF = (-4.5, -0.6)                 # sztuczna trawa przed ławką (X lokalne), szersza o 1.5 m z boków
 # Budka sędziego technicznego (il20250305_898037783_xlarge.jpg) przed trybuną, między tunelem a ławką
@@ -808,7 +813,7 @@ def build_dugouts(col, mats):
     Ławki rezerwowych we wnękach sektora dolnego i budka sędziego technicznego. Lokalnie -X to kierunek
     boiska; tylna ściana wnęki to podstopień rzędu DUG_ROWS na X = LOWER_X0 + DUG_ROWS * LOWER_DX.
     """
-    bm_white, bm_red, bm_floor, bm_roof, bm_glass, bm_board, bm_turf = (bmesh.new() for _ in range(7))
+    bm_white, bm_red, bm_floor, bm_roof, bm_glass, bm_board, bm_turf, bm_back = (bmesh.new() for _ in range(8))
     uv_b = bm_board.loops.layers.uv.verify()
     x_back = LOWER_X0 + DUG_ROWS * LOWER_DX
     z_row = LOWER_Z0 + DUG_ROWS * LOWER_DZ                  # stopień pierwszego rzędu nad wnęką
@@ -820,16 +825,19 @@ def build_dugouts(col, mats):
         _box(bm_floor, DUG_PIT_X, x_back + 0.3, ya, yb, DUG_PIT - 0.1, DUG_PIT)  # dno zagłębienia
         _box(bm_floor, x_back, x_back + 0.3, ya, yb, DUG_PIT, 0.0)              # ściana pod tablicą
         _box(bm_turf, DUG_TURF[0], DUG_TURF[1], ya - 1.5, yb + 1.5, 0.0, 0.045)   # nad śladem bieżni
-        # Boki: biała ściana od dna zagłębienia do daszku, z przodu ćwiartka elipsy z mlecznej pleksi
-        # (prosta krawędź pod daszkiem i przy ścianie, łuk od czoła daszku do posadzki przy ścianie)
+        # Boki: betonowa podstawa w kształcie L (pionowe ramię przy ścianie do daszku, poziome wzdłuż podestu
+        # do DUG_SIDE_H), nad poziomym ramieniem świetlik z mlecznej pleksi: od daszku do podstawy, przednia
+        # krawędź prosta od czoła daszku do czoła podstawy, w białej ramie
+        roof_z = lambda x: zf + (x - xf) * (zr - zf) / (xr - xf)
         for y0 in (ya, yb - 0.25):
             _box(bm_white, 0.3, x_back + 0.3, y0, y0 + 0.25, DUG_PIT, max(z_row, zr))
+            _box(bm_white, DUG_SIDE_X, 0.3, y0, y0 + 0.25, DUG_PIT, DUG_SIDE_H)
             yg = y0 + 0.125
-            arc = [(0.3 - (0.3 - xf) * math.cos(math.radians(t)), zf - (zf - DUG_FLOOR) * math.sin(math.radians(t)))
-                   for t in range(0, 91, 10)]
-            _extrude_profile(bm_glass, [(0.3, zf)] + arc, yg - 0.01, yg + 0.01)
-            for (xa, za), (xe, ze) in zip(arc, arc[1:]):
-                _beam(bm_white, (xa, yg, za), (xe, yg, ze), 0.05, 0.05)
+            pane = [(DUG_SIDE_X, DUG_SIDE_H), (0.3, DUG_SIDE_H), (0.3, roof_z(0.3)), (xf + 0.05, roof_z(xf + 0.05))]
+            _extrude_profile(bm_glass, pane, yg - 0.01, yg + 0.01)
+            _beam(bm_white, (DUG_SIDE_X, yg, DUG_SIDE_H), (xf + 0.05, yg, roof_z(xf + 0.05)), 0.05, 0.05)
+        # Tył nad tablicą sponsorską do daszku: gęsta mleczna pleksi zasłaniająca krzesełka loży VIP
+        _box(bm_back, x_back - 0.005, x_back + 0.01, ya + 0.25, yb - 0.25, DUG_FLOOR, zr)   # za tablicą
         # Daszek: dymiona pleksi od tylnej ściany do przedniej krawędzi, lekko opadający ku boisku
         prof = [(xf, zf), (xr, zr), (x_back, zr), (x_back, zr + 0.03), (xr, zr + 0.03), (xf, zf + 0.03)]
         _extrude_profile(bm_roof, prof, ya + 0.25, yb - 0.25)
@@ -887,7 +895,8 @@ def build_dugouts(col, mats):
     _finish(col, bm_red, "Lawki_Rezerwowych_Stelaz_Czerwony", mats['lks_red'])
     _finish(col, bm_floor, "Lawki_Rezerwowych_Posadzka", mats['concrete'])
     _finish(col, bm_roof, "Lawki_Rezerwowych_Daszek", mats['plexi_smoke'])
-    _finish(col, bm_glass, "Lawki_Rezerwowych_Szyby", mats['plexi'])
+    _finish(col, bm_glass, "Lawki_Rezerwowych_Swietliki", mats['plexi'])
+    _finish(col, bm_back, "Lawki_Rezerwowych_Tyl_Pleksi", mats['plexi_dense'])
     _finish(col, bm_turf, "Lawki_Rezerwowych_Sztuczna_Trawa", mats['turf'])
     _finish(col, bm_rb, "Budka_Sedziego_Stelaz", mats['lks_red'])
     _finish(col, bm_rp, "Budka_Sedziego_Pleksi", mats['plexi'])
