@@ -2,6 +2,8 @@
 
 Trójwymiarowa rekonstrukcja architektoniczna oraz wirtualny spacer 3D (WebGL / Three.js) po nieistniejącym już, kultowym stadionie **ŁKS Łódź** przy **al. Unii Lubelskiej 2** w jego historycznym kształcie z lat 1969–2012.
 
+Spacer online: https://dubel.dev/estadio/ (deploy z gałęzi `master`, GitHub Pages).
+
 Obiekt został zrekonstruowany w skali 1:1 w programie **Blender** przy użyciu automatycznych skryptów Python (`bpy`) oraz przeniesiony do interaktywnej aplikacji webowej w **Three.js** (Vite + TypeScript).
 
 ---
