@@ -27,7 +27,7 @@ const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerH
 
 // --- OŚWIETLENIE I POSTPROCESSING (src/lighting.ts, src/postfx.ts) ---
 const lighting = new Lighting(scene, renderer);
-lighting.loadSky('/assets/env/overcast_soil_puresky_2k.hdr');
+lighting.loadSky('assets/env/overcast_soil_puresky_2k.hdr');
 const postfx = new PostFX(renderer, scene, camera);
 const cornerFlags = new CornerFlags(scene);
 
@@ -466,7 +466,7 @@ const loadingOverlay = document.getElementById('loading');
 const hud = document.getElementById('hud');
 
 loader.load(
-  '/assets/estadio_da_gruz.glb',
+  'assets/estadio_da_gruz.glb',
   (gltf) => {
     const model = gltf.scene;
     model.traverse((child) => {
@@ -536,7 +536,7 @@ loader.load(
 // Drzewa EZ-Tree (tools/generate_trees.mjs) w osobnym pliku, doczytywane po stadionie: spacer startuje
 // bez czekania na nie. Kolizje z pniami daje niewidoczna siatka Drzewa_Pnie_Kolizje w modelu stadionu.
 function loadTrees() {
-  loader.load('/assets/drzewa.glb', (gltf) => {
+  loader.load('assets/drzewa.glb', (gltf) => {
     gltf.scene.traverse((child) => {
       const mesh = child as THREE.Mesh;
       if (mesh.isMesh) {

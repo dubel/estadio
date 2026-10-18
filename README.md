@@ -1,4 +1,4 @@
-# Estadio da Gruz — Rekonstrukcja Historyczna 3D Stadionu ŁKS Łódź (1969–2012)
+# Stadion ŁKS — Rekonstrukcja Historyczna 3D Stadionu ŁKS Łódź (1969–2012)
 
 Trójwymiarowa rekonstrukcja architektoniczna oraz wirtualny spacer 3D (WebGL / Three.js) po nieistniejącym już, kultowym stadionie **ŁKS Łódź** przy **al. Unii Lubelskiej 2** w jego historycznym kształcie z lat 1969–2012.
 

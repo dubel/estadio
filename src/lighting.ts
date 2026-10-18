@@ -134,7 +134,7 @@ export class Lighting {
   }
 
   private setupJupiters() {
-    const glowTexture = new THREE.TextureLoader().load('/assets/textures/floodlight_glow.png');
+    const glowTexture = new THREE.TextureLoader().load('assets/textures/floodlight_glow.png');
     const alphaMap = coneAlphaMap();
     const aim = new THREE.Vector3(0, 0, 0);
 
