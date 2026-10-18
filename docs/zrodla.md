@@ -37,6 +37,7 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Bloczki z Przeplatanką | bloczki_na_trybunie.png, widok_na_trybune_z_sektora_gosci.png, uwaga użytkownika | 4–5 rzędów nad daszkiem, poniżej wyjść z tuneli, przerwy pod tunelami | 13 bloków 3,6 × 1,5 m na rzędzie 5, w osiach dźwigarów | średnia |
 | Żółte barierki trybuny głównej | detale_trybuny_zachodniej.png | wzdłuż przejść, na balustradzie czołowej i na koronie | przejście w osi każdego przęsła z poręczami po obu stronach | średnia |
 | Ławki rezerwowych | lawka_rezerwowych.png, uwaga użytkownika | ćwiartki walca z mlecznej pleksi, stelaż biało-czerwony, wpuszczone w sektor VIP | 2 × 7 m, ±12 m od linii środkowej, wnęka zamiast 3 pierwszych rzędów | średnia (wymiary) |
+| Tunel harmonijkowy | tunel_harmonijkowy.png, uwaga użytkownika | teleskopowy stelaż z nożycami w ścianach bocznych, łukowy dach, obicie w poprzeczne pasy biało-czerwone; wyciągany tylko na wyjście drużyn, w modelu złożony | na linii środkowej między ławkami, kanał 2.8 m zamiast 7 pierwszych rzędów; 5 segmentów po 1.2 m, wys. 2.4 m | niska (wymiary, liczba segmentów) |
 | Tunele Galery | tunel_galera.png, kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | dwa duże tunele przy styku z łukami, symetryczne; wcięcie o przekroju trapezu w widownię w stronę al. Unii, w głębi wylot z Przeplatanką na białym nadprożu, przed nim zwykłe ogrodzenie | Y 33–39 m i −39…−33 m, wcięcie w 10 pierwszych rzędów (u góry 6 m, dno 4,2 m), prześwit przelotu 2,6 m | średnia (wymiary) |
 | Krzesełka | widok_z_galery.jpg, 516e09e1189ce, lks05, krzeselka.png (typ krzesełka) | czerwone na Galerze, czerwone/białe w sektorze dolnym | kubełki o profilu L bez nóżek, mocowane do stopnia, oparcie przy podstopniu rzędu wyżej (`build_seats.py`); instancje GPU | średnia (rozmieszczenie kolorów) |
 | Ławki sektora górnego | widok_z_galery.jpg, uwaga użytkownika | jasne, kość słoniowa | malowane drewno (0,80; 0,76; 0,64) | średnia |
@@ -95,6 +96,7 @@ Uproszczenia w modelu, żeby każdy stopień dał się przejść (podstopień po
 | `lks07`–`lks18`, `07lks3_*`, `20100421csmt8013.jpg` | mecze, kibice, noc | oprawy, banery, oświetlenie nocne (Faza 4) |
 | `punkt_swietlny_jupiter.png` | maszt od strony trybuny, kadr z transmisji | nogi rozchodzące się u dołu, reflektory w połowie wysokości |
 | `lawka_rezerwowych.png` | kadr z transmisji (ŁKS – Pogoń) | ławka rezerwowych: pleksi na biało-czerwonym stelażu |
+| `tunel_harmonijkowy.png` | kadr z transmisji (ŁKS – Cracovia) | wnętrze tunelu wyjścia piłkarzy: nożycowy stelaż ścian, pasy biało-czerwone |
 | `tunel_galera.png` | kadr z transmisji, Galera przy łuku północnym | duży tunel wejściowy z podestem i żółtymi poręczami |
 | `pod_zegarem.png` | kadr z transmisji, łuk południowy | sektory krzesełek i ławek łuku, bandy na koronie, tablica wyników |
 | `krzeselka.png` | stadion Zbrojovki Brno (nie ŁKS) — ten sam typ krzesełek | kształt: zaokrąglony profil L, bez nóżek, przykręcone do stopnia, lśniący plastik |

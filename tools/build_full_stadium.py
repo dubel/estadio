@@ -33,7 +33,7 @@ if TOOLS_DIR not in sys.path:
     sys.path.append(TOOLS_DIR)
 
 from build_grandstand import (
-    create_materials, build_grandstand, lower_seat_rows, in_dugout,
+    create_materials, build_grandstand, lower_seat_rows, in_lower_cut,
     TOTAL_LENGTH_Y as GRANDSTAND_LENGTH, NUM_BAYS, BAY_WIDTH_Y
 )
 from build_seats import place_seats, seat_material, seats_in_row
@@ -310,7 +310,7 @@ def assemble_full_stadium():
     for b in range(NUM_BAYS):
         for i, (x, z) in enumerate(lower_seat_rows()):
             row = seats_in_row(x, z, b * BAY_WIDTH_Y + 0.9, (b + 1) * BAY_WIDTH_Y - 0.1)
-            (red if 6 <= b < 11 else white).extend(s for s in row if not in_dugout(s[1], i))
+            (red if 6 <= b < 11 else white).extend(s for s in row if not in_lower_cut(s[1], i))
     place_seats(col_grandstand, "Krzeselka_Trybuna_Czerwone", seat_material("Mat_Krzeselka_Czerwone", (0.62, 0.07, 0.09)), red, empty_grandstand)
     place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86)), white, empty_grandstand)
 

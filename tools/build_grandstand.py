@@ -424,6 +424,19 @@ DUG_ROWS = 3                            # usunięte rzędy sektora dolnego nad w
 DUG_X0 = 0.35                           # pionowe lico (oś walca) od czoła trybuny
 DUG_R = 2.3                             # promień ćwiartki walca: dach 2.3 m nad posadzką przy licu
 
+# Tunel harmonijkowy wyjścia piłkarzy (tunel_harmonijkowy.png) na linii środkowej, między ławkami rezerwowych:
+# kanał wycięty w sektorze dolnym aż do rzędu, którego stopień jest wyższy niż tunel, w kanale drzwi do hali
+# pod trybuną. Tunel złożony (wyciągany tylko na wyjście drużyn): segmenty teleskopowe wsunięte jeden w drugi,
+# największy (stały) najgłębiej. Obicie w poprzeczne pasy biało-czerwone, w ścianach bocznych stelaż nożycowy.
+TUNNEL_Y = (66.6, 69.4)
+TUNNEL_ROWS = 7                         # usunięte rzędy: stopień 7. rzędu na 2.6 m, tunel ma 2.4 m
+TUNNEL_SEGS, TUNNEL_SEG_L = 5, 1.2      # segmenty teleskopu i długość każdego
+TUNNEL_HALF_W, TUNNEL_WALL_H = 1.1, 1.3 # segment stały: połowa szerokości, ściana boczna pod półkolistym dachem
+TUNNEL_NEST, TUNNEL_STAGGER = 0.07, 0.15  # zwężenie kolejnego segmentu i jego wysunięcie ku boisku
+
+# Wycięcia w sektorze dolnym: (y0, y1, liczba usuniętych pierwszych rzędów)
+LOWER_CUTS = sorted([(a, b, DUG_ROWS) for a, b in DUGOUTS] + [(*TUNNEL_Y, TUNNEL_ROWS)])
+
 
 def _extrude_profile(bm, pts_xz, y0, y1):
     """Bryła z wielokąta w płaszczyźnie XZ wyciągniętego od y0 do y1 (zamknięta — kolizje z obu stron)."""
@@ -516,10 +529,13 @@ def build_grandstand(col, mats):
     bm_lower, bm_upper, bm_girder, bm_vom, bm_stairs = (bmesh.new() for _ in range(5))
     bm_benches, bm_lights, bm_yellow = bmesh.new(), bmesh.new(), bmesh.new()
 
-    # Sektor dolny + promenada; we wnękach ławek rezerwowych bez pierwszych DUG_ROWS rzędów
-    cuts = [0.0] + [y for span in DUGOUTS for y in span] + [TOTAL_LENGTH_Y]
-    for k, (ya, yb) in enumerate(zip(cuts, cuts[1:])):
-        _extrude_profile(bm_lower, _lower_profile(DUG_ROWS if k % 2 else 0), ya, yb)
+    # Sektor dolny + promenada; we wnękach ławek rezerwowych i w kanale tunelu bez pierwszych rzędów
+    y = 0.0
+    for ya, yb, rows in LOWER_CUTS:
+        _extrude_profile(bm_lower, _lower_profile(), y, ya)
+        _extrude_profile(bm_lower, _lower_profile(rows), ya, yb)
+        y = yb
+    _extrude_profile(bm_lower, _lower_profile(), y, TOTAL_LENGTH_Y)
 
     # Schody z terenu na promenadę na obu krańcach trybuny
     n_end = math.ceil(CONCOURSE_Z / 0.3)
@@ -657,6 +673,7 @@ def build_grandstand(col, mats):
     build_tribune_paintings(col, mats)
     build_camera_platform(col, mats)
     build_dugouts(col, mats)
+    build_players_tunnel(col, mats)
 
     print(f"Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, {NUM_BAYS} tuneli).")
     return obj_lower, obj_upper
@@ -760,14 +777,58 @@ def build_dugouts(col, mats):
     place_seats(col, "Krzeselka_Lawki_Rezerwowych", seat_material("Mat_Krzeselka_Rezerwowych", (0.62, 0.07, 0.09)), seats)
 
 
+def build_players_tunnel(col, mats):
+    """
+    Złożony tunel harmonijkowy w kanale TUNNEL_Y. Segment k: łukowa powłoka (ściany boczne + półkolisty dach)
+    z dwóch pasów obicia, metalowy łuk na czole i nożyce w ścianach bocznych. Lokalnie -X to kierunek boiska.
+    """
+    bm_white, bm_red, bm_frame, bm_floor = bmesh.new(), bmesh.new(), bmesh.new(), bmesh.new()
+    yc = sum(TUNNEL_Y) / 2
+
+    def outline(w, h):
+        """Obrys przekroju (y, z): ściana, półkolisty dach o promieniu w, druga ściana."""
+        arc = [(yc - w * math.cos(math.radians(t)), h + w * math.sin(math.radians(t))) for t in range(0, 181, 15)]
+        return [(yc - w, 0.0)] + arc + [(yc + w, 0.0)]
+
+    def extrude_x(bm, pts_yz, x0, x1):
+        face = bm.faces.new([bm.verts.new((x0, y, z)) for y, z in pts_yz])
+        res = bmesh.ops.extrude_face_region(bm, geom=[face])
+        bmesh.ops.translate(bm, vec=(x1 - x0, 0.0, 0.0), verts=[v for v in res['geom'] if isinstance(v, bmesh.types.BMVert)])
+
+    x_back = 1.5
+    for k in range(TUNNEL_SEGS):
+        w, h = TUNNEL_HALF_W - k * TUNNEL_NEST, TUNNEL_WALL_H - k * TUNNEL_NEST
+        x1 = x_back - k * TUNNEL_STAGGER
+        x0, xm = x1 - TUNNEL_SEG_L, x1 - TUNNEL_SEG_L / 2
+        shell = outline(w, h) + outline(w - 0.03, h)[::-1]
+        extrude_x(bm_white if k % 2 else bm_red, shell, x0, xm)
+        extrude_x(bm_red if k % 2 else bm_white, shell, xm, x1)
+        ring = outline(w - 0.06, h)
+        for a, b in zip(ring, ring[1:]):
+            _beam(bm_frame, (x0 + 0.03, a[0], a[1]), (x0 + 0.03, b[0], b[1]), 0.05, 0.05)
+        for ys in (yc - w + 0.06, yc + w - 0.06):
+            _beam(bm_frame, (x0 + 0.05, ys, 0.1), (x1 - 0.05, ys, h), 0.03, 0.03)
+            _beam(bm_frame, (x0 + 0.05, ys, h), (x1 - 0.05, ys, 0.1), 0.03, 0.03)
+
+    x_wall = LOWER_X0 + TUNNEL_ROWS * LOWER_DX
+    _box(bm_floor, 0.0, x_wall, TUNNEL_Y[0], TUNNEL_Y[1], -0.05, 0.02)
+    _finish(col, bm_white, "Tunel_Harmonijkowy_Bialy", mats['goal_white'])
+    _finish(col, bm_red, "Tunel_Harmonijkowy_Czerwony", mats['lks_red'])
+    _finish(col, bm_frame, "Tunel_Harmonijkowy_Stelaz", mats['metal'])
+    _finish(col, bm_floor, "Tunel_Harmonijkowy_Posadzka", mats['concrete_dark'])
+    bm_door = bmesh.new()
+    _box(bm_door, x_wall - 0.03, x_wall, yc - 0.8, yc + 0.8, 0.02, 2.2)
+    _finish(col, bm_door, "Tunel_Harmonijkowy_Drzwi", mats['board_dark'])
+
+
 def lower_seat_rows():
     """Rzędy krzesełek sektora dolnego: (x, z) siedziska w układzie lokalnym trybuny."""
     return [(LOWER_X0 + (i + 1) * LOWER_DX - SEAT_BACK_GAP, LOWER_Z0 + i * LOWER_DZ) for i in range(LOWER_ROWS)]
 
 
-def in_dugout(y, row):
-    """Czy krzesełko rzędu row na pozycji y wypada we wnęce ławki rezerwowych."""
-    return row < DUG_ROWS and any(a - 0.3 < y < b + 0.3 for a, b in DUGOUTS)
+def in_lower_cut(y, row):
+    """Czy krzesełko rzędu row na pozycji y wypada w wycięciu sektora dolnego (ławka rezerwowych, tunel)."""
+    return any(row < rows and a - 0.3 < y < b + 0.3 for a, b, rows in LOWER_CUTS)
 
 
 if __name__ == "__main__":
