@@ -267,7 +267,7 @@ SOUTH_CONCRETE_RAIL_ROWS = (6, 12)
 # Kąty od środka łuku (0, STRAIGHT_L / 2): 0° to wschód (Galera), 90° oś boiska, BOWL_ANGLE_N trybuna główna.
 NORTH_ARC = (6.0, BOWL_ANGLE_N - 2.0)
 NORTH_RAIL_ROWS = (3, 6, 9, 12, 15)
-NORTH_RAIL_LEN, NORTH_RAIL_PERIOD = 2.4, 6.0   # długość barierki i rozstaw wzdłuż rzędu (metry)
+NORTH_RAIL_LEN, NORTH_RAIL_PERIOD = 2.4, 12.0  # długość barierki i rozstaw wzdłuż rzędu (metry)
 GUEST_ARC = (112.0, BOWL_ANGLE_N - 0.5)
 
 # Galera od północy (kolorystyka_galery_oraz_budynki_tla.png): 6 sekcji rozdzielonych siatką od chodnika
