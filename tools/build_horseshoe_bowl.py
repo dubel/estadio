@@ -257,6 +257,14 @@ SOUTH_BLOCK_RAIL_ROWS = (6, 13)
 SOUTH_BLOCK_RAIL_LEN = 3.0
 SOUTH_CONCRETE_ARC = (-149.0, -92.0)
 SOUTH_CONCRETE_RAIL_ROWS = (6, 12)
+# Łuk północny (sektor gości, lks16.jpg, lks18.jpg): goły beton, krótkie żółte barierki w kształcie U rozstawione
+# w szachownicę co 3 rzędy; w zachodniej części, przy trybunie głównej, klatka gości z wysokiego czerwonego
+# ogrodzenia: przegroda w dół stopni na GUEST_ARC[0] i przy trybunie głównej, wysokie ogrodzenie od czoła.
+# Kąty od środka łuku (0, STRAIGHT_L / 2): 0° to wschód (Galera), 90° oś boiska, 149° trybuna główna.
+NORTH_ARC = (6.0, 147.0)
+NORTH_RAIL_ROWS = (3, 6, 9, 12, 15)
+NORTH_RAIL_LEN, NORTH_RAIL_PERIOD = 2.4, 6.0   # długość barierki i rozstaw wzdłuż rzędu (metry)
+GUEST_ARC = (112.0, 148.5)
 
 # Galera od północy (kolorystyka_galery_oraz_budynki_tla.png): 6 sekcji rozdzielonych siatką od chodnika
 # po koronę. (y_od, y_do, kolorystyka, oś przejścia):
@@ -413,6 +421,28 @@ def build_bowl(col, mats):
                 xa, xe = R_TRACK_OUT + d, R_TRACK_OUT + d + STEP_D
                 panel([(xa, yp + off, z, xa, 0.0), (xe, yp + off, z, xe, 0.0),
                        (xe, yp + off, z + FENCE_H, xe, 1.0), (xa, yp + off, z + FENCE_H, xa, 1.0)], flip)
+    # Klatka sektora gości na łuku północnym: przegrody w dół stopni i wysokie ogrodzenie od czoła
+    cy = STRAIGHT_L / 2
+    for ang in GUEST_ARC:
+        (tx, ty), a = _arc_point(1.0, ang, cy)
+        t = (-math.sin(a), math.cos(a))                      # styczna do łuku
+        for off, flip in [(-0.02, False), (0.02, True)]:
+            for i in range(NUM_STEPS):
+                d, z = _row(i)
+                ra, re = R_TRACK_OUT + d, R_TRACK_OUT + d + STEP_D
+                pa, _ = _arc_point(ra, ang, cy)
+                pe, _ = _arc_point(re, ang, cy)
+                pa, pe = (pa[0] + t[0] * off, pa[1] + t[1] * off), (pe[0] + t[0] * off, pe[1] + t[1] * off)
+                panel([(*pa, z, ra, 0.0), (*pe, z, re, 0.0), (*pe, z + FENCE_H, re, 1.0), (*pa, z + FENCE_H, ra, 1.0)], flip)
+    n = round((GUEST_ARC[1] - GUEST_ARC[0]) / 3.0)
+    for off, flip in [(0.02, True), (0.06, False)]:
+        r = R_TRACK_OUT + off
+        for k in range(n):
+            a0 = GUEST_ARC[0] + k * (GUEST_ARC[1] - GUEST_ARC[0]) / n
+            a1 = GUEST_ARC[0] + (k + 1) * (GUEST_ARC[1] - GUEST_ARC[0]) / n
+            (p0, _), (p1, _) = _arc_point(r, a0, cy), _arc_point(r, a1, cy)
+            u0, u1 = r * math.radians(a0), r * math.radians(a1)
+            panel([(*p0, 0.0, u0, 0.0), (*p1, 0.0, u1, 0.0), (*p1, FENCE_H, u1, 1.0), (*p0, FENCE_H, u0, 1.0)], flip)
     mesh_f = bpy.data.meshes.new("Ogrodzenie_Trybun_Mesh")
     bm_f.normal_update()
     bm_f.to_mesh(mesh_f)
@@ -654,6 +684,20 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
                 _obox(bm_y, (px, py, z + 0.5), (0.05, 0.05, 1.0))
             ang += seg_deg
 
+    # Łuk północny: barierki U (poręcz na 1 m, dwa słupki), co drugi rząd barierek przesunięty o pół rozstawu
+    for n_row, i_rail in enumerate(NORTH_RAIL_ROWS):
+        d, z = _row(i_rail)
+        r = R_TRACK_OUT + d + 0.15
+        seg, period = math.degrees(NORTH_RAIL_LEN / r), math.degrees(NORTH_RAIL_PERIOD / r)
+        ang = NORTH_ARC[0] + (period / 2 if n_row % 2 else 0.0)
+        while ang + seg <= NORTH_ARC[1]:
+            pts = [_arc_point(r, ang + seg * t / 3, STRAIGHT_L / 2)[0] for t in range(4)]
+            for (xa, ya), (xb, yb) in zip(pts, pts[1:]):
+                _beam(bm_y, (xa, ya, z + 1.0), (xb, yb, z + 1.0))
+            for xa, ya in (pts[0], pts[-1]):
+                _beam(bm_y, (xa, ya, z), (xa, ya, z + 1.0))
+            ang += period
+
     # Żółte poręcze przy przejściach Galery (wzdłuż spadku, przy krawędzi sektora)
     run = math.hypot(STEP_D, STEP_H)
     pitch = -math.atan2(STEP_H, STEP_D)
@@ -678,6 +722,8 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
             continue
         if y0 > 0 and math.degrees(math.atan2(y0 - STRAIGHT_L / 2, x0)) < sheet_arc_deg - 1e-6 and x0 > 0:
             continue
+        if y0 > STRAIGHT_L / 2 and GUEST_ARC[0] <= math.degrees(math.atan2(y0 - STRAIGHT_L / 2, x0)) <= GUEST_ARC[1]:
+            continue                                # sektor gości ma wysokie ogrodzenie (build_bowl)
         yaw = math.atan2(y1 - y0, x1 - x0) - math.pi / 2
         seg = math.hypot(x1 - x0, y1 - y0)
         mx, my = (x0 + x1) / 2, (y0 + y1) / 2
