@@ -781,8 +781,8 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
                     loop[uv].uv = (u0 + mu + t * (u1 - u0 - 2 * mu), v0 + mv + (p.z / h + 0.5) * (v1 - v0 - 2 * mv))
                 else:
                     loop[uv].uv = (u0 + mu / 2, v0 + mv / 2)        # biały margines slotu
-        for side in (-(w / 2 - 0.5), w / 2 - 0.5):
-            sx, sy = x + side * tangent.x, y + side * tangent.y
+        for side in (-(w / 2 - 0.5), w / 2 - 0.5):                # słupki za tablicą (od strony skarpy)
+            sx, sy = x + side * tangent.x + 0.1 * radial.x, y + side * tangent.y + 0.1 * radial.y
             top = CROWN_AD_BOTTOM + h * 0.7
             _obox(bm_ad, (sx, sy, STAND_H + top / 2), (0.1, 0.1, top), yaw=a)
     _finish_mesh(col, bm_ad, "Bandy_Korona_Luk", [mats['ads_crown']])
