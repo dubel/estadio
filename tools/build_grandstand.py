@@ -318,6 +318,17 @@ def create_materials():
     mats['ads_crown'] = mat_ads
 
     mats['fence'] = make_alpha_material("Mat_Fence_Red", os.path.join(TEXTURES_DIR, "fence_steel_red.png"), 0.55)
+    mats['ball_net'] = make_alpha_material("Mat_Pilkochwyt_Siatka", os.path.join(TEXTURES_DIR, "pilkochwyt_siatka.png"), 0.9)
+
+    # Trybuna tymczasowa na łuku południowym (bloczki_na_trybunie.png): zielone słupy, ciemny dach
+    for key, name, color, rough in (('steel_green', "Mat_Stal_Zielona", (0.06, 0.28, 0.12), 0.6),
+                                    ('roof_dark', "Mat_Dach_Ciemny", (0.07, 0.08, 0.08), 0.7)):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        bsdf = m.node_tree.nodes.get("Principled BSDF")
+        bsdf.inputs['Base Color'].default_value = (*color, 1.0)
+        bsdf.inputs['Roughness'].default_value = rough
+        mats[key] = m
 
     # Blacha trapezowa ocynkowana ogrodzenia północnego (ambientCG CorrugatedSteel005, CC0)
     mat_sheet = bpy.data.materials.new("Mat_Blacha_Falista")

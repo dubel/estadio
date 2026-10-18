@@ -293,6 +293,20 @@ TUNNEL_ROWS = 10        # głębokość wcięcia w rzędach; wylot pod rzędem 1
 SHEET_FENCE_Y = 62.0
 SHEET_FENCE_H = 2.0
 SHEET_TILE_M = 1.4      # 8 przetłoczeń na kafel: rozstaw ok. 17 cm
+# Trybuna tymczasowa za bramką południową, pod tablicą wyników (bloczki_na_trybunie.png): dostawiona
+# na wymogi licencyjne, rusztowanie ze stalowych rur, pomosty rzędów z blachy, czerwone krzesełka, ciemny dach
+# na zielonych słupach. Prosta, równoległa do linii bramkowej, na płaskim terenie przed łukiem. Na zdjęciu
+# sięga dalej na zachód niż na wschód od bramki. Przed nią piłkochwyt: zielona siatka na słupach.
+TEMP_STAND_X = (-30.0, 26.0)
+TEMP_STAND_FRONT_Y = -62.0                 # 9.5 m za linią bramkową, jak blacha na północy
+TEMP_ROWS, TEMP_ROW_D, TEMP_ROW_H, TEMP_DECK0 = 6, 0.8, 0.35, 0.5
+TEMP_AISLES = (-16.0, -2.0, 12.0)          # osie przejść między sektorami
+TEMP_AISLE_W = 1.2
+TEMP_BAY = 2.5                             # rozstaw stojaków rusztowania
+TEMP_ROOF_Z = (4.3, 4.0)                   # spód dachu: przód, tył (spadek do tyłu)
+TEMP_ROOF_POST_EVERY = 5.0
+BALL_NET_X, BALL_NET_Y, BALL_NET_H = (-16.0, 16.0), -58.5, 6.0
+BALL_NET_POST_EVERY, BALL_NET_SAG = 4.0, 0.3   # luźna siatka: lina między słupami ugina się o BALL_NET_SAG
 SOUTH_ADS = [(-38.0, 0), (-51.0, 1), (-64.0, 2), (-77.0, 3)]   # bandy na koronie nad krzesełkami: (kąt, wiersz atlasu), od wschodu
 
 
@@ -710,6 +724,96 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
             sx, sy = x + side * tangent.x, y + side * tangent.y
             _obox(bm_ad, (sx, sy, STAND_H + 1.3), (0.1, 0.1, 2.6), yaw=a)
     _finish_mesh(col, bm_ad, "Bandy_Korona_Luk", [mats['ads_crown']])
+
+
+def build_temporary_south_stand(col, mats):
+    """
+    Trybuna tymczasowa (TEMP_*) i piłkochwyt przed nią (BALL_NET_*). Pomosty rzędów i podstopnie to płyty
+    stalowe, pod nimi rusztowanie: stojaki co TEMP_BAY na każdej krawędzi rzędu, zastrzały na przedniej
+    i tylnej ścianie. Krzesełka patrzą na północ, na boisko; przejścia TEMP_AISLES bez krzesełek, ze stopniem
+    wejściowym z gruntu.
+    """
+    x0, x1 = TEMP_STAND_X
+    yf = TEMP_STAND_FRONT_Y
+    edge = lambda i: yf - i * TEMP_ROW_D                     # krawędź rzędu i (i = 0: czoło trybuny)
+    deck = lambda i: TEMP_DECK0 + i * TEMP_ROW_H             # wysokość pomostu rzędu i
+    yb, z_top = edge(TEMP_ROWS), deck(TEMP_ROWS - 1)
+
+    bm_deck, bm_frame, bm_green, bm_roof = bmesh.new(), bmesh.new(), bmesh.new(), bmesh.new()
+    for i in range(TEMP_ROWS):
+        _obox(bm_deck, ((x0 + x1) / 2, (edge(i) + edge(i + 1)) / 2, deck(i) - 0.04), (x1 - x0, TEMP_ROW_D, 0.08))
+        z_low = deck(i - 1) if i else 0.0
+        _obox(bm_deck, ((x0 + x1) / 2, edge(i) - 0.015, (z_low + deck(i)) / 2), (x1 - x0, 0.03, deck(i) - z_low))
+    for xa in TEMP_AISLES:                                   # stopień wejściowy z gruntu na pierwszy pomost
+        _obox(bm_deck, (xa, yf + 0.2, deck(0) / 4), (TEMP_AISLE_W, 0.4, deck(0) / 2))
+
+    n_bays = round((x1 - x0) / TEMP_BAY)
+    xs = [x0 + 0.1 + k * (x1 - x0 - 0.2) / n_bays for k in range(n_bays + 1)]
+    for k, x in enumerate(xs):
+        for i in range(TEMP_ROWS + 1):
+            top = deck(min(i, TEMP_ROWS - 1)) - 0.08
+            _beam(bm_frame, (x, edge(i) - 0.05, 0.0), (x, edge(i) - 0.05, top), 0.05, 0.05)
+        if k < n_bays:
+            for i in (0, TEMP_ROWS):
+                top = deck(min(i, TEMP_ROWS - 1)) - 0.1
+                a, b = (x, xs[k + 1]) if k % 2 else (xs[k + 1], x)
+                _beam(bm_frame, (a, edge(i) - 0.05, 0.1), (b, edge(i) - 0.05, top), 0.04, 0.04)
+    _rail(bm_frame, (x0, yf + 0.05, deck(0)), (x1, yf + 0.05, deck(0)), 2.5)
+    _rail(bm_frame, (x0, yb + 0.05, z_top), (x1, yb + 0.05, z_top), 2.5)
+    for x in (x0 + 0.05, x1 - 0.05):
+        _rail(bm_frame, (x, yf, deck(0)), (x, yb, z_top), 1.6)
+
+    zf, zb = TEMP_ROOF_Z
+    n_posts = round((x1 - x0) / TEMP_ROOF_POST_EVERY)
+    for k in range(n_posts + 1):
+        x = x0 + 0.1 + k * (x1 - x0 - 0.2) / n_posts
+        _beam(bm_green, (x, yf - 0.1, deck(0)), (x, yf - 0.1, zf), 0.12, 0.12)
+        _beam(bm_green, (x, yb + 0.1, z_top), (x, yb + 0.1, zb), 0.12, 0.12)
+    _beam(bm_green, (x0, yf - 0.1, zf - 0.1), (x1, yf - 0.1, zf - 0.1), 0.12, 0.2)
+    _beam(bm_green, (x0, yb + 0.1, zb - 0.1), (x1, yb + 0.1, zb - 0.1), 0.12, 0.2)
+    over, k = 0.6, (zf - zb) / (yf - yb)                   # okap od boiska, spadek dachu
+    top_f, top_b = (yf + over, zf + over * k), (yb - 0.3, zb - 0.3 * k)
+    _extrude_yz(bm_roof, [top_f, top_b, (top_b[0], top_b[1] - 0.08), (top_f[0], top_f[1] - 0.08)], x0 - 0.3, x1 + 0.3)
+    bmesh.ops.recalc_face_normals(bm_roof, faces=bm_roof.faces)
+
+    seats = []
+    gaps = [(a - TEMP_AISLE_W / 2, a + TEMP_AISLE_W / 2) for a in TEMP_AISLES]
+    for i in range(TEMP_ROWS):
+        y = edge(i + 1) + SEAT_BACK_GAP
+        x = x0 + 0.5
+        while x < x1 - 0.4:
+            if not any(a - 0.25 < x < b + 0.25 for a, b in gaps):
+                seats.append((x, y, deck(i), -math.pi / 2))
+            x += SEAT_PITCH
+
+    _finish_mesh(col, bm_deck, "Trybuna_Tymczasowa_Pomosty", [mats['metal']])
+    _finish_mesh(col, bm_frame, "Trybuna_Tymczasowa_Rusztowanie", [mats['metal']])
+    _finish_mesh(col, bm_green, "Trybuna_Tymczasowa_Slupy", [mats['steel_green']])
+    _finish_mesh(col, bm_roof, "Trybuna_Tymczasowa_Dach", [mats['roof_dark']])
+    place_seats(col, "Krzeselka_Trybuna_Tymczasowa", seat_material("Mat_Krzeselka_Tymczasowe", (0.62, 0.07, 0.09)), seats)
+
+    # Piłkochwyt: siatka od gruntu do liny, lina ugięta między słupami; UV 1 kafel = 1 m
+    bm_net, bm_posts = bmesh.new(), bmesh.new()
+    uv = bm_net.loops.layers.uv.verify()
+    nx0, nx1 = BALL_NET_X
+    n = round((nx1 - nx0) / BALL_NET_POST_EVERY)
+    px = [nx0 + k * (nx1 - nx0) / n for k in range(n + 1)]
+    for xa, xb in zip(px, px[1:]):
+        steps = 6
+        cols = []
+        for j in range(steps + 1):
+            t = j / steps
+            x = xa + t * (xb - xa)
+            cols.append((x, BALL_NET_H - 0.1 - BALL_NET_SAG * 4 * t * (1 - t)))
+        for (xa_, za), (xb_, zb_) in zip(cols, cols[1:]):
+            c = [(xa_, 0.1), (xb_, 0.1), (xb_, zb_), (xa_, za)]
+            face = bm_net.faces.new([bm_net.verts.new((x, BALL_NET_Y, z)) for x, z in c])
+            for loop, (x, z) in zip(face.loops, c):
+                loop[uv].uv = (x, z)
+    for x in px:
+        _beam(bm_posts, (x, BALL_NET_Y - 0.06, 0.0), (x, BALL_NET_Y - 0.06, BALL_NET_H), 0.1, 0.1)
+    _finish_mesh(col, bm_net, "Pilkochwyt_Siatka", [mats['ball_net']])
+    _finish_mesh(col, bm_posts, "Pilkochwyt_Slupy", [mats['metal']])
 
 
 def _flat(name, color, roughness):

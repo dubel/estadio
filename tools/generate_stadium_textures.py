@@ -428,6 +428,21 @@ def generate_goal_net_texture():
     img.save(save_path)
     print(f"Zapisano teksturę siatki bramkarskiej: {save_path}")
 
+def generate_ball_net_texture():
+    """Zielona siatka piłkochwytów za bramką południową (bloczki_na_trybunie.png): oczka 12.5 cm, kafel 1 m."""
+    W = H = 512
+    cells = 8
+    green = (46, 140, 58, 255)
+    img = Image.new("RGBA", (W, H), green[:3] + (0,))   # tło w kolorze sznurka: mipmapy nie przyciemniają siatki
+    draw = ImageDraw.Draw(img)
+    for i in range(cells + 1):
+        c = min(int(i * W / cells), W - 1)
+        draw.line([(c, 0), (c, H)], fill=green, width=4)
+        draw.line([(0, c), (W, c)], fill=green, width=4)
+    save_path = os.path.join(TEXTURES_DIR, "pilkochwyt_siatka.png")
+    img.save(save_path)
+    print(f"Zapisano teksturę siatki piłkochwytów: {save_path}")
+
 def generate_fence_texture():
     """
     Przęsło ogrodzenia trybun (2.5 m x 2.5 m, widok_z_galery.jpg): u dołu pełne, rdzawobrązowe panele
@@ -540,6 +555,7 @@ if __name__ == "__main__":
     generate_corrugated_roof_textures()
     generate_floodlight_glow_sprite()
     generate_goal_net_texture()
+    generate_ball_net_texture()
     generate_fence_texture()
     generate_facade_texture()
     generate_crown_ads_texture()

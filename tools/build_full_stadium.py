@@ -45,7 +45,8 @@ from build_horseshoe_bowl import (
     build_pitch_lines,
     build_bowl,
     build_fan_banners,
-    build_scoreboard
+    build_scoreboard,
+    build_temporary_south_stand
 )
 
 ROOT = os.path.dirname(TOOLS_DIR)
@@ -285,6 +286,7 @@ def assemble_full_stadium():
     build_bowl(col_bowl, mats)
     build_fan_banners(col_bowl, mats)
     build_scoreboard(col_bowl, mats)
+    build_temporary_south_stand(col_bowl, mats)
     
     print("--- 3. Generowanie Trybuny Głównej (Zachodniej) ---")
     build_grandstand(col_grandstand, mats)
