@@ -98,13 +98,19 @@ try {
     out.playersTunnelX = x();
     out.playersTunnelY = y();
 
-    // wejście północne: z placu schodami (środkowy bieg, otwarte skrzydło bramy) na podest promenady (Z 3.2 m)
+    // wejście północne: z placu schodami (środkowy bieg, otwarte skrzydło bramy) na podest bramy (Z 2.4 m)
     W.__setCam(-72, 1.65, -72, -40, 1.65, -72);
     out.entranceY = 0;
     for (let i = 0; i < 40; i++) {
       W.__simulateWalk(0.1, true);
       if (y() > out.entranceY) { out.entranceY = y(); out.entranceX = x(); }
     }
+
+    // przejazd północny: z placu wzdłuż czopu przez otwartą bramę wjazdową (Y ≈ 77.5 m) ku boisku
+    W.__setCam(-68, 1.65, -77.5, -50, 1.65, -77.5);
+    W.__simulateWalk(3, true);
+    out.passageX = x();
+    out.passageY = y();
 
     W.__setCam(10, 1.65, -50, 10, 1.65, -120); // z boiska na północ — ogrodzenie z blachy na Y = 62 m
     W.__simulateWalk(4, true);
@@ -133,7 +139,8 @@ try {
   check('tunel Galery: przejście pod wałem', r.galeraTunnelX > 75 && r.galeraTunnelY < 2, `x=${f(r.galeraTunnelX)} y=${f(r.galeraTunnelY)}`);
   check('ogrodzenie Galery zatrzymuje na bieżni', r.fenceX < 45 && r.fenceY < 2, `x=${f(r.fenceX)} y=${f(r.fenceY)}`);
   check('tunel harmonijkowy: przejście do drzwi', r.playersTunnelX < -50.5 && r.playersTunnelY < 1.8, `x=${f(r.playersTunnelX)} y=${f(r.playersTunnelY)}`);
-  check('wejście północne: schody i brama na podest', r.entranceX > -59 && r.entranceY > 4.6, `x=${f(r.entranceX)} y=${f(r.entranceY)}`);
+  check('wejście północne: schody i brama na podest', r.entranceX > -57.4 && r.entranceY > 3.9, `x=${f(r.entranceX)} y=${f(r.entranceY)}`);
+  check('przejazd północny: brama wjazdowa', r.passageX > -55 && r.passageY < 2, `x=${f(r.passageX)} y=${f(r.passageY)}`);
   check('ogrodzenie z blachy zamyka północ', r.sheetZ > -62 && r.sheetZ < -60, `z=${f(r.sheetZ)}`);
   check('teren za Galerą (bez spadania)', r.outsideX > 75 && Math.abs(r.outsideY - 1.40) < 0.1, `x=${f(r.outsideX)} y=${f(r.outsideY)}`);
 } finally {

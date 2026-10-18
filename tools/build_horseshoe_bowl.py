@@ -238,7 +238,11 @@ FRONT_WALK = 1.5       # chodnik między ogrodzeniem a pierwszym rzędem — mur
                        # (widok_z_galery.jpg, kolorystyka_galery_oraz_budynki_tla.png)
 ROW0_H = 0.45          # wysokość pierwszego stopnia nad chodnikiem
 FENCE_H = 2.5          # stalowe ogrodzenie na gruncie: pełne panele u dołu, siatka wyżej (widok_z_galery.jpg)
-BOWL_ANGLE = 149.0     # podkowa kończy się tam, gdzie zaczyna się trybuna główna (Y = ±65 m)
+# Końce podkowy przy trybunie głównej (kąt od środka łuku, 0° = wschód). Na południu czop leży na cieniu
+# z ortofotomapy; na północy łuk jest krótszy: między końcem trybuny a czopem mieszczą się schody, przejazd
+# z bramą wjazdową i furtka (brama_od_luku_na_polnocy.jpg, il20250305_898037691), jasny pas na ortofotomapie.
+BOWL_ANGLE_N = 145.5
+BOWL_ANGLE_S = 149.0
 STAND_DEPTH = 22.0     # głębokość widowni na wale ziemnym
 STAND_H = 6.8          # wysokość korony wału (na niej stoi tablica wyników, build_scoreboard)
 NUM_STEPS = 20         # 20 betonowych stopni
@@ -260,11 +264,11 @@ SOUTH_CONCRETE_RAIL_ROWS = (6, 12)
 # Łuk północny (sektor gości, lks16.jpg, lks18.jpg): goły beton, krótkie żółte barierki w kształcie U rozstawione
 # w szachownicę co 3 rzędy; w zachodniej części, przy trybunie głównej, klatka gości z wysokiego czerwonego
 # ogrodzenia: przegroda w dół stopni na GUEST_ARC[0] i przy trybunie głównej, wysokie ogrodzenie od czoła.
-# Kąty od środka łuku (0, STRAIGHT_L / 2): 0° to wschód (Galera), 90° oś boiska, 149° trybuna główna.
-NORTH_ARC = (6.0, 147.0)
+# Kąty od środka łuku (0, STRAIGHT_L / 2): 0° to wschód (Galera), 90° oś boiska, BOWL_ANGLE_N trybuna główna.
+NORTH_ARC = (6.0, BOWL_ANGLE_N - 2.0)
 NORTH_RAIL_ROWS = (3, 6, 9, 12, 15)
 NORTH_RAIL_LEN, NORTH_RAIL_PERIOD = 2.4, 6.0   # długość barierki i rozstaw wzdłuż rzędu (metry)
-GUEST_ARC = (112.0, 148.5)
+GUEST_ARC = (112.0, BOWL_ANGLE_N - 0.5)
 
 # Galera od północy (kolorystyka_galery_oraz_budynki_tla.png): 6 sekcji rozdzielonych siatką od chodnika
 # po koronę. (y_od, y_do, kolorystyka, oś przejścia):
@@ -361,7 +365,7 @@ def build_bowl(col, mats):
     """
     bm_bowl = bmesh.new()
     bowl_rings = []
-    bowl_path = stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE)
+    bowl_path = stadium_path(R_TRACK_OUT, BOWL_ANGLE_N, -BOWL_ANGLE_S)
     for px, py, nx, ny in bowl_path:
         b_pts = [(px + nx * FRONT_WALK, py + ny * FRONT_WALK, -0.05)]
         for s in range(NUM_STEPS):
@@ -402,7 +406,7 @@ def build_bowl(col, mats):
         for loop, c in zip(face.loops, corners):
             loop[uv].uv = (c[3] / 2.5, c[4])
 
-    path = stadium_path(R_TRACK_OUT, BOWL_ANGLE, -BOWL_ANGLE)
+    path = stadium_path(R_TRACK_OUT, BOWL_ANGLE_N, -BOWL_ANGLE_S)
     for off, flip in [(0.02, False), (0.06, True)]:
         dist = 0.0
         for (x0, y0, nx0, ny0), (x1, y1, nx1, ny1) in zip(path, path[1:]):
@@ -715,7 +719,7 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
     # Na łuku północnym przy Galerze zamiast niego blacha (build_north_sheet_fence).
     _, sheet_arc_deg = _sheet_fence_path()
     bm_lf = bmesh.new()
-    path = stadium_path(R_TRACK_OUT + 0.15, BOWL_ANGLE, -BOWL_ANGLE, arc_step_deg=3.0)
+    path = stadium_path(R_TRACK_OUT + 0.15, BOWL_ANGLE_N, -BOWL_ANGLE_S, arc_step_deg=3.0)
     k = 0
     for (x0, y0, nx0, ny0), (x1, y1, nx1, ny1) in zip(path, path[1:]):
         if abs(ny0) < 1e-6 and abs(ny1) < 1e-6:     # prosta Galery ma wysokie ogrodzenie

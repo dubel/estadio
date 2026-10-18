@@ -318,6 +318,22 @@ def create_materials():
     mats['ads_crown'] = mat_ads
 
     mats['fence'] = make_alpha_material("Mat_Fence_Red", os.path.join(TEXTURES_DIR, "fence_steel_red.png"), 0.55)
+    # Turkusowa farba parteru szczytów trybuny i cokołów czopów (il20250305_898037691, brama_od_luku_na_polnocy.jpg)
+    m = bpy.data.materials.new("Mat_Farba_Turkus")
+    m.use_nodes = True
+    m.node_tree.nodes.get("Principled BSDF").inputs['Base Color'].default_value = (0.12, 0.55, 0.6, 1.0)
+    m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.8
+    mats['turquoise'] = m
+    # Grafiki szczytów trybuny (tools/generate_stadium_textures.py: generate_entrance_textures)
+    for key, name, tex in (('mosir', "Mat_Baner_MOSiR", "baner_mosir.png"),
+                           ('plan', "Mat_Tablica_MOSiR_Plan", "tablica_mosir_plan.png"),
+                           ('restauracja', "Mat_Napis_Restauracja", "napis_restauracja.png"),
+                           ('plaque', "Mat_Tablica_Pamiatkowa", "tablica_pamiatkowa.png")):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.7
+        setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, tex))
+        mats[key] = m
     mats['ball_net'] = make_alpha_material("Mat_Pilkochwyt_Siatka", os.path.join(TEXTURES_DIR, "pilkochwyt_siatka.png"), 0.9)
 
     # Trybuna tymczasowa na łuku południowym (bloczki_na_trybunie.png): zielone słupy, ciemny dach
@@ -688,6 +704,7 @@ def build_grandstand(col, mats):
     build_dugouts(col, mats)
     build_players_tunnel(col, mats)
     build_vip_pavilion(col, mats)
+    build_gables(col, mats)
 
     print(f"Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, {NUM_BAYS} tuneli).")
     return obj_lower, obj_upper
@@ -868,6 +885,137 @@ def build_vip_pavilion(col, mats):
         _box(bm_frame, x_f - 0.06, x_f, y - 0.04, y + 0.04, z0, z1)
     _finish(col, bm_glass, "Pawilon_VIP_Okna", mats['glass'])
     _finish(col, bm_frame, "Pawilon_VIP_Ramy", mats['metal'])
+
+
+# Szczyty trybuny (il20250305_898037705/725 północ, 898037963/021/039 południe, tablica_trybuna.jpg):
+# trójkąt przeszklenia między dolną krawędzią belki dźwigara, ukośnym odciągiem i budynkiem u dołu.
+# Północ: dwukondygnacyjny budynek pod szczytem (turkusowy parter z drzwiami, piętro z pasem okien,
+# napis RESTAURACJA, plan sektorów). Południe: przeszklenie od GABLE_S_GLASS_Z z banerem MOSiR, pod nim
+# biała ściana; koniec budynku tylnego na biało („budka”) z oknami, planem sektorów, tablicą pamiątkową
+# i stalowymi schodami zewnętrznymi.
+GABLE_X0 = LIP_X + 0.6                  # za słupem czołowym dźwigara
+GABLE_N_DEPTH = 3.0                     # głębokość budynku północnego (przed tunelem przęsła 0)
+GABLE_N_TOP, GABLE_N_PARTER = 7.05, 3.0
+GABLE_S_GLASS_Z = 3.5
+REAR_BLD = (32.5, 41.5, 3.5, 7.1)       # budynek tylny (X0, X1, Z0, Z1), build_grandstand
+
+
+def _girder_bottom(x):
+    """Dolna krawędź belki dźwigara pod płytą sektora górnego (jak profil `beam` w build_grandstand)."""
+    xa, za = LIP_X + 0.6, underside(LIP_X + 0.6) - 1.0
+    xb, zb = REAR_X, underside(REAR_X) - 1.6
+    return za + (x - xa) * (zb - za) / (xb - xa)
+
+
+def _strut_x(z):
+    """X wewnętrznej krawędzi ukośnego odciągu na wysokości z (od (30, spód belki) do (38.6, 0))."""
+    x0, z0 = 30.0, underside(30.0) - 1.0
+    return 38.6 + (x0 - 38.6) * z / z0
+
+
+def _gable_quad(bm, uv, y, out, xa, xb, za, zb):
+    """Prostokąt na płaszczyźnie szczytu Y = y, lico na zewnątrz (out = -1 północ, +1 południe), u od lewej
+    patrząc z zewnątrz (północ: mniejsze X, południe: większe X)."""
+    if out < 0:
+        c = [(xa, za, 0, 0), (xb, za, 1, 0), (xb, zb, 1, 1), (xa, zb, 0, 1)]
+    else:
+        c = [(xb, za, 0, 0), (xa, za, 1, 0), (xa, zb, 1, 1), (xb, zb, 0, 1)]
+    face = bm.faces.new([bm.verts.new((x, y, z)) for x, z, _, _ in c])
+    for loop, (_, _, u, v) in zip(face.loops, c):
+        loop[uv].uv = (u, v)
+
+
+def _girder_x(z):
+    """Odwrotność _girder_bottom: X, na którym dolna krawędź belki jest na wysokości z."""
+    xa, za = LIP_X + 0.6, underside(LIP_X + 0.6) - 1.0
+    xb, zb = REAR_X, underside(REAR_X) - 1.6
+    return xa + (z - za) * (xb - xa) / (zb - za)
+
+
+def _gable_glass(bm_g, bm_f, y, z_bottom):
+    """Przeszklenie nad z_bottom między belką dźwigara a odciągiem: szyba i ramy co ~1.6 m."""
+    lo, hi = GABLE_X0, 38.6                                 # wierzchołek: belka przecina odciąg
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if _strut_x(_girder_bottom(mid)) > mid else (lo, mid)
+    apex = (lo, _girder_bottom(lo))
+    xl = max(GABLE_X0, _girder_x(z_bottom))
+    poly = [(xl, z_bottom), (_strut_x(z_bottom), z_bottom), apex]
+    if xl == GABLE_X0:
+        poly.append((GABLE_X0, _girder_bottom(GABLE_X0)))
+    _extrude_profile(bm_g, poly, y - 0.02, y + 0.02)
+    top = lambda x: _girder_bottom(x) if x <= apex[0] else (underside(30.0) - 1.0) * (38.6 - x) / (38.6 - 30.0)
+    x = xl + 1.6
+    while x < _strut_x(z_bottom) - 0.3:
+        _box(bm_f, x - 0.04, x + 0.04, y - 0.05, y + 0.05, z_bottom, top(x))
+        x += 1.6
+    z = z_bottom + 1.6
+    while z < apex[1] - 0.3:
+        _box(bm_f, max(GABLE_X0, _girder_x(z)), _strut_x(z), y - 0.05, y + 0.05, z - 0.04, z + 0.04)
+        z += 1.6
+
+
+def build_gables(col, mats):
+    """Szczyty trybuny: przeszklenia, budynek północny, ściana i „budka” na południu, grafiki na ścianach."""
+    bm_glass, bm_frame, bm_turq, bm_conc, bm_white, bm_win, bm_door, bm_steel = (bmesh.new() for _ in range(8))
+    deco = {k: bmesh.new() for k in ('mosir', 'plan', 'restauracja', 'plaque')}
+    uvs = {k: bm.loops.layers.uv.verify() for k, bm in deco.items()}
+    yn, ys = -0.3, TOTAL_LENGTH_Y + 0.3                     # lica szczytów, przed osiami skrajnych dźwigarów
+
+    # Północ: budynek (dach pod belką dźwigara), turkusowy parter, piętro z pasem okien
+    x1 = REAR_BLD[1] - 0.05
+    top = lambda x: min(GABLE_N_TOP, _girder_bottom(x) - 0.05)
+    _box(bm_turq, GABLE_X0, x1, yn, GABLE_N_DEPTH, 0.0, GABLE_N_PARTER)
+    xs = [GABLE_X0 + k * (x1 - GABLE_X0) / 12 for k in range(13)]
+    upper = [(GABLE_X0, GABLE_N_PARTER), (x1, GABLE_N_PARTER)] + [(x, top(x)) for x in xs[::-1]]
+    _extrude_profile(bm_conc, upper, yn, GABLE_N_DEPTH)
+    for xa in range(14, 39, 3):
+        if top(xa + 2.8) > 6.0:
+            _box(bm_win, xa, xa + 2.8, yn - 0.04, yn, 4.4, 5.9)
+    for xa in (17.5, 24.5, 33.0):
+        _box(bm_door, xa, xa + 1.0, yn - 0.03, yn, 0.0, 2.1)
+    _gable_quad(deco['restauracja'], uvs['restauracja'], yn - 0.04, -1, 30.5, 34.0, 3.3, 4.2)
+    _gable_quad(deco['plan'], uvs['plan'], yn - 0.04, -1, 14.6, 16.2, 3.2, 4.33)
+    _gable_glass(bm_glass, bm_frame, yn + 0.1, GABLE_N_TOP)
+
+    # Południe: biała ściana do GABLE_S_GLASS_Z, nad nią przeszklenie z banerem MOSiR
+    _box(bm_white, GABLE_X0, 38.6, TOTAL_LENGTH_Y + 0.05, ys, 0.0, GABLE_S_GLASS_Z)
+    _gable_glass(bm_glass, bm_frame, ys - 0.15, GABLE_S_GLASS_Z)
+    _gable_quad(deco['mosir'], uvs['mosir'], ys + 0.03, 1, 17.5, 26.5, 2.0, 6.4)
+    # „Budka”: koniec budynku tylnego na biało, okna u góry, plan sektorów i tablica pamiątkowa pod nimi
+    bx0, bx1, bz0, bz1 = REAR_BLD
+    _box(bm_white, bx0 - 0.05, bx1 + 0.05, TOTAL_LENGTH_Y - 4.0, ys + 0.1, bz0 - 0.05, bz1 + 0.05)
+    for xa in (33.0, 35.6, 38.2):
+        _box(bm_win, xa, xa + 2.4, ys + 0.1, ys + 0.14, 5.6, 6.8)
+    _gable_quad(deco['plan'], uvs['plan'], ys + 0.11, 1, 33.2, 34.8, 4.05, 5.18)
+    _gable_quad(deco['plaque'], uvs['plaque'], ys + 0.11, 1, 37.2, 39.5, 3.75, 5.28)
+    # Stalowe schody zewnętrzne z placu na budkę wzdłuż szczytu
+    n, tread = 14, 0.32
+    rise = bz0 / n
+    xs0 = bx0 - n * tread
+    prof = [(xs0, 0.0)]
+    for k in range(n):
+        prof += [(xs0 + k * tread, (k + 1) * rise), (xs0 + (k + 1) * tread, (k + 1) * rise)]
+    prof += [(bx0, (n - 1) * rise), (xs0 + tread, 0.0)]
+    _extrude_profile(bm_steel, prof, ys + 0.2, ys + 1.2)
+    _rail(bm_steel, (xs0, ys + 1.2, 0.0), (bx0, ys + 1.2, bz0), 1.5)
+
+    _finish(col, bm_glass, "Szczyty_Przeszklenie", mats['glass'])
+    _finish(col, bm_frame, "Szczyty_Ramy", mats['metal'])
+    _finish(col, bm_turq, "Szczyt_Polnoc_Parter", mats['turquoise'])
+    _finish(col, bm_conc, "Szczyt_Polnoc_Pietro", mats['concrete'])
+    _finish(col, bm_white, "Szczyt_Poludnie_Biale", mats['goal_white'])
+    _finish(col, bm_win, "Szczyty_Okna", mats['glass'])
+    _finish(col, bm_door, "Szczyty_Drzwi", mats['board_dark'])
+    _finish(col, bm_steel, "Szczyt_Poludnie_Schody_Stalowe", mats['metal'])
+    for key, bm in deco.items():
+        bm.normal_update()
+        mesh = bpy.data.meshes.new("Szczyty_" + key + "_Mesh")
+        bm.to_mesh(mesh)
+        bm.free()
+        obj = bpy.data.objects.new("Szczyty_" + key, mesh)
+        obj.data.materials.append(mats[key])
+        col.objects.link(obj)
 
 
 def lower_seat_rows():

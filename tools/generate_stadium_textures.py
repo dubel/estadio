@@ -309,24 +309,30 @@ def generate_mural_texture():
     print("Zapisano mural (grafy_na_trybunie.png)")
 
 
-ENTRANCE_PHOTOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "zdjecia", "wejscia_na_trybune")
-# Narożniki (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny) w pikselach zdjęć
+PHOTOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "zdjecia")
+# Narożniki (lewy-górny, prawy-górny, prawy-dolny, lewy-dolny) w pikselach zdjęć (ścieżki względem zdjecia/)
 ENTRANCE_GRAPHICS = [
-    # baner nad bramą wejścia północnego „ŁÓDZKI KLUB SPORTOWY WITA!” (740 x 416)
-    ("34dec5jwrhekegfii2gbtewomd2jvtzt.jpeg", [(217, 42), (490, 43), (490, 83), (217, 83)], (1024, 152), "baner_lks_wita.png"),
-    # baner „MOSiR Łódź” na południowym końcu trybuny (1024 x 511); lewy dolny róg zasłania budynek
-    ("lks19 (1).jpg", [(652, 234), (845, 236), (845, 334), (652, 334)], (1024, 512), "baner_mosir.png"),
+    # baner nad bramą wejścia północnego „ŁÓDZKI KLUB SPORTOWY WITA! / TRYBUNA SEKTOR 7-12” (740 x 416)
+    ("wejscia_na_trybune/34dec5jwrhekegfii2gbtewomd2jvtzt.jpeg", [(217, 42), (490, 43), (490, 83), (217, 83)], (1024, 152), "baner_lks_wita.png"),
+    # baner nad bramą wejścia południowego „… WITA! / TRYBUNA SEKTOR 1-6 / LOŻA B” (1280 x 853, ujęcie skośne)
+    ("il20250305_898038021_xlarge.jpg", [(918, 416), (1212, 384), (1216, 428), (922, 461)], (1024, 152), "baner_lks_wita_poludnie.png"),
+    # baner „MOSiR Łódź” na przeszkleniu południowego szczytu trybuny (1024 x 511); lewy dolny róg zasłania budynek
+    ("wejscia_na_trybune/lks19 (1).jpg", [(652, 234), (845, 236), (845, 334), (652, 334)], (1024, 512), "baner_mosir.png"),
     # tablica MOSiR z planem sektorów (800 x 600)
-    ("DSC01679.jpg", [(40, 55), (748, 50), (755, 545), (35, 548)], (1024, 724), "tablica_mosir_plan.png"),
+    ("wejscia_na_trybune/DSC01679.jpg", [(40, 55), (748, 50), (755, 545), (35, 548)], (1024, 724), "tablica_mosir_plan.png"),
+    # napis „RESTAURACJA” na budynku północnego szczytu (1280 x 853)
+    ("il20250305_898037725_xlarge.jpg", [(930, 527), (1095, 525), (1095, 583), (930, 585)], (512, 160), "napis_restauracja.png"),
+    # tablica pamiątkowa „Działaczom i zawodnikom ŁKS” na białej ścianie z czerwonym pasem (1280 x 1920)
+    ("tablica_trybuna.jpg", [(0, 790), (1280, 800), (1280, 1650), (0, 1650)], (768, 512), "tablica_pamiatkowa.png"),
 ]
 
 
 def generate_entrance_textures():
-    """Grafiki wejść na styku łuków z trybuną główną, wyprostowane ze zdjęć zdjecia/wejscia_na_trybune."""
+    """Grafiki wejść i szczytów trybuny głównej, wyprostowane ze zdjęć (ENTRANCE_GRAPHICS)."""
     for photo, quad, size, out in ENTRANCE_GRAPHICS:
-        im = Image.open(os.path.join(ENTRANCE_PHOTOS, photo)).convert("RGB")
+        im = Image.open(os.path.join(PHOTOS_DIR, photo)).convert("RGB")
         _rectify(im, quad, size).save(os.path.join(TEXTURES_DIR, out))
-    print("Zapisano grafiki wejść (baner WITA, baner MOSiR, plan sektorów)")
+    print("Zapisano grafiki wejść i szczytów trybuny")
 
 
 def generate_gate_mesh_texture():
