@@ -26,3 +26,6 @@ Thumbs.db
 
 # Artefakty builda modelu (wypalone AO, surowy GLB)
 build/
+
+# Cudze zdjęcia źródłowe (TV, prasa, Facebook): tylko lokalnie, nie publikujemy
+zdjecia/
