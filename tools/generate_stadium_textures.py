@@ -396,6 +396,50 @@ def _clean_dugout_board(img):
     out.paste(img.crop((0, 0, 2048, 4)).transpose(Image.Transpose.FLIP_TOP_BOTTOM), (0, 380))
     return out
 
+# Stopnie sektora VIP (sektor_vip_na_dlugosc_02.jpg, 1280 x 1802): niebiesko-szare podstopnie z blachy ze śladami
+# po usuniętych mocowaniach i gres na płycie stopnia. Narożniki podstopnia (lewy-górny, prawy-górny, prawy-dolny,
+# lewy-dolny) ok. 4,9 x 0,30 m. Płyta stopnia leży na zdjęciu zbyt skośnie, żeby ją wyprostować (spoiny się
+# krzywią), więc z fotografii bierze się tylko barwę gresu, a płytki 0,6 m rysuje się od nowa.
+VIP_RISER_QUAD = [(780, 1259), (1270, 1529), (1270, 1667), (780, 1373)]
+VIP_TREAD_SAMPLE = (950, 1290, 1050, 1330)                              # fragment płyty stopnia (szary gres)
+VIP_TILE_M, VIP_TILE_TEX_M = 0.6, 2.4                                   # płytka i bok kafla tekstury (4 x 4 płytki)
+
+
+def _flatten_light(im, radius=100):
+    """Wyrównuje cień i słońce na zdjęciu (dzieli przez rozmycie), żeby wycinek dawał się powielać."""
+    a = np.asarray(im, dtype=float)
+    blur = np.asarray(im.filter(ImageFilter.GaussianBlur(radius)), dtype=float)
+    out = a * (blur.mean(axis=(0, 1)) / np.maximum(blur, 1.0))
+    return Image.fromarray(np.clip(out, 0, 255).astype(np.uint8))
+
+
+def generate_vip_step_textures():
+    """Podstopnie (vip_podstopnie.png): wyprostowane ze zdjęcia, dołączone w odbiciu lustrzanym — powtarzają się bez
+    szwu (okres 9,8 m). Gres (vip_stopien_gres.png): płytki w mierzonej barwie z lekkim zróżnicowaniem i spoinami."""
+    im = Image.open(os.path.join(PHOTOS_DIR, "sektor_vip_na_dlugosc_02.jpg")).convert("RGB")
+    size = (1024, 64)
+    tile = _flatten_light(_rectify(im, VIP_RISER_QUAD, size))
+    out = Image.new("RGB", (size[0] * 2, size[1]))
+    out.paste(tile, (0, 0))
+    out.paste(tile.transpose(Image.Transpose.FLIP_LEFT_RIGHT), (size[0], 0))
+    out.save(os.path.join(TEXTURES_DIR, "vip_podstopnie.png"))
+
+    base = np.median(np.asarray(im.crop(VIP_TREAD_SAMPLE)).reshape(-1, 3), axis=0)
+    rng = np.random.default_rng(7)
+    n, px = int(VIP_TILE_TEX_M / VIP_TILE_M), 256
+    img = np.zeros((n * px, n * px, 3))
+    for i in range(n):
+        for j in range(n):
+            img[i * px:(i + 1) * px, j * px:(j + 1) * px] = base * rng.uniform(0.93, 1.05)
+    img *= rng.normal(1.0, 0.025, img.shape[:2])[..., None]
+    img = np.asarray(Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(1.2)), dtype=float)
+    for k in range(n):
+        for c in (k * px, k * px + 1, k * px - 1):
+            img[c % (n * px), :] *= 0.78
+            img[:, c % (n * px)] *= 0.78
+    Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).save(os.path.join(TEXTURES_DIR, "vip_stopien_gres.png"))
+    print("Zapisano stopnie sektora VIP (sektor_vip_na_dlugosc_02.jpg)")
+
 
 def generate_entrance_textures():
     """Grafiki wejść, szczytów trybuny i ławek rezerwowych, wyprostowane ze zdjęć (ENTRANCE_GRAPHICS)."""
@@ -693,6 +737,7 @@ if __name__ == "__main__":
     generate_ball_net_texture()
     generate_gate_mesh_texture()
     generate_entrance_textures()
+    generate_vip_step_textures()
     generate_fence_texture()
     generate_facade_texture()
     generate_crown_ads_texture()

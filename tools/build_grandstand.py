@@ -371,6 +371,19 @@ def create_materials():
     # Żółta farba: barierki i obrzeża tuneli (detale_trybuny_zachodniej.png, widok_z_galery.jpg)
     mats['yellow'] = seat_material("Mat_Barierki_Zolte", (0.85, 0.66, 0.08))
 
+    # Sektor VIP (sektor_vip_na_dlugosc*.jpg): gres na stopniach, podstopnie z blachy, białe ogrodzenie z czerwonymi
+    # słupkami, czarny stelaż krzesełek (tools/generate_stadium_textures.py: generate_vip_step_textures)
+    for key, name, tex, rough in (('vip_tread', "Mat_VIP_Gres", "vip_stopien_gres.png", 0.6),
+                                  ('vip_riser', "Mat_VIP_Podstopnie", "vip_podstopnie.png", 0.8)):
+        m = bpy.data.materials.new(name)
+        m.use_nodes = True
+        m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = rough
+        setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, tex))
+        mats[key] = m
+    mats['white_paint'] = seat_material("Mat_Ogrodzenie_VIP_Biale", (0.86, 0.86, 0.84))
+    mats['red_paint'] = seat_material("Mat_Ogrodzenie_VIP_Czerwone", (0.55, 0.06, 0.08))
+    mats['seat_frame'] = seat_material("Mat_Stelaz_Krzeselek_VIP", (0.02, 0.02, 0.02))
+
     # Mleczna pleksi ławek rezerwowych (lawka_rezerwowych.png): półprzezroczysta, dwustronna
     mat_plexi = bpy.data.materials.new("Mat_Pleksi_Mleczna")
     mat_plexi.use_nodes = True
@@ -503,6 +516,14 @@ PAVILION_TOP = 4.4
 PAVILION_WIN = (2.4, 3.6)               # dół i góra wstęgi okien
 PAVILION_MULLION = 1.6                  # rozstaw słupków okiennych
 SHEET_TILE = 1.4                        # kafel tekstury blachy jak w ogrodzeniu (SHEET_TILE_M, build_horseshoe_bowl.py)
+
+# Sektor VIP przed pawilonem (sektor_vip_na_dlugosc.jpg, sektor_vip_na_dlugosc_02.jpg): na stopniach gres, podstopnia
+# z niebiesko-szarej blachy, krzesełka na czarnym stelażu, a przy murawie niskie ogrodzenie z białych paneli
+# na czerwonych słupkach z żółtymi zakończeniami.
+VIP_TILE_TEX_M, VIP_RISER_TEX_M = 2.4, 9.8   # bok kafla gresu i długość tekstury podstopnia (generate_vip_step_textures)
+VIP_OVERLAY = 0.012                     # grubość nakładki gresu i blachy na betonowych stopniach
+VIP_FENCE_X, VIP_FENCE_H = -1.0, 1.05   # ogrodzenie przed czołem trybuny (x < 0 to strona boiska)
+VIP_FENCE_PANEL, VIP_FENCE_BAR = 2.4, 0.12   # szerokość panelu i rozstaw prętów
 
 # Wycięcia w sektorze dolnym: (y0, y1, liczba usuniętych pierwszych rzędów)
 LOWER_CUTS = sorted([(a, b, DUG_ROWS) for a, b in DUGOUTS] + [(*TUNNEL_Y, TUNNEL_ROWS)])
@@ -740,6 +761,8 @@ def build_grandstand(col, mats):
     build_dugouts(col, mats)
     build_players_tunnel(col, mats)
     build_vip_pavilion(col, mats)
+    build_vip_steps(col, mats)
+    build_vip_fence(col, mats)
     build_gables(col, mats)
 
     print(f"Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, {NUM_BAYS} tuneli).")
@@ -999,6 +1022,58 @@ def build_vip_pavilion(col, mats):
         _box(bm_frame, x_f - 0.06, x_f, y - 0.04, y + 0.04, z0, z1)
     _finish(col, bm_glass, "Pawilon_VIP_Okna", mats['glass'])
     _finish(col, bm_frame, "Pawilon_VIP_Ramy", mats['metal'])
+
+
+def in_vip_sector(y):
+    return PAVILION_Y[0] <= y <= PAVILION_Y[1]
+
+
+def build_vip_steps(col, mats):
+    """Gres na stopniach i blacha na podstopniach rzędów przed pawilonem: cienkie nakładki na betonie."""
+    ya, yb = PAVILION_Y
+    bm_t, bm_r = bmesh.new(), bmesh.new()
+    for i in range(PAVILION_ROW):
+        x0, z = LOWER_X0 + i * LOWER_DX, LOWER_Z0 + i * LOWER_DZ
+        _box(bm_t, x0, x0 + LOWER_DX, ya, yb, z, z + VIP_OVERLAY)
+        if i > 0:
+            _box(bm_r, x0 - VIP_OVERLAY, x0, ya, yb, z - LOWER_DZ + VIP_OVERLAY, z)
+    uv = bm_t.loops.layers.uv.verify()
+    for face in bm_t.faces:
+        for loop in face.loops:
+            loop[uv].uv = (loop.vert.co.y / VIP_TILE_TEX_M, loop.vert.co.x / VIP_TILE_TEX_M)
+    uv = bm_r.loops.layers.uv.verify()
+    for face in bm_r.faces:
+        for loop in face.loops:
+            co = loop.vert.co
+            z_low = LOWER_Z0 + (round((co.x - LOWER_X0) / LOWER_DX) - 1) * LOWER_DZ
+            loop[uv].uv = (co.y / VIP_RISER_TEX_M, (co.z - z_low) / LOWER_DZ)
+    _finish(col, bm_t, "VIP_Stopnie_Gres", mats['vip_tread'])
+    _finish(col, bm_r, "VIP_Podstopnie", mats['vip_riser'])
+
+
+def build_vip_fence(col, mats):
+    """Ogrodzenie sektora VIP: panele z białych prętów między szyną dolną i górną, czerwone słupki na styku paneli,
+    żółte zakończenia na krańcach. Bryły, nie płaszczyzny: kolizje Octree są jednostronne."""
+    ya, yb = PAVILION_Y
+    x, h = VIP_FENCE_X, VIP_FENCE_H
+    n = round((yb - ya) / VIP_FENCE_PANEL)
+    pw = (yb - ya) / n
+    bm_w, bm_r, bm_y = bmesh.new(), bmesh.new(), bmesh.new()
+    for k in range(n):
+        y0, y1 = ya + k * pw, ya + (k + 1) * pw
+        _box(bm_w, x - 0.03, x + 0.03, y0, y1, 0.08, 0.15)                        # szyna dolna
+        _box(bm_w, x - 0.05, x + 0.05, y0, y1, h - 0.1, h)                       # szyna górna
+        for j in range(1, round(pw / VIP_FENCE_BAR)):
+            y = y0 + j * pw / round(pw / VIP_FENCE_BAR)
+            _box(bm_w, x - 0.015, x + 0.015, y - 0.015, y + 0.015, 0.15, h - 0.1)
+    for k in range(n + 1):
+        y = ya + k * pw
+        _box(bm_r, x - 0.04, x + 0.04, y - 0.04, y + 0.04, 0.0, h + 0.07)
+    for y in (ya, yb):
+        _box(bm_y, x - 0.06, x + 0.06, y - 0.06, y + 0.06, h - 0.5, h + 0.07)
+    _finish(col, bm_w, "VIP_Ogrodzenie_Panele", mats['white_paint'])
+    _finish(col, bm_r, "VIP_Ogrodzenie_Slupki", mats['red_paint'])
+    _finish(col, bm_y, "VIP_Ogrodzenie_Zakonczenia", mats['yellow'])
 
 
 # Szczyty trybuny (il20250305_898037705/725 północ, 898037963/021/039 południe, tablica_trybuna.jpg):

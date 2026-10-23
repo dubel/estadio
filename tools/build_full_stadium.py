@@ -33,7 +33,7 @@ if TOOLS_DIR not in sys.path:
     sys.path.append(TOOLS_DIR)
 
 from build_grandstand import (
-    create_materials, build_grandstand, lower_seat_rows, lower_seat_removed, dugout_pits,
+    create_materials, build_grandstand, lower_seat_rows, lower_seat_removed, in_vip_sector, dugout_pits,
     TOTAL_LENGTH_Y as GRANDSTAND_LENGTH, NUM_BAYS, BAY_WIDTH_Y
 )
 from build_seats import place_seats, seat_material, seats_in_row
@@ -314,13 +314,18 @@ def assemble_full_stadium():
     build_entrances(col_grandstand, mats, front_x=-45.0, north_y=north_y, south_y=north_y - GRANDSTAND_LENGTH)
 
     # Krzesełka sektora dolnego: czerwone pod czerwonym daszkiem (przęsła 6..10), białe w pozostałych
-    red, white = [], []
+    # Przed pawilonem VIP krzesełka na czarnym stelażu
+    red, white, vip = [], [], []
     for b in range(NUM_BAYS):
         for i, (x, z) in enumerate(lower_seat_rows()):
             row = seats_in_row(x, z, b * BAY_WIDTH_Y + 0.9, (b + 1) * BAY_WIDTH_Y - 0.1)
-            (red if 6 <= b < 11 else white).extend(s for s in row if not lower_seat_removed(s[1], i))
+            for s in row:
+                if not lower_seat_removed(s[1], i):
+                    (vip if in_vip_sector(s[1]) else red if 6 <= b < 11 else white).append(s)
     place_seats(col_grandstand, "Krzeselka_Trybuna_Czerwone", seat_material("Mat_Krzeselka_Czerwone", (0.62, 0.07, 0.09)), red, empty_grandstand)
-    place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86)), white, empty_grandstand)
+    white_seat = seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86))
+    place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", white_seat, white, empty_grandstand)
+    place_seats(col_grandstand, "Krzeselka_Trybuna_VIP", white_seat, vip, empty_grandstand, frame_mat=mats['seat_frame'])
 
     print("--- 4. Generowanie 4 Masztów Oświetleniowych (3-nożne jupitery z odwróconym trapezem) ---")
     # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59). Zachodnich nie widać
