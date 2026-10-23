@@ -538,12 +538,33 @@ FENCE_GAP = 1.0                         # zapas przerwy przy ławce rezerwowych 
 LOWER_CUTS = sorted([(a, b, DUG_ROWS) for a, b in DUGOUTS] + [(*TUNNEL_Y, TUNNEL_ROWS)])
 
 
+CORRUGATION_PITCH = 0.125   # okres przetłoczeń blachy daszków, jak w tekstury roof_corrugated_*.jpg (16 px na 4 m / 512 px)
+CORRUGATION_AMP = 0.02      # amplituda fali (głębokość przetłoczenia ok. 4 cm)
+
+
 def _extrude_profile(bm, pts_xz, y0, y1):
     """Bryła z wielokąta w płaszczyźnie XZ wyciągniętego od y0 do y1 (zamknięta — kolizje z obu stron)."""
     face = bm.faces.new([bm.verts.new((x, y0, z)) for x, z in pts_xz])
     res = bmesh.ops.extrude_face_region(bm, geom=[face])
     ev = [v for v in res['geom'] if isinstance(v, bmesh.types.BMVert)]
     bmesh.ops.translate(bm, vec=(0.0, y1 - y0, 0.0), verts=ev)
+
+
+def _corrugated_extrude(bm, pts_xz, y0, y1, pitch, amp, per_pitch=8):
+    """Jak _extrude_profile, ale przekrój falowany wzdłuż Y (blacha trapezowa): całe pasmo podnosi się o
+    amp·sin(2πy/pitch), faza w y bezwzględnym — pokrywa się z paskami tekstury roof_corrugated_*.jpg."""
+    n = max(2, round((y1 - y0) / pitch * per_pitch))
+    rings = []
+    for i in range(n + 1):
+        y = y0 + (y1 - y0) * i / n
+        dz = amp * math.sin(2.0 * math.pi * y / pitch)
+        rings.append([bm.verts.new((x, y, z + dz)) for x, z in pts_xz])
+    k = len(pts_xz)
+    for ra, rb in zip(rings, rings[1:]):
+        for j in range(k):
+            bm.faces.new([ra[j], rb[j], rb[(j + 1) % k], ra[(j + 1) % k]])
+    bm.faces.new(rings[0])
+    bm.faces.new(rings[-1][::-1])
 
 
 def _box(bm, x0, x1, y0, y1, z0, z1):
@@ -750,7 +771,7 @@ def build_grandstand(col, mats):
     def make_canopy_section(name, ya, yb, mat):
         bm = bmesh.new()
         prof = [(0.6, 4.6), (LIP_X - 0.1, CANOPY_BACK_Z), (LIP_X - 0.1, CANOPY_BACK_Z - 0.12), (0.6, 4.48)]
-        _extrude_profile(bm, prof, ya, yb)
+        _corrugated_extrude(bm, prof, ya, yb, CORRUGATION_PITCH, CORRUGATION_AMP)
         uv_l = bm.loops.layers.uv.verify()
         for face in bm.faces:
             for loop in face.loops:
