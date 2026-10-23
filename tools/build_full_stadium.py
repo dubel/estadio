@@ -47,7 +47,8 @@ from build_horseshoe_bowl import (
     build_bowl,
     build_fan_banners,
     build_scoreboard,
-    build_temporary_south_stand
+    build_temporary_south_stand,
+    STRAIGHT_L, STAND_BACK, STAND_H, BOWL_ANGLE_N, BOWL_ANGLE_S
 )
 
 ROOT = os.path.dirname(TOOLS_DIR)
@@ -325,19 +326,24 @@ def assemble_full_stadium():
     place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86)), white, empty_grandstand, frame_mat=frame)
 
     print("--- 4. Generowanie 4 Masztów Oświetleniowych (3-nożne jupitery z odwróconym trapezem) ---")
-    # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59), osadzone w wale ziemnym. Zachodnich nie
-    # widać (cień trybuny głównej): stoją na betonowych cokołach tuż za krańcami trybuny głównej, symetrycznie
-    # względem jej środka (il20250305_898038121_xlarge.jpg; położenie niezweryfikowane, docs/zrodla.md).
+    # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59), osadzone w wale ziemnym.
+    # Zachodnie stoją na koronie łuków, na ich zachodnich końcach, na betonowym filarze do gruntu: SW na końcu
+    # łuku południowego (il20250305_898037505, laczenie_trybuna_luk_poludnie.jpg), NW na brzegu łuku północnego
+    # przy sektorze gości (il20250305_898037227). Położenie wzdłuż końca łuku ze zdjęć, bez pomiaru (docs/zrodla.md).
+    def crown(cy, angle):
+        a = math.radians(angle)
+        return (STAND_BACK * math.cos(a), cy + STAND_BACK * math.sin(a), STAND_H)
     jupiters_cfg = [
-        ("Jupiter_SW", (-68.0, -68.0, 0.0)),
-        ("Jupiter_NW", (-68.0,  74.0, 0.0)),
+        ("Jupiter_SW", crown(-STRAIGHT_L / 2, -(BOWL_ANGLE_S - 2.0))),
+        ("Jupiter_NW", crown(STRAIGHT_L / 2, BOWL_ANGLE_N - 2.0)),
         ("Jupiter_SE", ( 68.0, -61.5, 0.0)),
         ("Jupiter_NE", ( 68.0,  61.5, 0.0))
     ]
     
     for name, loc in jupiters_cfg:
         mast = build_floodlight_mast(col_jupiters, mats=mats, name=name, pitch_target=(0.0, 0.0), mast_pos=(loc[0], loc[1]),
-                                    embed="earth" if loc[0] > 0 else "concrete")
+                                    embed="earth" if loc[0] > 0 else "concrete",
+                                    height=46.0 - loc[2], pier_depth=loc[2])
         mast.location = loc
 
     print("--- 5. Generowanie Otoczenia (teren, al. Unii, tory, Atlas Arena, drzewa) ---")

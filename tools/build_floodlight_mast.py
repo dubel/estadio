@@ -14,20 +14,21 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0), mast_pos=(0.0, 0.0), embed="concrete"):
+def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0), mast_pos=(0.0, 0.0), embed="concrete", height=46.0, pier_depth=0.0):
     """
     Tworzy trójnożny maszt z głowicą w kształcie odwróconego trapezu nakierowaną na pitch_target.
     Dwie przednie nogi zwrócone ku murawie, tylna noga odciągowa na zewnątrz stadionu.
     Głowica pochylona o 28° w dół w stronę murawy.
     embed (il20250305_898038121_xlarge.jpg): "earth" — maszt osadzony w wale ziemnym, stopy w zadarnionych kopcach;
-    "concrete" — na betonowym cokole przy konstrukcji trybuny.
+    "concrete" — na betonowym cokole przy konstrukcji trybuny. pier_depth — cokół sięga tyle w dół (maszt na koronie
+    łuku: filar do gruntu); height — wysokość trzonu od podstawy.
     """
     bm = bmesh.new()
 
     # Trzon: kratownica o przekroju trójkątnym od SPLIT_Z do szczytu. Poniżej trzy osobne nogi
     # (każda też kratownicowa) rozchodzą się do betonowych bloków fundamentowych
     # (punkt_swietlny_jupiter.png, widok_na_trybune_z_sektora_gosci.png).
-    HEIGHT = 46.0
+    HEIGHT = height
     SPLIT_Z = 15.0
     SHAFT_W, SHAFT_D = 2.2, 1.9     # przekrój trzonu w miejscu rozejścia nóg
     TOP_W, TOP_D = 1.4, 1.2
@@ -110,8 +111,8 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
     if embed == "concrete":
         xs, ys = [f.x for f in feet], [f.y for f in feet]
         c = bmesh.ops.create_cube(bm_f, size=1.0)
-        bmesh.ops.scale(bm_f, vec=(max(xs) - min(xs) + 3.6, max(ys) - min(ys) + 3.6, 0.8), verts=c['verts'])
-        bmesh.ops.translate(bm_f, vec=((max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2, 0.1), verts=c['verts'])
+        bmesh.ops.scale(bm_f, vec=(max(xs) - min(xs) + 3.6, max(ys) - min(ys) + 3.6, 0.8 + pier_depth), verts=c['verts'])
+        bmesh.ops.translate(bm_f, vec=((max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2, 0.1 - pier_depth / 2), verts=c['verts'])
     for foot in feet:
         c = bmesh.ops.create_cube(bm_f, size=1.0)
         bmesh.ops.scale(bm_f, vec=(1.0 if embed == "earth" else 1.6,) * 2 + (FOOT_Z - block_z0 + 0.3,), verts=c['verts'])
