@@ -522,8 +522,10 @@ SHEET_TILE = 1.4                        # kafel tekstury blachy jak w ogrodzeniu
 # na czerwonych słupkach z żółtymi zakończeniami.
 VIP_TILE_TEX_M, VIP_RISER_TEX_M = 2.4, 9.8   # bok kafla gresu i długość tekstury podstopnia (generate_vip_step_textures)
 VIP_OVERLAY = 0.012                     # grubość nakładki gresu i blachy na betonowych stopniach
-VIP_FENCE_X, VIP_FENCE_H = -1.0, 1.05   # ogrodzenie przed czołem trybuny (x < 0 to strona boiska)
-VIP_FENCE_PANEL, VIP_FENCE_BAR = 2.4, 0.12   # szerokość panelu i rozstaw prętów
+VIP_DROP = 0.4                          # o tyle obniżone rzędy przed pawilonem: pierwszy na 0.1 m nad murawą
+VIP_FENCE_X, VIP_FENCE_H = -1.0, 1.1    # ogrodzenie przed czołem trybuny (x < 0 to strona boiska)
+VIP_FENCE_PANEL, VIP_FENCE_WIRE = 2.4, 0.1   # szerokość panelu i oczko siatki
+VIP_FENCE_MESH_TOP = 0.5                # siatka od gruntu do szyny środkowej, nad nią przerwa do górnej ramy
 
 # Wycięcia w sektorze dolnym: (y0, y1, liczba usuniętych pierwszych rzędów)
 LOWER_CUTS = sorted([(a, b, DUG_ROWS) for a, b in DUGOUTS] + [(*TUNNEL_Y, TUNNEL_ROWS)])
@@ -580,17 +582,27 @@ def _finish(col, bm, name, mat):
     return obj
 
 
-def _lower_profile(first_row=0):
-    """Przekrój sektora dolnego z promenadą; first_row > 0 — bez pierwszych rzędów (wnęka ławki rezerwowych)."""
-    if first_row == 0:
+def _lower_profile(first_row=0, vip=False):
+    """Przekrój sektora dolnego z promenadą; first_row > 0 — bez pierwszych rzędów (wnęka ławki rezerwowych);
+    vip — przed pawilonem bez murku czołowego, rzędy przed pawilonem obniżone: pierwszy tuż nad murawą."""
+    if vip:
+        pts = [(0.0, 0.0)]
+    elif first_row == 0:
         pts = [(0.0, 0.0), (0.0, FRONT_PARAPET_H), (LOWER_X0, FRONT_PARAPET_H)]
     else:
         pts = [(LOWER_X0 + first_row * LOWER_DX, 0.0)]
     for i in range(first_row, LOWER_ROWS):
-        z = LOWER_Z0 + i * LOWER_DZ
+        z = LOWER_Z0 + i * LOWER_DZ - (VIP_DROP if vip and i < PAVILION_ROW else 0.0)
         pts += [(LOWER_X0 + i * LOWER_DX, z), (LOWER_X0 + (i + 1) * LOWER_DX, z)]
     pts += [(CONCOURSE_X1, CONCOURSE_Z), (CONCOURSE_X1, 0.0)]
     return pts
+
+
+def _extrude_lower(bm, y0, y1):
+    """Pełny przekrój sektora dolnego od y0 do y1, z odcinkiem VIP (_lower_profile(vip=True)) w granicach pawilonu."""
+    cuts = [y0] + [v for v in PAVILION_Y if y0 < v < y1] + [y1]
+    for a, b in zip(cuts, cuts[1:]):
+        _extrude_profile(bm, _lower_profile(vip=PAVILION_Y[0] <= (a + b) / 2 <= PAVILION_Y[1]), a, b)
 
 
 def _upper_profiles(slot=None):
@@ -623,10 +635,10 @@ def build_grandstand(col, mats):
     # Sektor dolny + promenada; we wnękach ławek rezerwowych i w kanale tunelu bez pierwszych rzędów
     y = 0.0
     for ya, yb, rows in LOWER_CUTS:
-        _extrude_profile(bm_lower, _lower_profile(), y, ya)
+        _extrude_lower(bm_lower, y, ya)
         _extrude_profile(bm_lower, _lower_profile(rows), ya, yb)
         y = yb
-    _extrude_profile(bm_lower, _lower_profile(), y, TOTAL_LENGTH_Y)
+    _extrude_lower(bm_lower, y, TOTAL_LENGTH_Y)
 
     # Wejścia z placu na promenadę na obu krańcach trybuny: build_entrances.py (schody między czopem łuku a trybuną)
 
@@ -1033,7 +1045,7 @@ def build_vip_steps(col, mats):
     ya, yb = PAVILION_Y
     bm_t, bm_r = bmesh.new(), bmesh.new()
     for i in range(PAVILION_ROW):
-        x0, z = LOWER_X0 + i * LOWER_DX, LOWER_Z0 + i * LOWER_DZ
+        x0, z = LOWER_X0 + i * LOWER_DX, LOWER_Z0 + i * LOWER_DZ - VIP_DROP
         _box(bm_t, x0, x0 + LOWER_DX, ya, yb, z, z + VIP_OVERLAY)
         if i > 0:
             _box(bm_r, x0 - VIP_OVERLAY, x0, ya, yb, z - LOWER_DZ + VIP_OVERLAY, z)
@@ -1045,36 +1057,40 @@ def build_vip_steps(col, mats):
     for face in bm_r.faces:
         for loop in face.loops:
             co = loop.vert.co
-            z_low = LOWER_Z0 + (round((co.x - LOWER_X0) / LOWER_DX) - 1) * LOWER_DZ
+            z_low = LOWER_Z0 + (round((co.x - LOWER_X0) / LOWER_DX) - 1) * LOWER_DZ - VIP_DROP
             loop[uv].uv = (co.y / VIP_RISER_TEX_M, (co.z - z_low) / LOWER_DZ)
     _finish(col, bm_t, "VIP_Stopnie_Gres", mats['vip_tread'])
     _finish(col, bm_r, "VIP_Podstopnie", mats['vip_riser'])
 
 
 def build_vip_fence(col, mats):
-    """Ogrodzenie sektora VIP: panele z białych prętów między szyną dolną i górną, czerwone słupki na styku paneli,
-    żółte zakończenia na krańcach. Bryły, nie płaszczyzny: kolizje Octree są jednostronne."""
+    """Ogrodzenie sektora VIP (il20250305_898037885): w panelach od gruntu siatka, nad nią szyna środkowa, przerwa
+    i gruba rama górna; panele na przemian białe i czerwone, co szósty żółta furtka. Bryły, nie płaszczyzny:
+    kolizje Octree są jednostronne."""
     ya, yb = PAVILION_Y
-    x, h = VIP_FENCE_X, VIP_FENCE_H
+    x, h, mt = VIP_FENCE_X, VIP_FENCE_H, VIP_FENCE_MESH_TOP
     n = round((yb - ya) / VIP_FENCE_PANEL)
     pw = (yb - ya) / n
-    bm_w, bm_r, bm_y = bmesh.new(), bmesh.new(), bmesh.new()
+    bms = {key: bmesh.new() for key in ('white_paint', 'red_paint', 'yellow')}
+    kind = lambda k: 'yellow' if k % 6 == 0 else 'white_paint' if k % 2 else 'red_paint'
     for k in range(n):
+        bm = bms[kind(k)]
         y0, y1 = ya + k * pw, ya + (k + 1) * pw
-        _box(bm_w, x - 0.03, x + 0.03, y0, y1, 0.08, 0.15)                        # szyna dolna
-        _box(bm_w, x - 0.05, x + 0.05, y0, y1, h - 0.1, h)                       # szyna górna
-        for j in range(1, round(pw / VIP_FENCE_BAR)):
-            y = y0 + j * pw / round(pw / VIP_FENCE_BAR)
-            _box(bm_w, x - 0.015, x + 0.015, y - 0.015, y + 0.015, 0.15, h - 0.1)
+        _box(bm, x - 0.05, x + 0.05, y0, y1, h - 0.14, h)                        # rama górna
+        _box(bm, x - 0.04, x + 0.04, y0, y1, mt, mt + 0.09)                      # szyna środkowa
+        _box(bm, x - 0.03, x + 0.03, y0, y1, 0.0, 0.05)                          # podmurówka z kątownika
+        m = round(pw / VIP_FENCE_WIRE)
+        for j in range(1, m):
+            y = y0 + j * pw / m
+            _box(bm, x - 0.006, x + 0.006, y - 0.006, y + 0.006, 0.05, mt)       # pręty siatki
+        for j in range(1, round((mt - 0.05) / VIP_FENCE_WIRE)):
+            z = 0.05 + j * VIP_FENCE_WIRE
+            _box(bm, x - 0.006, x + 0.006, y0, y1, z - 0.006, z + 0.006)
     for k in range(n + 1):
-        y = ya + k * pw
-        _box(bm_r, x - 0.04, x + 0.04, y - 0.04, y + 0.04, 0.0, h + 0.07)
-    for y in (ya, yb):
-        _box(bm_y, x - 0.06, x + 0.06, y - 0.06, y + 0.06, h - 0.5, h + 0.07)
-    _finish(col, bm_w, "VIP_Ogrodzenie_Panele", mats['white_paint'])
-    _finish(col, bm_r, "VIP_Ogrodzenie_Slupki", mats['red_paint'])
-    _finish(col, bm_y, "VIP_Ogrodzenie_Zakonczenia", mats['yellow'])
-
+        _box(bms[kind(min(k, n - 1))], x - 0.06, x + 0.06, ya + k * pw - 0.06, ya + k * pw + 0.06, 0.0, h)
+    names = {'white_paint': "VIP_Ogrodzenie_Biale", 'red_paint': "VIP_Ogrodzenie_Czerwone", 'yellow': "VIP_Ogrodzenie_Furtki"}
+    for key, bm in bms.items():
+        _finish(col, bm, names[key], mats[key])
 
 # Szczyty trybuny (il20250305_898037705/725 północ, 898037963/021/039 południe, tablica_trybuna.jpg):
 # trójkąt przeszklenia między dolną krawędzią belki dźwigara, ukośnym odciągiem i budynkiem u dołu.
