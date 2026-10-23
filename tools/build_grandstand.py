@@ -496,7 +496,7 @@ TUNNEL_FRONT_X = -0.3                   # wylot tunelu przed czołem trybuny
 # Pawilon (loże/VIP) na tylnych rzędach sektora dolnego pod muralem (grafy_na_trybunie.png,
 # widok_na_trybune_z_sektora_gosci.png): przed nim 3 rzędy krzesełek, ściany z blachy ocynkowanej, wstęga okien
 # na całej długości. Od schodów na promenadę przy północnym krańcu do białego daszku (przęsło 4); z tyłu kończy
-# się na ostatnim rzędzie, promenada za nim zostaje przejściem. Biały daszek nad pawilonem — jeszcze nie.
+# się na ostatnim rzędzie, promenada za nim zostaje przejściem. Nad pawilonem biały daszek (jak nad przęsłami 4–6).
 PAVILION_Y = (5.0, 4.0 * BAY_WIDTH_Y)
 PAVILION_ROW = 3                        # pierwszy rząd pod pawilonem
 PAVILION_TOP = 4.4
@@ -730,8 +730,9 @@ def build_grandstand(col, mats):
     make_canopy_section("Daszek_Bialy_Poludnie", 11.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, mats['roof_white'])
     make_canopy_section("Daszek_Czerwony_Srodek", 6.0 * BAY_WIDTH_Y, 11.0 * BAY_WIDTH_Y, mats['roof_red'])
     make_canopy_section("Daszek_Bialy_Polnoc", 4.0 * BAY_WIDTH_Y, 6.0 * BAY_WIDTH_Y, mats['roof_white'])
+    make_canopy_section("Daszek_Bialy_Pawilon", PAVILION_Y[0], PAVILION_Y[1], mats['roof_white'])
     bm_f = bmesh.new()
-    _box(bm_f, 0.5, 0.6, 4.0 * BAY_WIDTH_Y, 14.0 * BAY_WIDTH_Y, 4.3, 4.65)
+    _box(bm_f, 0.5, 0.6, PAVILION_Y[0], 14.0 * BAY_WIDTH_Y, 4.3, 4.65)
     _finish(col, bm_f, "Blenda_Fasada_Biala", mats['roof_white'])
 
     build_tribune_paintings(col, mats)
