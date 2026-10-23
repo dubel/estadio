@@ -518,14 +518,16 @@ PAVILION_MULLION = 1.6                  # rozstaw słupków okiennych
 SHEET_TILE = 1.4                        # kafel tekstury blachy jak w ogrodzeniu (SHEET_TILE_M, build_horseshoe_bowl.py)
 
 # Sektor VIP przed pawilonem (sektor_vip_na_dlugosc.jpg, sektor_vip_na_dlugosc_02.jpg): na stopniach gres, podstopnia
-# z niebiesko-szarej blachy, krzesełka na czarnym stelażu, a przy murawie niskie ogrodzenie z białych paneli
-# na czerwonych słupkach z żółtymi zakończeniami.
+# z niebiesko-szarej blachy, krzesełka na czarnym stelażu, rzędy przed pawilonem obniżone i bez murku czołowego.
 VIP_TILE_TEX_M, VIP_RISER_TEX_M = 2.4, 9.8   # bok kafla gresu i długość tekstury podstopnia (generate_vip_step_textures)
 VIP_OVERLAY = 0.012                     # grubość nakładki gresu i blachy na betonowych stopniach
 VIP_DROP = 0.4                          # o tyle obniżone rzędy przed pawilonem: pierwszy na 0.1 m nad murawą
-VIP_FENCE_X, VIP_FENCE_H = -1.0, 1.1    # ogrodzenie przed czołem trybuny (x < 0 to strona boiska)
-VIP_FENCE_PANEL, VIP_FENCE_WIRE = 2.4, 0.1   # szerokość panelu i oczko siatki
-VIP_FENCE_MESH_TOP = 0.5                # siatka od gruntu do szyny środkowej, nad nią przerwa do górnej ramy
+
+# Ogrodzenie przy murawie na całej długości trybuny (il20250305_898037885_xlarge.jpg)
+FENCE_X, FENCE_H = -1.0, 1.1            # przed czołem trybuny (x < 0 to strona boiska)
+FENCE_PANEL, FENCE_WIRE = 2.4, 0.1      # szerokość panelu i oczko siatki
+FENCE_MESH_TOP = 0.5                    # siatka od gruntu do szyny środkowej, nad nią przerwa do górnej ramy
+FENCE_GAP = 1.0                         # zapas przerwy przy ławce rezerwowych i tunelu zawodników
 
 # Wycięcia w sektorze dolnym: (y0, y1, liczba usuniętych pierwszych rzędów)
 LOWER_CUTS = sorted([(a, b, DUG_ROWS) for a, b in DUGOUTS] + [(*TUNNEL_Y, TUNNEL_ROWS)])
@@ -774,7 +776,7 @@ def build_grandstand(col, mats):
     build_players_tunnel(col, mats)
     build_vip_pavilion(col, mats)
     build_vip_steps(col, mats)
-    build_vip_fence(col, mats)
+    build_front_fence(col, mats)
     build_gables(col, mats)
 
     print(f"Zbudowano Trybune Glowna wg przekroju Wyznikiewicza (33 + 10 rzedow, {NUM_BAYS} tuneli).")
@@ -1063,32 +1065,35 @@ def build_vip_steps(col, mats):
     _finish(col, bm_r, "VIP_Podstopnie", mats['vip_riser'])
 
 
-def build_vip_fence(col, mats):
-    """Ogrodzenie sektora VIP (il20250305_898037885): w panelach od gruntu siatka, nad nią szyna środkowa, przerwa
-    i gruba rama górna; panele na przemian białe i czerwone, co szósty żółta furtka. Bryły, nie płaszczyzny:
-    kolizje Octree są jednostronne."""
-    ya, yb = PAVILION_Y
-    x, h, mt = VIP_FENCE_X, VIP_FENCE_H, VIP_FENCE_MESH_TOP
-    n = round((yb - ya) / VIP_FENCE_PANEL)
-    pw = (yb - ya) / n
+def build_front_fence(col, mats):
+    """Ogrodzenie przy murawie na całej długości trybuny (il20250305_898037885): w panelach od gruntu siatka, nad nią
+    szyna środkowa, przerwa i gruba rama górna; panele na przemian białe i czerwone, na krańcach odcinków i co szósty
+    żółta furtka. Przerwy przy ławkach rezerwowych i tunelu zawodników. Bryły, nie płaszczyzny: kolizje Octree
+    są jednostronne."""
+    x, h, mt = FENCE_X, FENCE_H, FENCE_MESH_TOP
+    gaps = sorted([(a - FENCE_GAP, b + FENCE_GAP) for a, b in DUGOUTS + (TUNNEL_Y,)])
+    ends = [0.0] + [v for g in gaps for v in g] + [TOTAL_LENGTH_Y]
     bms = {key: bmesh.new() for key in ('white_paint', 'red_paint', 'yellow')}
     kind = lambda k: 'yellow' if k % 6 == 0 else 'white_paint' if k % 2 else 'red_paint'
-    for k in range(n):
-        bm = bms[kind(k)]
-        y0, y1 = ya + k * pw, ya + (k + 1) * pw
-        _box(bm, x - 0.05, x + 0.05, y0, y1, h - 0.14, h)                        # rama górna
-        _box(bm, x - 0.04, x + 0.04, y0, y1, mt, mt + 0.09)                      # szyna środkowa
-        _box(bm, x - 0.03, x + 0.03, y0, y1, 0.0, 0.05)                          # podmurówka z kątownika
-        m = round(pw / VIP_FENCE_WIRE)
-        for j in range(1, m):
-            y = y0 + j * pw / m
-            _box(bm, x - 0.006, x + 0.006, y - 0.006, y + 0.006, 0.05, mt)       # pręty siatki
-        for j in range(1, round((mt - 0.05) / VIP_FENCE_WIRE)):
-            z = 0.05 + j * VIP_FENCE_WIRE
-            _box(bm, x - 0.006, x + 0.006, y0, y1, z - 0.006, z + 0.006)
-    for k in range(n + 1):
-        _box(bms[kind(min(k, n - 1))], x - 0.06, x + 0.06, ya + k * pw - 0.06, ya + k * pw + 0.06, 0.0, h)
-    names = {'white_paint': "VIP_Ogrodzenie_Biale", 'red_paint': "VIP_Ogrodzenie_Czerwone", 'yellow': "VIP_Ogrodzenie_Furtki"}
+    for ya, yb in zip(ends[::2], ends[1::2]):
+        n = round((yb - ya) / FENCE_PANEL)
+        pw = (yb - ya) / n
+        for k in range(n):
+            bm = bms[kind(k) if k < n - 1 else 'yellow']
+            y0, y1 = ya + k * pw, ya + (k + 1) * pw
+            _box(bm, x - 0.05, x + 0.05, y0, y1, h - 0.14, h)                        # rama górna
+            _box(bm, x - 0.04, x + 0.04, y0, y1, mt, mt + 0.09)                      # szyna środkowa
+            _box(bm, x - 0.03, x + 0.03, y0, y1, 0.0, 0.05)                          # podmurówka z kątownika
+            m = round(pw / FENCE_WIRE)
+            for j in range(1, m):
+                y = y0 + j * pw / m
+                _box(bm, x - 0.006, x + 0.006, y - 0.006, y + 0.006, 0.05, mt)       # pręty siatki
+            for j in range(1, round((mt - 0.05) / FENCE_WIRE)):
+                z = 0.05 + j * FENCE_WIRE
+                _box(bm, x - 0.006, x + 0.006, y0, y1, z - 0.006, z + 0.006)
+        for k in range(n + 1):
+            _box(bms[kind(k) if k < n - 1 else 'yellow'], x - 0.06, x + 0.06, ya + k * pw - 0.06, ya + k * pw + 0.06, 0.0, h)
+    names = {'white_paint': "Ogrodzenie_Biale", 'red_paint': "Ogrodzenie_Czerwone", 'yellow': "Ogrodzenie_Furtki"}
     for key, bm in bms.items():
         _finish(col, bm, names[key], mats[key])
 
