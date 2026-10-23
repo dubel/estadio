@@ -325,17 +325,19 @@ def assemble_full_stadium():
     place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86)), white, empty_grandstand, frame_mat=frame)
 
     print("--- 4. Generowanie 4 Masztów Oświetleniowych (3-nożne jupitery z odwróconym trapezem) ---")
-    # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59). Zachodnich nie widać
-    # (cień trybuny głównej) — zostają w dotychczasowym, niezweryfikowanym położeniu (docs/zrodla.md).
+    # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59), osadzone w wale ziemnym. Zachodnich nie
+    # widać (cień trybuny głównej): stoją na betonowych cokołach tuż za krańcami trybuny głównej, symetrycznie
+    # względem jej środka (il20250305_898038121_xlarge.jpg; położenie niezweryfikowane, docs/zrodla.md).
     jupiters_cfg = [
-        ("Jupiter_SW", (-68.0, -82.0, 0.0)),
-        ("Jupiter_NW", (-68.0,  82.0, 0.0)),
+        ("Jupiter_SW", (-68.0, -68.0, 0.0)),
+        ("Jupiter_NW", (-68.0,  74.0, 0.0)),
         ("Jupiter_SE", ( 68.0, -61.5, 0.0)),
         ("Jupiter_NE", ( 68.0,  61.5, 0.0))
     ]
     
     for name, loc in jupiters_cfg:
-        mast = build_floodlight_mast(col_jupiters, mats=mats, name=name, pitch_target=(0.0, 0.0), mast_pos=(loc[0], loc[1]))
+        mast = build_floodlight_mast(col_jupiters, mats=mats, name=name, pitch_target=(0.0, 0.0), mast_pos=(loc[0], loc[1]),
+                                    embed="earth" if loc[0] > 0 else "concrete")
         mast.location = loc
 
     print("--- 5. Generowanie Otoczenia (teren, al. Unii, tory, Atlas Arena, drzewa) ---")

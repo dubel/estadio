@@ -52,8 +52,8 @@ Linie boiska modelu pokrywają się z liniami widocznymi na zdjęciu. Dokładno�
 | Czoło podkowy (2010–2012) | widok_z_galery.jpg, kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | **bez muru i fosy**: rzędy kończą się 1–2 m przed ogrodzeniem z siatki na gruncie (lks02 z okresu żużlowego pokazuje wcześniejszy mur) | chodnik 1,5 m, pierwszy stopień 0,45 m, ogrodzenie 2,5 m (Galera), 1,2 m (łuki) | wysoka |
 | Ogrodzenie z blachy (północ) | widok_na_trybune_z_sektora_gosci.png | blacha trapezowa ocynkowana ok. 2 m, słupki z zastrzałami; prosto w poprzek za bramką północną, za nim trawa przed łukiem | Y = 62 m od trybuny głównej do łuku, dalej po czole łuku do Galery; 2 m, słupki co 2,5 m | średnia (położenie z kadru) |
 | Sekcje Galery | kolorystyka_galery_oraz_budynki_tla.png, uwaga użytkownika | od północy: czerwona z tunelem; 4 × biały–czerwony–biały (ostatnia z napisem ŁKS z białych krzesełek); czerwony pas u góry, niżej beton z żółtymi barierkami i tunel; siatki między sekcjami | 6 sekcji po 14 m (`GALERA_SECTIONS`), siatki na Y 28, 14, 0, −14, −28 m | średnia (granice sekcji) |
-| Maszt NE / SE | cienie na ortofotomapie | (≈68, +64) / (≈68, −59) | (68, ±61,5) | średnia |
-| Maszt NW / SW | brak (w cieniu trybuny) | — | (−68, ±82), bez zmian | **niezweryfikowane** |
+| Maszt NE / SE | cienie na ortofotomapie, il20250305_898038121_xlarge.jpg | (≈68, +64) / (≈68, −59); osadzone w wale ziemnym | (68, ±61,5), stopy w zadarnionych kopcach (`embed="earth"`) | średnia (położenie), niska (kształt wału: w modelu zadarniony kopiec na placu, nie skarpa) |
+| Maszt NW / SW | il20250305_898038121_xlarge.jpg (lotnicze), widok_z_galery.jpg | stoją tuż za krańcami trybuny głównej, w betonowej konstrukcji | (−68, +74) / (−68, −68), symetrycznie względem środka trybuny, na wspólnym betonowym cokole (`embed="concrete"`) | **niezweryfikowane** (położenie ze zdjęcia lotniczego, bez pomiaru) |
 | Konstrukcja masztów | punkt_swietlny_jupiter.png, widok_na_trybune_z_sektora_gosci.png | trzon kratownicowy, u dołu trzy rozchodzące się nogi na betonowych blokach; dodatkowe reflektory w połowie wysokości | rozejście nóg na 15 m, rozstaw stóp 8 × 7 m, pomost z 6 lampami na 25 m | średnia |
 | Tablica wyników | ortofotomapa (cień), zdjęcia lks22, 19-37-09 | łuk południowy, oś boiska | (0, −110,5) | wysoka |
 | Atlas Arena | ortofotomapa | środek (−174, +10), promień ok. 68 m | uproszczona bryła | średnia |
@@ -125,7 +125,7 @@ Autorstwo większości zdjęć jest nieznane. Przed publikacją projektu trzeba 
 ## Otwarte pytania
 
 1. **Tunele**: liczba (w każdym przęśle) i wyjścia na widownię są ze zdjęć; przebieg schodów w hali pod trybuną to założenie. Jeśli znajdzie się zdjęcie wejść od strony hali, warto je zweryfikować.
-2. **Maszty zachodnie**: `widok_z_galery.jpg` pokazuje maszt SW tuż za południowym końcem trybuny głównej. Model ma (−68, −82), czyli ok. 10–15 m dalej na południe. Potrzebny drugi kąt, żeby to ustalić.
+2. **Maszty zachodnie**: `widok_z_galery.jpg` pokazuje maszt SW tuż za południowym końcem trybuny głównej. Model ma teraz (−68, −68) po przesunięciu o 14 m ku trybunie; NW symetrycznie (−68, +74). Potrzebny drugi kąt, żeby to ustalić.
 3. **Łuk północny**: na ortofotomapie zewnętrzną część zasłaniają drzewa; model zakłada tę samą głębokość co Galera.
 4. **Okres**: model pokazuje stan z lat 2010–2012 (decyzja z 17.10.2026), stąd trawa zamiast bieżni i plastikowe krzesełka.
 6. **Panorama bloków**: pozycje i wysokości to kompozycja ze zdjęć lks07/lks08, bez pomiaru. Do zweryfikowania na mapie (rejon Karolewa / za stacją Łódź Kaliska).

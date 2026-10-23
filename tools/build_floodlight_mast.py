@@ -14,11 +14,13 @@ import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0), mast_pos=(0.0, 0.0)):
+def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0), mast_pos=(0.0, 0.0), embed="concrete"):
     """
     Tworzy trójnożny maszt z głowicą w kształcie odwróconego trapezu nakierowaną na pitch_target.
     Dwie przednie nogi zwrócone ku murawie, tylna noga odciągowa na zewnątrz stadionu.
     Głowica pochylona o 28° w dół w stronę murawy.
+    embed (il20250305_898038121_xlarge.jpg): "earth" — maszt osadzony w wale ziemnym, stopy w zadarnionych kopcach;
+    "concrete" — na betonowym cokole przy konstrukcji trybuny.
     """
     bm = bmesh.new()
 
@@ -102,13 +104,23 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
     if mats and 'metal' in mats:
         obj_tower.data.materials.append(mats['metal'])
 
-    # Betonowe bloki fundamentowe pod stopami nóg (do 0.3 m w gruncie)
-    bm_f = bmesh.new()
+    # Fundamenty: osobne bloki pod stopami; na wale ziemnym schowane w kopcach, przy trybunie na wspólnym cokole
+    bm_f, bm_mound = bmesh.new(), bmesh.new()
+    block_z0 = FOOT_Z - 0.3 if embed == "earth" else 0.5
+    if embed == "concrete":
+        xs, ys = [f.x for f in feet], [f.y for f in feet]
+        c = bmesh.ops.create_cube(bm_f, size=1.0)
+        bmesh.ops.scale(bm_f, vec=(max(xs) - min(xs) + 3.6, max(ys) - min(ys) + 3.6, 0.8), verts=c['verts'])
+        bmesh.ops.translate(bm_f, vec=((max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2, 0.1), verts=c['verts'])
     for foot in feet:
         c = bmesh.ops.create_cube(bm_f, size=1.0)
-        bmesh.ops.scale(bm_f, vec=(1.6, 1.6, FOOT_Z + 0.3), verts=c['verts'])
-        bmesh.ops.translate(bm_f, vec=(foot.x, foot.y, (FOOT_Z - 0.3) / 2.0), verts=c['verts'])
-    bmesh.ops.rotate(bm_f, cent=(0, 0, 0), matrix=rot_matrix, verts=bm_f.verts)
+        bmesh.ops.scale(bm_f, vec=(1.0 if embed == "earth" else 1.6,) * 2 + (FOOT_Z - block_z0 + 0.3,), verts=c['verts'])
+        bmesh.ops.translate(bm_f, vec=(foot.x, foot.y, (FOOT_Z + block_z0 - 0.3) / 2.0), verts=c['verts'])
+        if embed == "earth":
+            bmesh.ops.create_cone(bm_mound, cap_ends=True, segments=14, radius1=6.0, radius2=2.6, depth=1.2,
+                                  matrix=mathutils.Matrix.Translation((foot.x, foot.y, FOOT_Z - 0.55)))
+    for bm_x in (bm_f, bm_mound):
+        bmesh.ops.rotate(bm_x, cent=(0, 0, 0), matrix=rot_matrix, verts=bm_x.verts)
     mesh_f = bpy.data.meshes.new(f"{name}_Fundamenty_Mesh")
     bm_f.normal_update()
     bm_f.to_mesh(mesh_f)
@@ -118,6 +130,16 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
         obj_f.data.materials.append(mats['concrete'])
     col.objects.link(obj_f)
     obj_f.parent = obj_tower
+    if embed == "earth":
+        mesh_m = bpy.data.meshes.new(f"{name}_Kopce_Mesh")
+        bm_mound.normal_update()
+        bm_mound.to_mesh(mesh_m)
+        obj_m = bpy.data.objects.new(f"{name}_Kopce", mesh_m)
+        if mats and 'ground_grass' in mats:
+            obj_m.data.materials.append(mats['ground_grass'])
+        col.objects.link(obj_m)
+        obj_m.parent = obj_tower
+    bm_mound.free()
 
     # Dodatkowe reflektory w połowie wysokości (punkt_swietlny_jupiter.png): pomost na czole trzonu,
     # 2 × 3 lampy pochylone ku murawie
