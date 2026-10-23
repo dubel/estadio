@@ -380,6 +380,11 @@ def create_materials():
         m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = rough
         setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, tex))
         mats[key] = m
+    m = bpy.data.materials.new("Mat_Bruk_Kostka")
+    m.use_nodes = True
+    m.node_tree.nodes.get("Principled BSDF").inputs['Roughness'].default_value = 0.9
+    setup_pbr_nodes(m, os.path.join(TEXTURES_DIR, "bruk_kostka.png"))
+    mats['cobble'] = m
     mats['white_paint'] = seat_material("Mat_Ogrodzenie_VIP_Biale", (0.86, 0.86, 0.84))
     mats['red_paint'] = seat_material("Mat_Ogrodzenie_VIP_Czerwone", (0.55, 0.06, 0.08))
     mats['seat_frame'] = seat_material("Mat_Stelaz_Krzeselek_VIP", (0.02, 0.02, 0.02))
@@ -427,8 +432,8 @@ BAY_WIDTH_Y = TOTAL_LENGTH_Y / NUM_BAYS  # ~9.29 m
 # Przekrój wg rysunku J. Wyżnikiewicza (1969), docs/zrodla.md. Układ lokalny: X — od czoła (bieżni)
 # w głąb trybuny, Y — wzdłuż trybuny (0..TOTAL_LENGTH_Y), Z — w górę. Wartości lekko uproszczone,
 # żeby każdy stopień dał się przejść (podstopień < 0.48 m, prześwit > 2 m).
-LOWER_X0, LOWER_ROWS, LOWER_DX, LOWER_Z0, LOWER_DZ = 0.25, 10, 0.835, 0.5, 0.30   # sektor dolny: do X 8.6, Z 3.2
-FRONT_PARAPET_H = 1.1
+# sektor dolny: do X 8.6, Z 3.2; pierwszy rząd tuż nad murawą, bez murku czołowego (lawka_rezerwowych.jpg, sektor_vip_*.jpg)
+LOWER_X0, LOWER_ROWS, LOWER_DX, LOWER_Z0, LOWER_DZ = 0.25, 10, 0.835, 0.1, 0.3444
 CONCOURSE_X1 = 11.2                     # promenada między sektorami na Z 3.2
 CONCOURSE_Z = LOWER_Z0 + (LOWER_ROWS - 1) * LOWER_DZ
 UPPER_X0, UPPER_ROWS, UPPER_Z0 = 11.5, 33, 5.5
@@ -501,7 +506,7 @@ REF_BOX = (-1.8, -0.6, 62.0, 64.2)
 # do wylotu, w środku da się przejść. Obicie w poprzeczne pasy biało-czerwone (fałda po fałdzie),
 # w ścianach bocznych stelaż nożycowy.
 TUNNEL_Y = (66.6, 69.4)
-TUNNEL_ROWS = 7                         # usunięte rzędy: stopień 7. rzędu na 2.6 m, tunel ma 2.4 m
+TUNNEL_ROWS = 7                         # usunięte rzędy: stopień 7. rzędu na 2.5 m, tunel ma 2.4 m
 TUNNEL_HALF_W, TUNNEL_WALL_H = 1.1, 1.3 # połowa szerokości, ściana boczna pod półkolistym dachem
 TUNNEL_FOLD, TUNNEL_PLEAT = 0.4, 0.12   # rozstaw łuków złożonego tunelu, wypchnięcie fałdy obicia
 TUNNEL_FRONT_X = -0.3                   # wylot tunelu przed czołem trybuny
@@ -518,13 +523,13 @@ PAVILION_MULLION = 1.6                  # rozstaw słupków okiennych
 SHEET_TILE = 1.4                        # kafel tekstury blachy jak w ogrodzeniu (SHEET_TILE_M, build_horseshoe_bowl.py)
 
 # Sektor VIP przed pawilonem (sektor_vip_na_dlugosc.jpg, sektor_vip_na_dlugosc_02.jpg): na stopniach gres, podstopnia
-# z niebiesko-szarej blachy, krzesełka na czarnym stelażu, rzędy przed pawilonem obniżone i bez murku czołowego.
+# z niebiesko-szarej blachy, krzesełka na czarnym stelażu.
 VIP_TILE_TEX_M, VIP_RISER_TEX_M = 2.4, 9.8   # bok kafla gresu i długość tekstury podstopnia (generate_vip_step_textures)
 VIP_OVERLAY = 0.012                     # grubość nakładki gresu i blachy na betonowych stopniach
-VIP_DROP = 0.4                          # o tyle obniżone rzędy przed pawilonem: pierwszy na 0.1 m nad murawą
 
 # Ogrodzenie przy murawie na całej długości trybuny (il20250305_898037885_xlarge.jpg)
-FENCE_X, FENCE_H = -1.0, 1.1            # przed czołem trybuny (x < 0 to strona boiska)
+FENCE_X, FENCE_H = -3.0, 1.1            # przed czołem trybuny (x < 0 to strona boiska); między nim a czołem bruk
+APRON_TEX_M = 2.8                       # okres tekstury bruku (generate_cobble_texture)
 FENCE_PANEL, FENCE_WIRE = 2.4, 0.1      # szerokość panelu i oczko siatki
 FENCE_MESH_TOP = 0.5                    # siatka od gruntu do szyny środkowej, nad nią przerwa do górnej ramy
 FENCE_GAP = 1.0                         # zapas przerwy przy ławce rezerwowych i tunelu zawodników
@@ -584,27 +589,17 @@ def _finish(col, bm, name, mat):
     return obj
 
 
-def _lower_profile(first_row=0, vip=False):
-    """Przekrój sektora dolnego z promenadą; first_row > 0 — bez pierwszych rzędów (wnęka ławki rezerwowych);
-    vip — przed pawilonem bez murku czołowego, rzędy przed pawilonem obniżone: pierwszy tuż nad murawą."""
-    if vip:
-        pts = [(0.0, 0.0)]
-    elif first_row == 0:
-        pts = [(0.0, 0.0), (0.0, FRONT_PARAPET_H), (LOWER_X0, FRONT_PARAPET_H)]
+def _lower_profile(first_row=0):
+    """Przekrój sektora dolnego z promenadą; first_row > 0 — bez pierwszych rzędów (wnęka ławki rezerwowych)."""
+    if first_row == 0:
+        pts = [(0.0, 0.0), (0.0, LOWER_Z0)]
     else:
         pts = [(LOWER_X0 + first_row * LOWER_DX, 0.0)]
     for i in range(first_row, LOWER_ROWS):
-        z = LOWER_Z0 + i * LOWER_DZ - (VIP_DROP if vip and i < PAVILION_ROW else 0.0)
+        z = LOWER_Z0 + i * LOWER_DZ
         pts += [(LOWER_X0 + i * LOWER_DX, z), (LOWER_X0 + (i + 1) * LOWER_DX, z)]
     pts += [(CONCOURSE_X1, CONCOURSE_Z), (CONCOURSE_X1, 0.0)]
     return pts
-
-
-def _extrude_lower(bm, y0, y1):
-    """Pełny przekrój sektora dolnego od y0 do y1, z odcinkiem VIP (_lower_profile(vip=True)) w granicach pawilonu."""
-    cuts = [y0] + [v for v in PAVILION_Y if y0 < v < y1] + [y1]
-    for a, b in zip(cuts, cuts[1:]):
-        _extrude_profile(bm, _lower_profile(vip=PAVILION_Y[0] <= (a + b) / 2 <= PAVILION_Y[1]), a, b)
 
 
 def _upper_profiles(slot=None):
@@ -637,10 +632,10 @@ def build_grandstand(col, mats):
     # Sektor dolny + promenada; we wnękach ławek rezerwowych i w kanale tunelu bez pierwszych rzędów
     y = 0.0
     for ya, yb, rows in LOWER_CUTS:
-        _extrude_lower(bm_lower, y, ya)
+        _extrude_profile(bm_lower, _lower_profile(), y, ya)
         _extrude_profile(bm_lower, _lower_profile(rows), ya, yb)
         y = yb
-    _extrude_lower(bm_lower, y, TOTAL_LENGTH_Y)
+    _extrude_profile(bm_lower, _lower_profile(), y, TOTAL_LENGTH_Y)
 
     # Wejścia z placu na promenadę na obu krańcach trybuny: build_entrances.py (schody między czopem łuku a trybuną)
 
@@ -776,6 +771,7 @@ def build_grandstand(col, mats):
     build_players_tunnel(col, mats)
     build_vip_pavilion(col, mats)
     build_vip_steps(col, mats)
+    build_front_apron(col, mats)
     build_front_fence(col, mats)
     build_gables(col, mats)
 
@@ -1038,16 +1034,12 @@ def build_vip_pavilion(col, mats):
     _finish(col, bm_frame, "Pawilon_VIP_Ramy", mats['metal'])
 
 
-def in_vip_sector(y):
-    return PAVILION_Y[0] <= y <= PAVILION_Y[1]
-
-
 def build_vip_steps(col, mats):
     """Gres na stopniach i blacha na podstopniach rzędów przed pawilonem: cienkie nakładki na betonie."""
     ya, yb = PAVILION_Y
     bm_t, bm_r = bmesh.new(), bmesh.new()
     for i in range(PAVILION_ROW):
-        x0, z = LOWER_X0 + i * LOWER_DX, LOWER_Z0 + i * LOWER_DZ - VIP_DROP
+        x0, z = LOWER_X0 + i * LOWER_DX, LOWER_Z0 + i * LOWER_DZ
         _box(bm_t, x0, x0 + LOWER_DX, ya, yb, z, z + VIP_OVERLAY)
         if i > 0:
             _box(bm_r, x0 - VIP_OVERLAY, x0, ya, yb, z - LOWER_DZ + VIP_OVERLAY, z)
@@ -1059,10 +1051,21 @@ def build_vip_steps(col, mats):
     for face in bm_r.faces:
         for loop in face.loops:
             co = loop.vert.co
-            z_low = LOWER_Z0 + (round((co.x - LOWER_X0) / LOWER_DX) - 1) * LOWER_DZ - VIP_DROP
+            z_low = LOWER_Z0 + (round((co.x - LOWER_X0) / LOWER_DX) - 1) * LOWER_DZ
             loop[uv].uv = (co.y / VIP_RISER_TEX_M, (co.z - z_low) / LOWER_DZ)
     _finish(col, bm_t, "VIP_Stopnie_Gres", mats['vip_tread'])
     _finish(col, bm_r, "VIP_Podstopnie", mats['vip_riser'])
+
+
+def build_front_apron(col, mats):
+    """Bruk między ogrodzeniem a czołem trybuny (sektor_vip_na_dlugosc*.jpg, il20250305_898037885)."""
+    bm = bmesh.new()
+    _box(bm, FENCE_X, 0.0, 0.0, TOTAL_LENGTH_Y, 0.0, 0.04)             # nad zarośniętą bieżnią (z 0.02)
+    uv = bm.loops.layers.uv.verify()
+    for face in bm.faces:
+        for loop in face.loops:
+            loop[uv].uv = (loop.vert.co.y / APRON_TEX_M, loop.vert.co.x / APRON_TEX_M)
+    _finish(col, bm, "Bruk_Przed_Trybuna", mats['cobble'])
 
 
 def build_front_fence(col, mats):

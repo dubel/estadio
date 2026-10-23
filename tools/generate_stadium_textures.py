@@ -441,6 +441,25 @@ def generate_vip_step_textures():
     print("Zapisano stopnie sektora VIP (sektor_vip_na_dlugosc_02.jpg)")
 
 
+# Bruk (kostka) przed trybuną: wycinek ziemi z sektor_vip_na_dlugosc.jpg (1280 x 851), ok. 1,4 x 1,4 m (kostka ok. 0,2 m)
+COBBLE_QUAD = [(1160, 700), (1270, 700), (1270, 840), (1160, 840)]
+
+
+def generate_cobble_texture():
+    """Bruk przed trybuną (bruk_kostka.png, okres 2,8 m): wycinek wyprostowany ze zdjęcia, z wyrównanym światłem,
+    złożony z czterech odbić lustrzanych, więc powtarza się bez szwu."""
+    im = Image.open(os.path.join(PHOTOS_DIR, "sektor_vip_na_dlugosc.jpg")).convert("RGB")
+    tile = _flatten_light(_rectify(im, COBBLE_QUAD, (512, 512)), 60)
+    flip_lr, flip_tb = Image.Transpose.FLIP_LEFT_RIGHT, Image.Transpose.FLIP_TOP_BOTTOM
+    out = Image.new("RGB", (1024, 1024))
+    out.paste(tile, (0, 0))
+    out.paste(tile.transpose(flip_lr), (512, 0))
+    out.paste(tile.transpose(flip_tb), (0, 512))
+    out.paste(tile.transpose(flip_lr).transpose(flip_tb), (512, 512))
+    out.save(os.path.join(TEXTURES_DIR, "bruk_kostka.png"))
+    print("Zapisano bruk (sektor_vip_na_dlugosc.jpg)")
+
+
 def generate_entrance_textures():
     """Grafiki wejść, szczytów trybuny i ławek rezerwowych, wyprostowane ze zdjęć (ENTRANCE_GRAPHICS)."""
     for photo, quad, size, out in ENTRANCE_GRAPHICS:
@@ -738,6 +757,7 @@ if __name__ == "__main__":
     generate_gate_mesh_texture()
     generate_entrance_textures()
     generate_vip_step_textures()
+    generate_cobble_texture()
     generate_fence_texture()
     generate_facade_texture()
     generate_crown_ads_texture()
