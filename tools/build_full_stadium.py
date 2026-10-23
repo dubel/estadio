@@ -39,6 +39,7 @@ from build_grandstand import (
 from build_seats import place_seats, seat_material, seats_in_row
 from build_floodlight_mast import build_floodlight_mast
 from build_surroundings import build_surroundings
+from build_east_exterior import build_east_exterior
 from bake_lighting import bake_ambient_occlusion
 from build_entrances import build_entrances
 from build_horseshoe_bowl import (
@@ -48,7 +49,7 @@ from build_horseshoe_bowl import (
     build_fan_banners,
     build_scoreboard,
     build_temporary_south_stand,
-    STRAIGHT_L, STAND_BACK, STAND_H, BOWL_ANGLE_N, BOWL_ANGLE_S, MAST_ANG_IN, MAST_R_OFF
+    STRAIGHT_L, STAND_BACK, STAND_H, BOWL_ANGLE_N, BOWL_ANGLE_S, MAST_ANG_IN, EAST_MAST_ANG
 )
 
 ROOT = os.path.dirname(TOOLS_DIR)
@@ -326,7 +327,8 @@ def assemble_full_stadium():
     place_seats(col_grandstand, "Krzeselka_Trybuna_Biale", seat_material("Mat_Krzeselka_Biale", (0.88, 0.88, 0.86)), white, empty_grandstand, frame_mat=frame)
 
     print("--- 4. Generowanie 4 Masztów Oświetleniowych (3-nożne jupitery z odwróconym trapezem) ---")
-    # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59), osadzone w wale ziemnym.
+    # Maszty wschodnie: cienie na ortofotomapie 2013 (NE Y≈+64, SE Y≈-59); stoją na koronie przy styku Galery z łukami,
+    # na zadarnionym kopcu z szafami i bandami obok (zdjecia/alejaunii).
     # Zachodnie stoją na koronie łuków, na ich zachodnich końcach, na betonowym filarze do gruntu: SW na końcu
     # łuku południowego (il20250305_898037505, laczenie_trybuna_luk_poludnie.jpg), NW na brzegu łuku północnego
     # przy sektorze gości (il20250305_898037227). Położenie wzdłuż końca łuku ze zdjęć, bez pomiaru (docs/zrodla.md).
@@ -336,18 +338,19 @@ def assemble_full_stadium():
     jupiters_cfg = [
         ("Jupiter_SW", crown(-STRAIGHT_L / 2, -BOWL_ANGLE_S + MAST_ANG_IN)),
         ("Jupiter_NW", crown(STRAIGHT_L / 2, BOWL_ANGLE_N - MAST_ANG_IN)),
-        ("Jupiter_SE", ( 68.0, -61.5, 0.0)),
-        ("Jupiter_NE", ( 68.0,  61.5, 0.0))
+        ("Jupiter_SE", crown(-STRAIGHT_L / 2, -EAST_MAST_ANG)),
+        ("Jupiter_NE", crown(STRAIGHT_L / 2, EAST_MAST_ANG))
     ]
     
     for name, loc in jupiters_cfg:
         mast = build_floodlight_mast(col_jupiters, mats=mats, name=name, pitch_target=(0.0, 0.0), mast_pos=(loc[0], loc[1]),
                                     embed="earth" if loc[0] > 0 else "concrete",
-                                    height=46.0 - loc[2])
+                                    height=46.0 - loc[2], pier_depth=loc[2] if loc[0] > 0 else 0.0)
         mast.location = loc
 
     print("--- 5. Generowanie Otoczenia (teren, al. Unii, tory, Atlas Arena, drzewa) ---")
     build_surroundings(col_surroundings, mats, holes=dugout_pits(-45.0, GRANDSTAND_LENGTH / 2.0 + GRANDSTAND_CENTER_Y))
+    build_east_exterior(col_surroundings, mats)
 
     # Zapis pliku roboczego .blend
     prepare_meshes_for_export()

@@ -460,6 +460,69 @@ def generate_cobble_texture():
     print("Zapisano bruk (sektor_vip_na_dlugosc.jpg)")
 
 
+def _mirror4(tile):
+    """Cztery odbicia lustrzane kafla: powtarza się bez szwu (okres 2 × rozmiar kafla)."""
+    w, h = tile.size
+    flip_lr, flip_tb = Image.Transpose.FLIP_LEFT_RIGHT, Image.Transpose.FLIP_TOP_BOTTOM
+    out = Image.new(tile.mode, (2 * w, 2 * h))
+    out.paste(tile, (0, 0))
+    out.paste(tile.transpose(flip_lr), (w, 0))
+    out.paste(tile.transpose(flip_tb), (0, h))
+    out.paste(tile.transpose(flip_lr).transpose(flip_tb), (w, h))
+    return out
+
+
+def generate_east_exterior_textures():
+    """Wschód od al. Unii (zdjecia/alejaunii: Street View 2011 i DSC01675/77): trawa wału i mur ze zdjęć (z wyrównanym
+    światłem, odbicia lustrzane — okres 6 m i 4 m), brama ze zdjęcia, płot betonowy, chodnik z kostki i siatka
+    ogrodzeniowa korony: te trzy procedurą w barwach ze zdjęć."""
+    d = os.path.join(PHOTOS_DIR, "alejaunii")
+    sv = Image.open(os.path.join(d, "screenshot-2026-10-24_00-22-15.png")).convert("RGB")
+    grass = _flatten_light(sv.crop((500, 860, 1500, 1010)).resize((512, 512), Image.LANCZOS), 60)
+    _mirror4(grass).save(os.path.join(TEXTURES_DIR, "trawa_wal.png"))
+    wall = _flatten_light(sv.crop((470, 1140, 1240, 1285)).resize((512, 512), Image.LANCZOS), 80)
+    wall = wall.point(lambda v: min(255, int(v * 1.6)))     # zdjęcie z cienia pod skarpą: jaśniej, jak w słońcu
+    _mirror4(wall).save(os.path.join(TEXTURES_DIR, "mur_zewnetrzny.png"))
+    Image.open(os.path.join(d, "DSC01677.jpg")).convert("RGB").save(os.path.join(TEXTURES_DIR, "brama_al_unii.png"))
+
+    rng = np.random.default_rng(7)
+
+    # Płot betonowy z pionowych sztachet (screenshot-2026-10-24_00-28-36.png): przęsło 2,5 × 2,2 m, słup z lewej
+    W, H = 512, 450
+    fence = np.zeros((H, W, 3), dtype=float)
+    fence[:] = (34, 38, 30)
+    pitch, pw = 39, 25
+    for x0 in range(52, W, pitch):
+        fence[:, x0:min(x0 + pw, W)] = (118, 108, 92)
+    fence[:, :50] = (104, 98, 86)                    # słup
+    fence[H - 55:H - 8, :] = (112, 104, 90)          # belka dolna
+    fence += rng.normal(0, 7, fence.shape)
+    Image.fromarray(np.clip(fence, 0, 255).astype(np.uint8)).save(os.path.join(TEXTURES_DIR, "plot_betonowy.png"))
+
+    # Chodnik z czerwonej kostki 20 × 10 cm w wątku (DSC01675.jpg), kafel 1,2 m
+    S, bw, bh = 512, 85, 43
+    paving = np.zeros((S, S, 3), dtype=float)
+    paving[:] = (146, 138, 134)
+    for row, y0 in enumerate(range(0, S, bh)):
+        for x0 in range(-(bw // 2) * (row % 2), S, bw):
+            tone = rng.normal(0, 9)
+            col = np.array((178, 116, 106)) + tone
+            paving[y0 + 2:y0 + bh - 1, max(x0 + 2, 0):max(min(x0 + bw - 1, S), 0)] = col
+    paving += rng.normal(0, 4, paving.shape)
+    Image.fromarray(np.clip(paving, 0, 255).astype(np.uint8)).save(os.path.join(TEXTURES_DIR, "chodnik_klinkier.png"))
+
+    # Siatka ogrodzeniowa korony (oczka rombowe, kafel 0,5 m); tło w kolorze drutu: mipmapy nie przyciemniają siatki
+    N, step = 128, 16
+    wire = (150, 152, 150, 255)
+    img = Image.new("RGBA", (N, N), wire[:3] + (0,))
+    dr = ImageDraw.Draw(img)
+    for k in range(-N, 2 * N, step):
+        dr.line([(k, 0), (k + N, N)], fill=wire, width=1)
+        dr.line([(k, N), (k + N, 0)], fill=wire, width=1)
+    img.save(os.path.join(TEXTURES_DIR, "siatka_ogrodzeniowa.png"))
+    print("Zapisano tekstury wschodniej strony (al. Unii)")
+
+
 def generate_entrance_textures():
     """Grafiki wejść, szczytów trybuny i ławek rezerwowych, wyprostowane ze zdjęć (ENTRANCE_GRAPHICS)."""
     for photo, quad, size, out in ENTRANCE_GRAPHICS:
@@ -758,6 +821,7 @@ if __name__ == "__main__":
     generate_entrance_textures()
     generate_vip_step_textures()
     generate_cobble_texture()
+    generate_east_exterior_textures()
     generate_fence_texture()
     generate_facade_texture()
     generate_crown_ads_texture()

@@ -117,9 +117,15 @@ def build_floodlight_mast(col, mats=None, name="Jupiter", pitch_target=(0.0, 0.0
         c = bmesh.ops.create_cube(bm_f, size=1.0)
         bmesh.ops.scale(bm_f, vec=(1.0 if embed == "earth" else 1.6,) * 2 + (FOOT_Z - block_z0 + 0.3,), verts=c['verts'])
         bmesh.ops.translate(bm_f, vec=(foot.x, foot.y, (FOOT_Z + block_z0 - 0.3) / 2.0), verts=c['verts'])
-        if embed == "earth":
-            bmesh.ops.create_cone(bm_mound, cap_ends=True, segments=14, radius1=6.0, radius2=2.6, depth=1.2,
-                                  matrix=mathutils.Matrix.Translation((foot.x, foot.y, FOOT_Z - 0.55)))
+    if embed == "earth":
+        # kopiec na koronie wału: płaski wierzch pod stopami, zbocze o spadku 1:0.6 do gruntu (pier_depth — głębokość)
+        top_z = FOOT_Z - 0.55
+        depth = top_z + pier_depth + 0.3
+        top_r = 5.5
+        bmesh.ops.create_cone(bm_mound, cap_ends=True, segments=28, radius1=top_r + 0.6 * depth, radius2=top_r,
+                              depth=depth,
+                              matrix=mathutils.Matrix.Translation((sum(f.x for f in feet) / 3, sum(f.y for f in feet) / 3,
+                                                                   top_z - depth / 2)))
     for bm_x in (bm_f, bm_mound):
         bmesh.ops.rotate(bm_x, cent=(0, 0, 0), matrix=rot_matrix, verts=bm_x.verts)
     mesh_f = bpy.data.meshes.new(f"{name}_Fundamenty_Mesh")

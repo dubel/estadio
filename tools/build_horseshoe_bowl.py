@@ -253,7 +253,10 @@ STAND_BACK = R_TRACK_OUT + FRONT_WALK + STAND_DEPTH   # tylna krawędź korony
 # (il20250305_898037505, laczenie_trybuna_luk_poludnie.jpg, il20250305_898037227). Cokół: wycinek pierścienia od
 # końca łuku, promienie względem tylnej krawędzi korony; maszt stoi MAST_ANG_IN stopni od końca.
 ABUT_R_FRONT, ABUT_R_TOP_BACK = -8.0, 3.5     # płaski wierzch; dalej skarpa o tym samym spadku co tylna skarpa wału
-ABUT_SPAN_DEG, MAST_ANG_IN, MAST_R_OFF = 12.5, 6.5, -1.5
+ABUT_SPAN_DEG, MAST_ANG_IN = 12.5, 6.5
+# Maszty wschodnie stoją na koronie przy styku Galery z łukami, na zadarnionym kopcu (zdjecia/alejaunii):
+# kąt od środka łuku i połowa kąta kopca; krzesełka pod kopcem są pomijane.
+EAST_MAST_ANG, EAST_PAD_HALF_DEG, EAST_PAD_R_FRONT = 16.0, 6.0, -7.0
 LOW_FENCE_H = 1.2      # niskie ogrodzenie łuków z biało-czerwonymi słupkami (widok_na_zegar_u2.png)
 
 # Łuk południowy (kąty jak w stadium_path, środek łuku w Y = -42 m; -90° to oś pod zegarem), widok_na_zegar_u2.png:
@@ -715,6 +718,8 @@ def build_bowl_details(col, mats, red_seat, galera_aisles):
                 ang = lo + (k + 0.5) * (hi - lo) / n
                 if i in SOUTH_BLOCK_RAIL_ROWS and abs(ang - mid) < rail_half + 0.4:
                     continue
+                if r > STAND_BACK + EAST_PAD_R_FRONT and abs(abs(ang) - EAST_MAST_ANG) < EAST_PAD_HALF_DEG:
+                    continue                                 # pod kopcem masztu
                 (x, y), a = _arc_point(r, ang)
                 seats.append((x, y, z, a))
             if i in SOUTH_BLOCK_RAIL_ROWS:
