@@ -48,7 +48,7 @@ from build_horseshoe_bowl import (
     build_fan_banners,
     build_scoreboard,
     build_temporary_south_stand,
-    STRAIGHT_L, STAND_BACK, STAND_H, BOWL_ANGLE_N, BOWL_ANGLE_S
+    STRAIGHT_L, STAND_BACK, STAND_H, BOWL_ANGLE_N, BOWL_ANGLE_S, MAST_ANG_IN, MAST_R_OFF
 )
 
 ROOT = os.path.dirname(TOOLS_DIR)
@@ -334,8 +334,8 @@ def assemble_full_stadium():
         a = math.radians(angle)
         return (STAND_BACK * math.cos(a), cy + STAND_BACK * math.sin(a), STAND_H)
     jupiters_cfg = [
-        ("Jupiter_SW", crown(-STRAIGHT_L / 2, -(BOWL_ANGLE_S - 2.0))),
-        ("Jupiter_NW", crown(STRAIGHT_L / 2, BOWL_ANGLE_N - 2.0)),
+        ("Jupiter_SW", crown(-STRAIGHT_L / 2, -BOWL_ANGLE_S + MAST_ANG_IN)),
+        ("Jupiter_NW", crown(STRAIGHT_L / 2, BOWL_ANGLE_N - MAST_ANG_IN)),
         ("Jupiter_SE", ( 68.0, -61.5, 0.0)),
         ("Jupiter_NE", ( 68.0,  61.5, 0.0))
     ]
@@ -343,7 +343,7 @@ def assemble_full_stadium():
     for name, loc in jupiters_cfg:
         mast = build_floodlight_mast(col_jupiters, mats=mats, name=name, pitch_target=(0.0, 0.0), mast_pos=(loc[0], loc[1]),
                                     embed="earth" if loc[0] > 0 else "concrete",
-                                    height=46.0 - loc[2], pier_depth=loc[2])
+                                    height=46.0 - loc[2])
         mast.location = loc
 
     print("--- 5. Generowanie Otoczenia (teren, al. Unii, tory, Atlas Arena, drzewa) ---")

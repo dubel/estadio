@@ -249,6 +249,11 @@ NUM_STEPS = 20         # 20 betonowych stopni
 STEP_D = STAND_DEPTH / NUM_STEPS
 STEP_H = (STAND_H - ROW0_H) / (NUM_STEPS - 1)  # ~0.33 m
 STAND_BACK = R_TRACK_OUT + FRONT_WALK + STAND_DEPTH   # tylna krawędź korony
+# Zachodnie końce łuków kończą się masywnym betonowym cokołem z masztem na koronie, ze ścianą oporową do gruntu
+# (il20250305_898037505, laczenie_trybuna_luk_poludnie.jpg, il20250305_898037227). Cokół: wycinek pierścienia od
+# końca łuku, promienie względem tylnej krawędzi korony; maszt stoi MAST_ANG_IN stopni od końca.
+ABUT_R_FRONT, ABUT_R_TOP_BACK = -8.0, 3.5     # płaski wierzch; dalej skarpa o tym samym spadku co tylna skarpa wału
+ABUT_SPAN_DEG, MAST_ANG_IN, MAST_R_OFF = 12.5, 6.5, -1.5
 LOW_FENCE_H = 1.2      # niskie ogrodzenie łuków z biało-czerwonymi słupkami (widok_na_zegar_u2.png)
 
 # Łuk południowy (kąty jak w stadium_path, środek łuku w Y = -42 m; -90° to oś pod zegarem), widok_na_zegar_u2.png:
@@ -325,7 +330,7 @@ BALL_NET_POST_EVERY, BALL_NET_SAG = 4.0, 0.3   # luźna siatka: lina między sł
 # bannery_reklamowe.jpg). Zegar (20 m) zajmuje kąty ok. -98…-82°.
 SOUTH_ADS = [(-28.0, 0, 6.0, 1.5), (-39.0, 1, 6.0, 1.5), (-50.0, 2, 6.0, 1.5), (-61.0, 3, 6.0, 1.5),
              (-73.0, 4, 6.5, 1.25), (-105.0, 5, 6.0, 1.5), (-115.0, 6, 6.5, 1.6), (-127.0, 7, 7.0, 1.6),
-             (-139.0, 8, 7.0, 1.3)]
+             (-133.5, 8, 7.0, 1.3)]
 CROWN_ADS_GRID = (2, 5)                    # jak w generate_stadium_textures.py
 CROWN_AD_BOTTOM = 2.4                      # dolna krawędź tablicy nad koroną
 
@@ -363,6 +368,40 @@ def _finish_mesh(col, bm, name, mats_list):
     return obj
 
 
+def _add_abutment(bm, ang_end, toward, cy):
+    """Cokół końca łuku: wycinek pierścienia od ang_end w stronę toward (+1/-1), góra na wysokości korony."""
+    r0, r1 = STAND_BACK + ABUT_R_FRONT, STAND_BACK + ABUT_R_TOP_BACK
+    r2 = r1 + 5.0                                           # stopa skarpy (jak tylna skarpa wału)
+    n = 6
+    a_start = ang_end - toward * 0.05                       # 6 cm poza koniec wału: kryje jego ścianę końcową
+    angs = [a_start + toward * (ABUT_SPAN_DEG * k / n) for k in range(n + 1)]
+    rings = []
+    for a in angs:
+        ring = []
+        for r, z in ((r0, STAND_H), (r1, STAND_H), (r2, 0.0), (r2, -0.3), (r0, -0.3)):
+            (x, y), _ = _arc_point(r, a, cy)
+            ring.append(bm.verts.new((x, y, z)))
+        rings.append(ring)
+    faces = [bm.faces.new([ra[i], rb[i], rb[j], ra[j]])
+             for ra, rb in zip(rings, rings[1:]) for i, j in ((0, 1), (1, 2), (2, 3), (4, 0))]
+    faces += [bm.faces.new(rings[0]), bm.faces.new(rings[-1])]
+    mid, _ = _arc_point((r0 + r2) / 2, (angs[0] + angs[-1]) / 2, cy)
+    center = mathutils.Vector((mid[0], mid[1], STAND_H / 2))
+    bm.normal_update()
+    for f in faces:
+        if f.normal.dot(f.calc_center_median() - center) < 0:
+            f.normal_flip()
+
+
+def _cap_bowl_end(bm, ring, neighbour):
+    """Pionowa ściana końcowa wału: zamyka profil ring; neighbour — sąsiedni pierścień (kierunek do wnętrza)."""
+    center = lambda r: sum((v.co for v in r), mathutils.Vector()) / len(r)
+    face = bm.faces.new(ring)
+    bm.normal_update()
+    if face.normal.dot(center(neighbour) - center(ring)) > 0:
+        face.normal_flip()
+
+
 def build_bowl(col, mats):
     """
     Podkowa trybun na wałach ziemnych: od łuku północnego przez prostą wschodnią (Galera) do łuku
@@ -391,6 +430,11 @@ def build_bowl(col, mats):
         bB = bowl_rings[i + 1]
         for j in range(len(bA) - 1):
             bm_bowl.faces.new([bA[j], bB[j], bB[j+1], bA[j+1]])
+
+    _cap_bowl_end(bm_bowl, bowl_rings[0], bowl_rings[1])
+    _cap_bowl_end(bm_bowl, bowl_rings[-1], bowl_rings[-2])
+    _add_abutment(bm_bowl, BOWL_ANGLE_N, -1, STRAIGHT_L / 2)
+    _add_abutment(bm_bowl, -BOWL_ANGLE_S, +1, -STRAIGHT_L / 2)
 
     mesh_bowl = bpy.data.meshes.new("Trybuna_Podkowa_Mesh")
     bm_bowl.normal_update()
